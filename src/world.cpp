@@ -36,7 +36,11 @@ Scene World::inspect(const SCUSnapshot &s, const Game *g) const {
         v.width = cols * 256;
         v.height = rows * 256;
     } else if (v.family == 2) {
-        if ((r[0xB000] != 1 && r[0xB000] != 2) || be16(r, 0xFFD8))
+        // The Knuckles patch uses bit 15 here as its lock-on flag.
+        unsigned competition = be16(r, 0xFFD8);
+        if (g->crc == 0x2AC1E7C6)
+            competition &= 0x7FFF;
+        if ((r[0xB000] != 1 && r[0xB000] != 2) || competition)
             return v;
         v.cameraX = be16(r, 0xEEF0);
         v.cameraY = (int16_t)be16(r, 0xEEF4);

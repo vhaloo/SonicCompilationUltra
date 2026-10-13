@@ -289,7 +289,7 @@ bool Core::load(const std::string &id) {
         if (settings.fastBoot && !resumed && game) {
             bool silent = headless;
             headless = true;
-            int frames = game->crc == 0x2AC1E7C6 ? 600
+            int frames = game->crc == 0x2AC1E7C6 ? 750
                          : game->family == 1     ? 600
                          : game->family == 2     ? 1120
                          : game->family == 3     ? 850

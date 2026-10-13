@@ -66,10 +66,11 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(zoom)
     SET(camera)
     SET(hud)
-    SET(hudScale) SET(background) SET(blur) SET(brightness) SET(parallax) SET(minimap) SET(locator)
-        SET(spindash) SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost)
-            SET(left) SET(top) SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen)
-                SET(span) SET(vsync) SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot)
+    SET(hudScale)
+    SET(background) SET(blur) SET(brightness) SET(parallax) SET(minimap) SET(locator) SET(spindash)
+        SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top)
+            SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen) SET(span) SET(vsync)
+                SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot)
 #undef SET
                     throw std::runtime_error("Unknown option: " + key);
 }
@@ -212,6 +213,10 @@ int main(int argc, char **argv) {
         char *base = SDL_GetBasePath();
         fs::path baseDir = base ? fs::u8path(base) : fs::current_path();
         SDL_free(base);
+#ifdef __APPLE__
+        if (fs::exists(baseDir / "../Resources/assets/SCUInterface.ttf"))
+            baseDir = (baseDir / "../Resources").lexically_normal();
+#endif
         if (args.count("--software"))
             SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
 #ifdef _WIN32
