@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-label="Sonic Compilation Ultra">
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#071629"/><stop offset="1" stop-color="#083a54"/></linearGradient>
+    <linearGradient id="accent" x2="1" y2="1"><stop stop-color="#7bf6df"/><stop offset="1" stop-color="#42bce9"/></linearGradient>
+  </defs>
+  <rect x="1" y="1" width="1198" height="298" rx="28" fill="url(#bg)" stroke="#235775"/>
+  <g fill="none" stroke="#225777" opacity=".42"><path d="M30 232H1170M30 256H1170M30 280H1170"/><path d="M800 30V280M870 30V280M940 30V280M1010 30V280M1080 30V280M1150 30V280"/></g>
+  <circle cx="138" cy="145" r="83" fill="#061725" stroke="#efcf67" stroke-width="7"/>
+  <path d="M93 91v66c0 37 22 53 46 53s46-16 46-53V91h-27v64c0 18-7 28-19 28s-19-10-19-28V91z" fill="url(#accent)"/>
+  <text x="263" y="99" fill="#91eee6" font-family="sans-serif" font-size="23" letter-spacing="6">YOUR CARTRIDGES. A BIGGER VIEW.</text>
+  <text x="258" y="163" fill="#edf8fd" font-family="sans-serif" font-size="49" font-weight="700">SONIC COMPILATION</text>
+  <text x="260" y="224" fill="#efcf67" font-family="sans-serif" font-size="51" font-weight="700" letter-spacing="10">ULTRA</text>
+  <path d="M1012 155h108m-28-26 28 26-28 26" stroke="#74eddf" stroke-width="6" fill="none" stroke-linecap="round"/>
+</svg>

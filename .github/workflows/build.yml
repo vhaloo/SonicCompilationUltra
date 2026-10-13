@@ -1,0 +1,65 @@
+name: Build and validate
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            platform: windows
+            arch: x64
+          - os: ubuntu-22.04
+            platform: linux
+            arch: x64
+          - os: macos-15-intel
+            platform: macos
+            arch: x64
+          - os: macos-15
+            platform: macos
+            arch: arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Linux display/audio build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libasound2-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxfixes-dev libxkbcommon-dev libwayland-dev libegl1-mesa-dev libgl1-mesa-dev
+      - name: Configure Windows
+        if: runner.os == 'Windows'
+        run: cmake -S . -B build -A x64 -DBUILD_TESTING=ON -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON
+      - name: Configure Unix
+        if: runner.os != 'Windows'
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON
+      - name: Build
+        run: cmake --build build --config Release --parallel 3 --target SonicCompilationUltra scu_tests
+      - name: Unit tests
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: ROM-free UI validation
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: python tools/smoke_ui.py --build build
+      - name: Package software and corresponding source
+        run: python tools/package.py --build build --platform ${{ matrix.platform }} --arch ${{ matrix.arch }} --out dist --source
+      - name: Upload packages and validation
+        uses: actions/upload-artifact@v4
+        with:
+          name: SCU-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+            dist/SHA256SUMS.txt
+            build/ui-smoke/report.json
+          if-no-files-found: error

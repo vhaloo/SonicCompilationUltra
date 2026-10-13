@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-13",
+  "repository_and_fork_records": 773,
+  "query_page_completion": [
+    {
+      "file": "search-disassembly-page2.json",
+      "total_count": 111,
+      "incomplete_results": false,
+      "items": 11
+    },
+    {
+      "file": "search-sonic1-page2.json",
+      "total_count": 187,
+      "incomplete_results": false,
+      "items": 87
+    }
+  ],
+  "note": "Records include unrelated search noise and forks; not a count of completed decomps."
+}
