@@ -23,5 +23,6 @@ target_include_directories(scu_core PRIVATE ${GX_INCLUDES} ${CMAKE_CURRENT_SOURC
 target_compile_definitions(scu_core PRIVATE LSB_FIRST BYTE_ORDER=1234 LITTLE_ENDIAN=1234 USE_16BPP_RENDERING FRONTEND_SUPPORTS_RGB565 USE_LIBTREMOR HAVE_ZLIB HAVE_NO_LANGEXTRA MAXROMSIZE=10485760 HAVE_YM3438_CORE HAVE_OPLL_CORE __LIBRETRO__ USE_LIBRETRO_VFS)
 if(NOT MSVC)
   target_link_libraries(scu_core PUBLIC m)
-  target_compile_options(scu_core PRIVATE -Wno-incompatible-pointer-types -Wno-deprecated-declarations)
+  # Upstream uses GNU89 external-inline semantics even with C99 syntax.
+  target_compile_options(scu_core PRIVATE -fgnu89-inline -Wno-incompatible-pointer-types -Wno-deprecated-declarations)
 endif()

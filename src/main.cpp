@@ -64,13 +64,14 @@ static void option(Settings &s, const std::string &key, const std::string &value
         return;                                                                                    \
     }
     SET(zoom)
-    SET(camera) SET(hud) SET(hudScale) SET(background) SET(blur) SET(brightness) SET(parallax)
-        SET(minimap) SET(locator) SET(spindash) SET(invincible) SET(infiniteAir) SET(rewind)
-            SET(nativeScale) SET(ghost) SET(left) SET(top) SET(volume) SET(language) SET(help)
-                SET(workers) SET(fullscreen) SET(span) SET(vsync) SET(uiScale) SET(scanlines)
-                    SET(lockon) SET(fastBoot)
+    SET(camera)
+    SET(hud)
+    SET(hudScale) SET(background) SET(blur) SET(brightness) SET(parallax) SET(minimap) SET(locator)
+        SET(spindash) SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost)
+            SET(left) SET(top) SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen)
+                SET(span) SET(vsync) SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot)
 #undef SET
-                        throw std::runtime_error("Unknown option: " + key);
+                    throw std::runtime_error("Unknown option: " + key);
 }
 static void execute(App &a, const Action &cmd, uint16_t &mask) {
     std::istringstream in(cmd.args);
@@ -91,7 +92,10 @@ static void execute(App &a, const Action &cmd, uint16_t &mask) {
         a.core.save(std::stoi(cmd.args));
     else if (cmd.verb == "load")
         a.core.loadState(std::stoi(cmd.args));
-    else if (cmd.verb == "game")
+    else if (cmd.verb == "rewind") {
+        if (!a.core.rewind())
+            throw std::runtime_error("No rewind checkpoint available");
+    } else if (cmd.verb == "game")
         a.play(cmd.args);
     else if (cmd.verb == "reset")
         a.core.reset();
@@ -109,9 +113,10 @@ static void execute(App &a, const Action &cmd, uint16_t &mask) {
         auto &r = a.core.snapshot.ram;
         fprintf(stderr,
                 "TRACE step=%u frame=%llu mask=%04X mode=%02X pad=%02X/%02X s1routine=%d s2id=%d "
-                "vs=%04X px=%u\n",
+                "vs=%04X px=%u charge=%d menu=%d\n",
                 cmd.step, (unsigned long long)a.core.frame, mask, r[0xF600], r[0xF604], r[0xF605],
-                r[0xD024], r[0xB000], be16(r, 0xFFD8), be16(r, 0xD008));
+                r[0xD024], r[0xB000], be16(r, 0xFFD8), be16(r, 0xD008), a.core.spinCharge,
+                a.menu ? 1 : 0);
     } else if (cmd.verb == "event") {
         SDL_Event e{};
         if (cmd.args == "select") {
@@ -350,7 +355,7 @@ int main(int argc, char **argv) {
             ++step;
             if (limit && step >= limit)
                 break;
-            if (args.count("--seconds")&&now-start>=std::stod(args["--seconds"]))
+            if (args.count("--seconds") && now - start >= std::stod(args["--seconds"]))
                 break;
             if (!limit || args.count("--realtime"))
                 SDL_Delay(a.settings.vsync ? 1 : 2);

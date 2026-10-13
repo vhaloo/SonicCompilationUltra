@@ -186,10 +186,15 @@ bool Core::load(const std::string &id) {
             combined.insert(combined.end(), romBytes.begin(), romBytes.end());
             if (id == "sonic2") {
                 auto chip = library.find("skchip");
-                if (!chip)
+                std::vector<uint8_t> bytes;
+                if (chip)
+                    bytes = library.bytes(*chip);
+                else if (auto full = library.find("sonic2k")) {
+                    auto image = library.bytes(*full);
+                    bytes.assign(image.begin() + 0x300000, image.end());
+                } else
                     throw std::runtime_error(
                         "Import the S&K UPMEM chip or a combined Knuckles in Sonic 2 ROM");
-                auto bytes = library.bytes(*chip);
                 combined.insert(combined.end(), bytes.begin(), bytes.end());
             }
             romBytes.swap(combined);
@@ -284,11 +289,12 @@ bool Core::load(const std::string &id) {
         if (settings.fastBoot && !resumed && game) {
             bool silent = headless;
             headless = true;
-            int frames = game->family == 1   ? 600
-                         : game->family == 2 ? 1120
-                         : game->family == 3 ? 850
-                         : id == "sphere"    ? 1000
-                                             : 600;
+            int frames = game->crc == 0x2AC1E7C6 ? 600
+                         : game->family == 1     ? 600
+                         : game->family == 2     ? 1120
+                         : game->family == 3     ? 850
+                         : id == "sphere"        ? 1000
+                                                 : 600;
             for (int i = 0; i < frames; i++) {
                 retro_run();
                 ++frame;
