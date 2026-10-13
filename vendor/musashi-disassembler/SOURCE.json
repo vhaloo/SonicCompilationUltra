@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/kstenerud/Musashi",
+  "commit": "313ebf1bd9f4d0d93341eb5ce21fd8a119e9dbdd",
+  "files": {
+    "m68k.h": "7fb10f51ee36d45f6e2be38d72aa0c57853810a816f1cf19e0f0c600bd1afa4a",
+    "m68kconf.h": "8193cf670f6bfe61ad373055e7f44039427174195109bee78167ff3e0630dca4",
+    "m68kdasm.c": "c31b1d3a9863c4271fd0ddcddf3cde8fadac691909ca994db6ec41941696dca2"
+  }
+}

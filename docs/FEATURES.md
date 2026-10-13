@@ -54,7 +54,7 @@ Adjust blur and brightness. Freeze the background independently, reduce its moti
 - Game volume, mute and pause on loss of focus. Opening the app menu pauses simulation and clears queued audio.
 - Two controllers or keyboard players, analogue dead-zone adjustment and hot-plug support.
 - English, French, Spanish and Japanese; automatic machine language with English fallback.
-- Enemy spawn previews enabled by default in expanded platform views: transparent original sprites, amber position markers or both; adjustable 10–80% opacity. Markers cover missing art and remain readable in stage overviews. [Details and coverage](ENEMY_PREVIEWS.md).
+- Spawn previews enabled by default in expanded platform views: transparent original sprites, amber enemy markers, larger red boss markers and purple script-origin markers; adjustable 10–80% opacity. Independent boss/script switches, optional tint and labels, and overview framing that includes distant spawns. Every control works with a gamepad. [Details and coverage](ENEMY_PREVIEWS.md).
 
 ## Controller-first menus
 
@@ -70,7 +70,7 @@ Save slots show occupied/empty status and dates. Empty-slot loading is disabled.
 
 ## Known limits
 
-The expanded compositor is experimental. It reconstructs **terrain, static rings and enemy spawn previews**, while actual enemies and other dynamic objects follow the cartridge's original spawn/culling rules. A translucent preview marks an authored spawn point; it does not simulate distant movement or predict a projectile. Boss scripts and event-created enemies are not included. This preserves native object-pool pressure and gameplay timing.
+The expanded compositor is experimental. It reconstructs **terrain, static rings and spawn previews**, while actual enemies and dynamic objects follow the cartridge's original rules. Fixed placements and supported creation scripts supply previews; variable attacks mark their source. Scripted objects can include boss parts and scenery. Conditional routes show possible appearances. Unsupported runtime calculations, random outcomes and full trajectories cannot be forecast exactly. Original object-pool pressure and gameplay timing are preserved. See [supported patterns and limits](ENEMY_PREVIEWS.md).
 
 Only the current act's installed layout is shown. Connected acts, interiors or art banks that have not been loaded are not an atlas of the whole campaign. Sonic 3's streamed edits, burning scenery, palette changes and unusual scrolling can make distant scenery imperfect. The native visible region is retained where possible; Original framing is always available.
 

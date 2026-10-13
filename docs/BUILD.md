@@ -59,3 +59,11 @@ SonicCompilationUltra --data-dir /private/test-data --headless --game sonic1 \
 Timeline commands support `tab 0..8`, held controller buttons, presentation settings, save/load, captures and assertions. A timeline step is a host-loop iteration; use non-real-time test runs for repeatable input. `--no-fast-boot` retains the original boot timing. Headless throughput is not a display-frame-rate measurement. ROMs, snapshots, logs and captures used for game tests belong outside the public source tree.
 
 Original project sources follow `.clang-format`. Vendored sources preserve upstream licensing and are not reformatted. The Genesis core patches are identified in [VENDOR.md](VENDOR.md).
+
+To audit a locally owned, supported raw cartridge without initializing video, audio or a window:
+
+```sh
+SonicCompilationUltra --spawn-audit /private/cartridge.bin --audit-stage 0002 --report /private/spawns.json
+```
+
+The stage number is hexadecimal. The report contains positions, categories and exact/origin flags, never extracted sprite pixels. It is a static catalogue check with an empty native snapshot; it does not prove completion of that stage.

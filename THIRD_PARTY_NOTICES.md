@@ -14,6 +14,7 @@ Sonic Compilation Ultra is distributed for noncommercial use with complete sourc
 | SDL2 | Sam Lantinga and contributors; [source](https://github.com/libsdl-org/SDL) | [zlib licence](licenses/SDL2-zlib.txt) |
 | zlib 1.3.1 | Jean-loup Gailly and Mark Adler; [source](https://github.com/madler/zlib) | [zlib licence](licenses/zlib.txt) |
 | Dear ImGui | Omar Cornut and contributors; [source](https://github.com/ocornut/imgui) | [MIT](licenses/Dear-ImGui-MIT.txt) |
+| Musashi disassembler | Karl Stenerud; [source](https://github.com/kstenerud/Musashi) | [MIT-style notice](licenses/Musashi.txt), retained upstream source |
 | SCU Interface font, modified Noto Sans JP subset | Original font copyright Adobe and contributors; [Google Fonts source](https://github.com/google/fonts/tree/295d98a7a0c17c68f1341eaeea354e7960ea70d3/ofl/notosansjp) | [SIL OFL 1.1](licenses/Noto-Sans-JP-OFL.txt); renamed subset, original notices preserved |
 
 Source-release archives include the application's corresponding source and the pinned SDL source dependency. Windows compiler/system redistributables retain Microsoft's terms and are not claimed as project-authored code. Rebuilding or relinking the LGPL component for debugging modifications is permitted.

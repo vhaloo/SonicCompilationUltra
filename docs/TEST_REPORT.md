@@ -2,6 +2,17 @@
 
 This report separates successful checks from coverage that has not been measured. A boot test or source build is not a full-game completion certificate.
 
+## 0.2.1 boss/script additions
+
+- Synthetic fixtures cover event bosses, parent-relative and variable scripts, all ten supported Sonic 3-era child-factory formats, boss art before VRAM loading, Nemesis dictionary/inline/XOR decoding, Kosinski short/extended copies and descriptor-boundary prefetch. Truncated art fails closed.
+- Boss/script filtering, remembered source defeat, Sonic 1 boss defeat, small-view markers, arena-inclusive framing and unchanged native snapshots pass. The virtual gamepad changes and restores all five new controls.
+- A display-free catalogue audit reads 113 game/act combinations from six locally supplied cartridge profiles, checking bounded coordinates and categories. This includes empty/unused lists; it is static coverage, not 113 completed stages.
+- Seven private native-stage entries render successfully: Sonic 1 GHZ3 and Final Zone, Sonic 2 HTZ2 and Death Egg, Sonic 3 MGZ2, Sonic 3 & Knuckles SOZ1, and Sonic & Knuckles Doomsday. These test copies use controlled level restart state; they are not natural route-completion evidence.
+- Six equal-input, equal-tick comparisons across those games produce byte-identical complete native snapshots with previews enabled/disabled, including RAM, VRAM, palettes, background and scroll observations.
+- Render captures at 640×360, 1920×1080 and 7680×1440 verify the actual composition. Bosses retain priority when labels are decluttered; missing or variable art remains a marker.
+
+Random and player-dependent attacks report supported origins; unknown global destinations are omitted. Full-campaign boss completion and every indirect event path remain unverified. See [precise scope](ENEMY_PREVIEWS.md).
+
 ## 0.2.0 additions
 
 - SDL virtual gamepad reaches every setting and all nine pages. Confirm/back, shoulder tabs, trigger scrolling, sliders, choices, ROM import, on-screen path entry, save/load, safe dialogs and controller shortcuts are exercised through the SDL input path.

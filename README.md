@@ -59,7 +59,7 @@ The main platform games have an experimental world renderer. Puzzle games, speci
 
 Six backgrounds include a softly blurred landscape stretched from the game’s own scenery. Blur and brightness are adjustable; characters and terrain stay sharp. You also get a locator, minimap, scanlines, a camera-frame guide, optional **Sonic 1 spin dash**, damage/air assistance, rewind, nine save slots per game, automatic resume, controller dead zones, three gameplay button layouts, button-label hints, large text, high contrast, safe confirmations and rendering presets. The ROM browser includes an on-screen path keyboard.
 
-**See enemies before they pop in.** Expanded platform stages preview distant enemies transparently at their original spawn points. Choose ghost sprites, readable spawn markers or both, and adjust opacity under **Camera & HUD**. The previews stop duplicating visible enemies and hide defeated enemies that the cartridge remembers. [How previews work](docs/ENEMY_PREVIEWS.md).
+**See enemies and bosses before they pop in.** Expanded platform stages preview placed enemies, bosses and supported scripted spawns. Amber marks enemies, red marks bosses and purple marks scripted objects and projectiles. Variable attacks show their **origin**; fixed positions can show transparent cartridge sprites. Adjust the independent toggles, opacity, labels, tint and overview framing under **Camera & HUD**, entirely with a gamepad. [How previews work and their limits](docs/ENEMY_PREVIEWS.md).
 
 **Hold the right shoulder** for quick zoom, overview, freeze/follow, player focus or screenshots. **+ / −** changes zoom, **F** freezes the camera, **R** restores following, **Shift + F1…F9** saves and **F1…F9** loads. The menu’s **Controls** page has the complete guide.
 

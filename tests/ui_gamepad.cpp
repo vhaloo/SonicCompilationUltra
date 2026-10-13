@@ -223,6 +223,17 @@ int main() {
             h.choose("enemystyle");
             require(a.settings.enemyStyle == 1, "enemy style choice via gamepad");
             h.adjust("enemyopacity", a.settings.enemyOpacity);
+            for (auto item : {std::make_pair("bosspreview", &a.settings.bossPreview),
+                              std::make_pair("scriptpreview", &a.settings.scriptPreview),
+                              std::make_pair("spawntint", &a.settings.spawnTint),
+                              std::make_pair("spawnlabels", &a.settings.spawnLabels),
+                              std::make_pair("fitspawns", &a.settings.fitSpawns)}) {
+                h.activate(item.first);
+                require(!*item.second, std::string("spawn toggle via gamepad: ") + item.first);
+                h.activate(item.first);
+                require(*item.second,
+                        std::string("restore spawn toggle via gamepad: ") + item.first);
+            }
             h.tab(3);
             h.choose("backgroundstyle");
             h.adjust("blur", a.settings.blur);
@@ -277,9 +288,10 @@ int main() {
                 {"language", "preset", "view", "overviewstyle", "zoom", "fullscreen", "span",
                  "display", "menulayout", "uiscale", "contrast", "vsync", "nearest", "nativescale",
                  "workers", "soft", "scanlines", "performance", "defaults"},
-                {"showstage", "focusplayer", "playerinset", "enemypreview", "enemystyle",
-                 "enemyopacity", "cameramode", "follow", "panspeed", "hud", "hudsize", "locator",
-                 "minimap", "ghost", "help"},
+                {"showstage",     "focusplayer", "playerinset",  "enemypreview", "bosspreview",
+                 "scriptpreview", "enemystyle",  "enemyopacity", "spawntint",    "spawnlabels",
+                 "fitspawns",     "cameramode",  "follow",       "panspeed",     "hud",
+                 "hudsize",       "locator",     "minimap",      "ghost",        "help"},
                 {"backgroundstyle", "blur", "brightness", "parallax", "motion"},
                 {"volume", "mute", "pausefocus"},
                 {"padlabels", "jumpbuttons", "quickcontrols", "deadzone"},

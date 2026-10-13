@@ -19,6 +19,8 @@ struct Settings {
     bool confirmActions = true, quickControls = true, readyOnly = false, highContrast = false;
     bool playerInset = true;
     bool enemyPreview = true;
+    bool bossPreview = true, scriptPreview = true, spawnTint = true, spawnLabels = true;
+    bool fitSpawns = true;
     int left = 0, top = 0;
     std::string lastGame = "sonic1", lastDirectory;
     void load(const fs::path &dir);

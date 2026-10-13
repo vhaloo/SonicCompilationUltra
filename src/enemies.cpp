@@ -1,38 +1,15 @@
 #include "enemies.h"
+#include "rom_graphics.h"
+#include "rom_code.h"
+#include <set>
+#include <tuple>
 #include <algorithm>
 #include <array>
 #include <cmath>
 
 namespace scu {
 namespace {
-struct Reader {
-    const std::vector<uint8_t> &rom;
-    uint32_t crc;
-    unsigned address(unsigned a) const {
-        a &= 0xFFFFFF;
-        if (crc == 0x2AC1E7C6 && a < 0x100000)
-            a += 0x200000; // S2 cartridge bank behind the lock-on cartridge.
-        if (crc == 0x0658F691)
-            a &= 0x1FFFFF; // S&K mirrors the common mapping/art bank.
-        return a;
-    }
-    bool valid(unsigned a, unsigned length = 1) const {
-        auto p = address(a);
-        return p < rom.size() && length <= rom.size() - p;
-    }
-    uint8_t byte(unsigned a) const {
-        return valid(a) ? rom[address(a)] : 0;
-    }
-    uint16_t word(unsigned a) const {
-        return uint16_t((byte(a) << 8) | byte(a + 1));
-    }
-    uint32_t pointer(unsigned a) const {
-        return (uint32_t(word(a)) << 16) | word(a + 2);
-    }
-    unsigned relative(unsigned a) const {
-        return a + int16_t(word(a));
-    }
-};
+using Reader = RomView;
 uint16_t ramWord(const SCUSnapshot &s, unsigned p) {
     return uint16_t((s.ram[p & 65535] << 8) | s.ram[(p + 1) & 65535]);
 }
@@ -50,7 +27,7 @@ bool enemy(int family, bool originalS3, bool skSet, unsigned id) {
     if (family == 2)
         return contains({0x4A, 0x4B, 0x50, 0x5C, 0x8C, 0x8D, 0x8E, 0x91, 0x92,
                          0x94, 0x95, 0x96, 0x99, 0x9A, 0x9D, 0x9E, 0x9F, 0xA1,
-                         0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xAC, 0xAD},
+                         0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xAC, 0xAD, 0xC8},
                         id);
     if (originalS3)
         return contains({129, 130, 131, 135, 136, 137, 138, 139, 153, 154, 155, 156, 157,
@@ -110,14 +87,17 @@ std::vector<Piece> pieces(const Reader &r, int family, unsigned map, unsigned fr
 void EnemyPreviews::reset() {
     placements.clear();
     appearances.clear();
+    decodedArt.clear();
+    functionBounds.clear();
     visible.clear();
     cachedStage = -1;
     cachedCRC = 0;
     placementCount = 0;
+    bossCount = scriptCount = 0;
     supported = false;
 }
 void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vector<uint8_t> &rom,
-                           int stage, int cameraX, int cameraY) {
+                           int stage, int cameraX, int cameraY, bool bosses, bool scripts) {
     visible.clear();
     supported =
         g &&
@@ -151,26 +131,80 @@ void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vecto
             base = r.pointer(table + zone * 8 + (stage & 1) * 4);
         }
         unsigned state = family == 3 ? 0 : 1;
-        int previousX = -1;
+        std::vector<SpawnPlacement> roots;
         for (unsigned n = 0, p = base; n < 768 && r.valid(p, 6); ++n, p += 6) {
             unsigned x = r.word(p), y = r.word(p + 2), id = r.byte(p + 4);
             if (x == 0xFFFF)
                 break;
-            if (int(x) < previousX || x >= 32768)
+            if (x >= 32768)
                 break; // Reject malformed/foreign lists rather than inventing spawn positions.
-            previousX = int(x);
             unsigned st =
                 family == 3 ? state++ : ((family == 1 ? id & 128 : y & 0x8000) ? state++ : 0);
             if (family == 1)
                 id &= 127;
-            if (enemy(family, originalS3, skSet, id))
-                placements.push_back({int(x), int(y & 0xFFF), id, r.byte(p + 5),
-                                      (y >> (family == 3 ? 13 : 14)) & 3, st});
+            SpawnPlacement point;
+            point.x = int(x);
+            point.y = int(y & 0xFFF);
+            point.id = id;
+            point.subtype = r.byte(p + 5);
+            point.flags = (y >> (family == 3 ? 13 : 14)) & 3;
+            point.state = st;
+            point.function = objectFunction(r, index, family, id);
+            point.sourceId = id;
+            point.sourceFunction = point.function;
+            point.sourceState = family == 3 ? 0xEB00 + st : st ? 0xFC02 + st : 0;
+            bool boss = isBoss(family, originalS3, skSet, id);
+            point.kind = boss ? SpawnKind::Boss : SpawnKind::Enemy;
+            if (boss) {
+                point.bossOrigin = id;
+                point.bossOriginFunction = point.function;
+            }
+            roots.push_back(point);
+            if (boss || enemy(family, originalS3, skSet, id))
+                placements.push_back(point);
+        }
+        size_t old = placements.size();
+        addEventBosses(r, family, stage, index, placements);
+        if (family == 3)
+            addScreenEventSpawns(r, originalS3, stage, index, placements);
+        roots.insert(roots.end(), placements.begin() + old, placements.end());
+        std::vector<SpawnPlacement> derived;
+        addScriptSpawns(r, family, originalS3, index, roots, derived);
+        std::set<std::tuple<int, int, unsigned, unsigned>> seen;
+        for (auto &p : placements)
+            seen.emplace(p.x, p.y, p.function, p.subtype);
+        for (unsigned depth = 0; depth < 4 && !derived.empty(); ++depth) {
+            std::vector<SpawnPlacement> fresh;
+            for (auto &p : derived)
+                if (p.x >= 0 && p.x < 32768 && p.y >= 0 && p.y < 4096 &&
+                    seen.emplace(p.x, p.y, p.function, p.subtype).second) {
+                    placements.push_back(p);
+                    fresh.push_back(p);
+                }
+            derived.clear();
+            if (depth < 3)
+                addScriptSpawns(r, family, originalS3, index, fresh, derived);
         }
         placementCount = placements.size();
+        for (auto &p : placements) {
+            bossCount += p.kind == SpawnKind::Boss;
+            scriptCount += p.kind == SpawnKind::Scripted;
+        }
     }
-    for (auto &p : placements) {
-        unsigned stateAddr = family == 3 ? 0xEB00 + p.state : p.state ? 0xFC02 + p.state : 0;
+    auto endOf = [&](unsigned fn) {
+        auto at = functionBounds.find(fn);
+        if (at == functionBounds.end())
+            at = functionBounds.emplace(fn, objectEnd(r, index, family, fn)).first;
+        return at->second;
+    };
+    for (auto p : placements) {
+        if ((p.kind == SpawnKind::Boss && !bosses) || (p.kind == SpawnKind::Scripted && !scripts))
+            continue;
+        bool child = p.parentFunction != 0;
+        unsigned stateAddr = p.event || child ? 0
+                             : family == 3    ? 0xEB00 + p.state
+                             : p.state        ? 0xFC02 + p.state
+                                              : 0;
         if ((family < 3 && p.state > 255) || stateAddr >= 65536)
             continue;
         bool active = false, drawn = false;
@@ -181,13 +215,54 @@ void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vecto
                        : family == 2 ? 0xD000
                                      : 0xCFE0,
                  step = family == 3 ? 0x4A : 0x40;
+        if (child && p.relative) {
+            for (unsigned o = start; o + step <= end; o += step) {
+                bool parent = family < 3 ? s.ram[o] == p.parentId
+                                         : (ramPointer(s, o) >= p.parentFunction &&
+                                            ramPointer(s, o) < endOf(p.parentFunction)) ||
+                                               (ramPointer(s, o + 0x34) >= p.parentFunction &&
+                                                ramPointer(s, o + 0x34) < endOf(p.parentFunction));
+                if (!parent)
+                    continue;
+                bool same =
+                    family == 3     ? (p.event || ramWord(s, o + 0x48) == 0xEB00 + p.parentState)
+                    : p.parentState ? s.ram[o + 0x23] == p.parentState
+                                    : (p.bossOrigin && p.parentId == p.bossOrigin) ||
+                                          std::abs(int(ramWord(s, o + 8)) - p.x + p.dx) < 192;
+                if (!same)
+                    continue;
+                if (p.relativeX)
+                    p.x = int(ramWord(s, o + (family == 3 ? 0x10 : 8))) + p.dx;
+                if (p.relativeY)
+                    p.y = int(ramWord(s, o + (family == 3 ? 0x14 : 12))) + p.dy;
+                break;
+            }
+        }
+        bool sourceActive = false;
+        if (child && p.sourceState && (s.ram[p.sourceState] & 128))
+            for (unsigned o = start; o + step <= end; o += step) {
+                if (family < 3)
+                    sourceActive |=
+                        s.ram[o] == p.sourceId && s.ram[o + 0x23] == p.sourceState - 0xFC02;
+                else
+                    sourceActive |= ramPointer(s, o) != 0 && ramWord(s, o + 0x48) == p.sourceState;
+            }
+        unsigned fnEnd = endOf(p.function);
         for (unsigned o = start; o + step <= end; o += step) {
-            if (family == 3 ? !ramPointer(s, o) : s.ram[o] != p.id)
+            unsigned liveFunction = family == 3 ? ramPointer(s, o) : 0;
+            if (family == 3 ? (!liveFunction ||
+                               (stateAddr ? ramWord(s, o + 0x48) != stateAddr
+                                          : liveFunction < p.function || liveFunction >= fnEnd))
+                            : s.ram[o] != p.id)
                 continue;
-            bool match = family == 3 ? ramWord(s, o + 0x48) == stateAddr
-                         : p.state   ? s.ram[o + 0x23] == p.state
-                                     : std::abs(int(ramWord(s, o + 8)) - p.x) < 96 &&
-                                         std::abs(int(ramWord(s, o + 12)) - p.y) < 256;
+            bool match =
+                p.event || child
+                    ? std::abs(int(ramWord(s, o + (family == 3 ? 0x10 : 8))) - p.x) < 192 &&
+                          std::abs(int(ramWord(s, o + (family == 3 ? 0x14 : 12))) - p.y) < 256
+                : family == 3 ? ramWord(s, o + 0x48) == stateAddr
+                : p.state     ? s.ram[o + 0x23] == p.state
+                              : std::abs(int(ramWord(s, o + 8)) - p.x) < 96 &&
+                                std::abs(int(ramWord(s, o + 12)) - p.y) < 256;
             if (!match)
                 continue;
             active = true;
@@ -204,16 +279,36 @@ void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vecto
         // can still be previewed; a defeated object with no live record cannot.
         if (drawn || (stateAddr && (s.ram[stateAddr] & 128) && !active))
             continue;
-        unsigned key = p.id * 256 + p.subtype;
+        if (child && p.sourceState && (s.ram[p.sourceState] & 128) && !sourceActive && !active)
+            continue;
+        if (family == 2 && stage == 0x0E00 && p.bossOrigin == 0xAF && s.ram[0xF7AA] >= 10)
+            continue;
+        if (p.bossOrigin && family < 3 && s.ram[0xF7A7]) {
+            if (family == 1 || stage != 0x0E00 || (p.id == 0xAF && s.ram[0xF7AA] >= 9) ||
+                (p.bossOrigin == 0xAF && s.ram[0xF7AA] >= 9) ||
+                (p.bossOrigin == 0xC7 && s.ram[0xF7AA] >= 10))
+                continue;
+        }
+        if (p.variable) {
+            visible.push_back({p.x, p.y, p.flags, nullptr, p.kind, p.relative, true});
+            continue;
+        }
+        uint64_t key = 1469598103934665603ull;
+        for (unsigned part :
+             {p.function, p.attributes, p.subtype, p.frame, unsigned(p.kind), p.bossOrigin}) {
+            key ^= part;
+            key *= 1099511628211ull;
+        }
         auto found = appearances.find(key);
         if (found == appearances.end()) {
             Appearance a;
-            unsigned fn = r.pointer(index + (family == 3 ? p.id : p.id - 1) * 4), dplc = 0;
-            unsigned end = fn + 768;
+            unsigned fn = p.function, dplc = 0;
+            unsigned end = std::min(objectEnd(r, index, family, fn),
+                                    fn + (p.kind == SpawnKind::Enemy ? 768 : 8192));
             bool dynamic = false;
             // An enemy's setup can branch within its routine; never borrow a
             // following object's mapping, attributes or dynamic-art script.
-            for (unsigned i = 0; i < (family == 1 ? 127u : 256u); ++i) {
+            for (unsigned i = 0; i < (family == 1 ? 140u : 256u); ++i) {
                 unsigned nextObject = r.pointer(index + i * 4);
                 if (nextObject > fn && nextObject < end)
                     end = nextObject;
@@ -221,11 +316,15 @@ void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vecto
             unsigned attributes = originalS3 ? 0x529A8 : 0x84038,
                      slotted = originalS3 ? 0x53638 : 0x84FA4,
                      perform = originalS3 ? 0x536B6 : 0x85022;
-            for (unsigned c = fn; c < end && r.valid(c, 12); c += 2) {
+            for (unsigned c : codeInstructions(r, fn, end)) {
+                if (!r.valid(c, 12))
+                    continue;
                 if (family < 3) {
-                    if (!a.map && r.word(c) == 0x217C && r.word(c + 6) == 4)
+                    if (!a.map && (r.word(c) == 0x217C || r.word(c) == 0x237C) &&
+                        r.word(c + 6) == 4)
                         a.map = r.pointer(c + 2);
-                    if (!a.gfx && r.word(c) == 0x317C && r.word(c + 4) == 2)
+                    if (!a.gfx && (r.word(c) == 0x317C || r.word(c) == 0x337C) &&
+                        r.word(c + 4) == 2)
                         a.gfx = r.word(c + 2);
                 } else {
                     unsigned next = 0, data = lea(r, c, 1, next), target = callTarget(r, next);
@@ -240,10 +339,35 @@ void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vecto
                         dplc = data;
                 }
             }
-            if (family == 2 && p.id >= 0x8C) {
+            if (family == 2 && p.id >= 0x8C && p.id != 0xC8 && p.id != 0xC7) {
                 unsigned data = 0x36628 + int16_t(r.word(0x36628 + (p.subtype & 254)));
                 a.map = r.pointer(data);
                 a.gfx = r.word(data + 4);
+            }
+            if (p.attributes && r.valid(p.attributes, 12)) {
+                if (family == 1) {
+                    a.map = r.pointer(p.attributes + 6);
+                    a.gfx = r.word(p.attributes + 4);
+                } else {
+                    a.map = r.pointer(p.attributes);
+                    a.gfx = r.word(p.attributes + 4);
+                    a.frame = r.byte(p.attributes + 10);
+                }
+            }
+            if (p.frame)
+                a.frame = p.frame;
+            if (family == 2 && p.id == 0xC7) {
+                for (unsigned c : codeInstructions(r, fn, fn + 128)) {
+                    if (!r.valid(c, 12))
+                        continue;
+                    unsigned after = 0, data = lea(r, c, 1, after);
+                    if (data && callTarget(r, after) == 0x36602) {
+                        a.map = r.pointer(data);
+                        a.gfx = r.word(data + 4);
+                        a.frame = 3;
+                        break;
+                    }
+                }
             }
             // Newtron's first native frame is deliberately invisible.
             if (family == 1 && p.id == 0x42)
@@ -267,6 +391,123 @@ void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vecto
                     }
                 // Never substitute another object's current dynamic VRAM slot.
                 if (a.tiles.empty())
+                    a.map = 0;
+            }
+            if (!dynamic && p.bossOrigin) {
+                a.tiles.assign(65536, 0);
+                a.knownTiles.assign(2048, 0);
+                a.sheet = true;
+                auto install = [&](unsigned art, unsigned destination, bool kos) {
+                    unsigned key = (r.address(art) << 1) | unsigned(kos);
+                    auto found = decodedArt.find(key);
+                    if (found == decodedArt.end())
+                        found = decodedArt
+                                    .emplace(key, kos ? decodeKosinskiModules(rom, r.address(art))
+                                                      : decodeNemesis(rom, r.address(art)))
+                                    .first;
+                    auto &bytes = found->second;
+                    if (bytes.empty() || destination >= 65536 || bytes.size() > 65536 - destination)
+                        return;
+                    std::copy(bytes.begin(), bytes.end(), a.tiles.begin() + destination);
+                    for (unsigned t = destination / 32; t < (destination + bytes.size()) / 32; ++t)
+                        a.knownTiles[t] = 1;
+                };
+                auto cue = [&](unsigned table, unsigned number) {
+                    if (!r.valid(table + number * 2, 2))
+                        return;
+                    unsigned data = table + int16_t(r.word(table + number * 2)),
+                             count = r.word(data) + 1;
+                    if (!count || count > 32 || !r.valid(data + 2, count * 6))
+                        return;
+                    for (unsigned n = 0; n < count; ++n)
+                        install(r.pointer(data + 2 + n * 6), r.word(data + 6 + n * 6), false);
+                };
+                if (family == 1)
+                    cue(0x1D612, p.bossOrigin == 0x85 ? 31 : 17);
+                if (family == 2) {
+                    unsigned number = 0;
+                    switch (p.bossOrigin) {
+                    case 0x5D:
+                        number = 40;
+                        break;
+                    case 0x56:
+                        number = 41;
+                        break;
+                    case 0x52:
+                        number = 42;
+                        break;
+                    case 0x89:
+                        number = 43;
+                        break;
+                    case 0x57:
+                        number = 44;
+                        break;
+                    case 0x51:
+                        number = 45;
+                        break;
+                    case 0x54:
+                        number = 46;
+                        break;
+                    case 0x55:
+                        number = 47;
+                        break;
+                    case 0xC7:
+                        number = 49;
+                        break;
+                    case 0xC5:
+                        number = 62;
+                        break;
+                    case 0xAF:
+                        number = 33;
+                        break;
+                    }
+                    if (number)
+                        cue(0x42660, number);
+                }
+                if (family == 3) {
+                    unsigned loader = originalS3 ? 0x1984 : 0x16FA, table = 0;
+                    for (unsigned c = loader; c < loader + 32; c += 2)
+                        if (r.word(c) == 0x43F9) {
+                            table = r.pointer(c + 2);
+                            break;
+                        }
+                    for (unsigned origin : {fn, p.bossOriginFunction}) {
+                        unsigned limit = std::min(endOf(origin), origin + 65536);
+                        for (unsigned c : codeInstructions(r, origin, limit)) {
+                            if (!r.valid(c, 8))
+                                continue;
+                            if (callTarget(r, c) == loader) {
+                                unsigned number = 256;
+                                for (unsigned pc = c >= 16 ? c - 16 : 0; pc < c; pc += 2) {
+                                    if ((r.word(pc) & 0xFF00) == 0x7000)
+                                        number = r.word(pc) & 255;
+                                    if (r.word(pc) == 0x303C)
+                                        number = r.word(pc + 2);
+                                }
+                                if (table && number < 256)
+                                    cue(table, number);
+                            }
+                            unsigned after = 0, art = lea(r, c, 1, after);
+                            if (!art || !r.valid(art, 2))
+                                continue;
+                            unsigned destination = 65536;
+                            for (unsigned pc = after; pc < after + 24 && pc + 6 < limit; pc += 2) {
+                                if (r.word(pc) == 0x343C)
+                                    destination = r.word(pc + 2);
+                                unsigned callee = callTarget(r, pc);
+                                if (callee == (originalS3 ? 0x1D5C : 0x1AD2) &&
+                                    destination < 65536) {
+                                    install(art, destination, true);
+                                    break;
+                                }
+                            }
+                            // Queue_Kos_Module has a stable routine signature;
+                            // only an actual call to it authorizes this source.
+                        }
+                    }
+                }
+                if (std::none_of(a.knownTiles.begin(), a.knownTiles.end(),
+                                 [](uint8_t b) { return b != 0; }))
                     a.map = 0;
             }
             found = appearances.emplace(key, std::move(a)).first;
@@ -295,10 +536,11 @@ void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vecto
                             unsigned attr = q.attr + a.gfx;
                             int ix = (attr & 0x800) ? q.width - 1 - x : x,
                                 iy = (attr & 0x1000) ? q.height - 1 - y : y;
-                            unsigned tile = (a.tiles.empty() ? attr : q.attr) & 2047,
+                            unsigned tile = (a.tiles.empty() || a.sheet ? attr : q.attr) & 2047,
                                      offset = (tile + (ix / 8) * (q.height / 8) + iy / 8) * 32 +
                                               (iy & 7) * 4 + (ix & 7) / 2;
-                            unsigned b = a.tiles.empty()           ? s.vram[offset & 65535]
+                            unsigned b = a.sheet && !a.knownTiles[(offset / 32) & 2047] ? 0
+                                         : a.tiles.empty()         ? s.vram[offset & 65535]
                                          : offset < a.tiles.size() ? a.tiles[offset]
                                                                    : 0;
                             unsigned color = (ix & 1) ? b & 15 : b >> 4;
@@ -308,7 +550,14 @@ void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vecto
                         }
             }
         }
-        visible.push_back({p.x, p.y, p.flags, image.pixels.empty() ? nullptr : &image});
+        if (std::none_of(image.pixels.begin(), image.pixels.end(),
+                         [](uint8_t pixel) { return pixel != 0; }))
+            image.pixels.clear();
+        visible.push_back(
+            {p.x, p.y, p.flags,
+             image.pixels.empty() || p.variable || (family == 2 && child && p.id == 0xC7) ? nullptr
+                                                                                          : &image,
+             p.kind, p.relative, p.variable});
     }
 }
 } // namespace scu

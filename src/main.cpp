@@ -73,14 +73,17 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(parallax)
     SET(minimap)
     SET(locator)
-    SET(spindash) SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left)
-        SET(top) SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen) SET(span)
-            SET(vsync) SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot) SET(menuLayout)
-                SET(display) SET(padLabels) SET(jumpLayout) SET(quickControls) SET(confirmActions)
+    SET(spindash)
+    SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top)
+        SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen) SET(span) SET(vsync)
+            SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot) SET(menuLayout) SET(display)
+                SET(padLabels) SET(jumpLayout) SET(quickControls) SET(confirmActions)
                     SET(confirmQuit) SET(highContrast) SET(readyOnly) SET(playerInset) SET(quality)
                         SET(overviewStyle) SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle)
+                            SET(bossPreview) SET(scriptPreview) SET(spawnTint) SET(spawnLabels)
+                                SET(fitSpawns)
 #undef SET
-                            throw std::runtime_error("Unknown option: " + key);
+                                    throw std::runtime_error("Unknown option: " + key);
 }
 static void execute(App &a, const Action &cmd, uint16_t &mask) {
     std::istringstream in(cmd.args);
@@ -204,6 +207,42 @@ int main(int argc, char **argv) {
                 imports.push_back(val);
             else
                 args[k] = val;
+        }
+        if (args.count("--spawn-audit")) {
+            auto rom = readBytes(fs::u8path(args["--spawn-audit"]));
+            const Game *game = identify(rom);
+            if (!game || !game->family)
+                throw std::runtime_error("Spawn audit requires a supported platform cartridge");
+            int stage =
+                args.count("--audit-stage") ? std::stoi(args["--audit-stage"], nullptr, 16) : 0;
+            auto snapshot = std::make_unique<SCUSnapshot>();
+            *snapshot = {};
+            EnemyPreviews previews;
+            previews.update(*snapshot, game, rom, stage, 0, 0);
+            std::ostringstream out;
+            out << "{\"version\":\"" << SCU_VERSION << "\",\"game\":\"" << game->id
+                << "\",\"stage\":" << stage << ",\"placements\":" << previews.placementCount
+                << ",\"bosses\":" << previews.bossCount << ",\"scripts\":" << previews.scriptCount
+                << ",\"points\":[";
+            bool first = true;
+            for (const auto &p : previews.visible) {
+                if (!first)
+                    out << ',';
+                first = false;
+                out << "{\"x\":" << p.x << ",\"y\":" << p.y << ",\"kind\":" << int(p.kind)
+                    << ",\"relative\":" << (p.relative ? "true" : "false")
+                    << ",\"variable\":" << (p.variable ? "true" : "false")
+                    << ",\"sprite\":" << (p.image ? "true" : "false") << '}';
+            }
+            out << "]}\n";
+            if (args.count("--report")) {
+                std::ofstream file(fs::u8path(args["--report"]));
+                file << out.str();
+                if (!file)
+                    throw std::runtime_error("Cannot write spawn audit report");
+            } else
+                printf("%s", out.str().c_str());
+            return 0;
         }
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER | SDL_INIT_TIMER))
             throw std::runtime_error(SDL_GetError());
@@ -415,9 +454,17 @@ int main(int argc, char **argv) {
                 << ",\n  \"player_inset\":" << (a.settings.playerInset ? "true" : "false")
                 << ",\n  \"enemy_preview\":" << (a.settings.enemyPreview ? "true" : "false")
                 << ",\n  \"enemy_placements\":" << a.core.world.enemies.placementCount
+                << ",\n  \"boss_placements\":" << a.core.world.enemies.bossCount
+                << ",\n  \"scripted_placements\":" << a.core.world.enemies.scriptCount
                 << ",\n  \"enemy_previews\":" << a.core.world.enemies.visible.size()
                 << ",\n  \"enemy_sprites_drawn\":" << a.core.world.enemySpriteCount
                 << ",\n  \"enemy_markers_drawn\":" << a.core.world.enemyMarkerCount
+                << ",\n  \"native_ram_crc32\":"
+                << checksum(std::vector<uint8_t>(a.core.snapshot.ram,
+                                                 a.core.snapshot.ram + sizeof a.core.snapshot.ram))
+                << ",\n  \"native_vram_crc32\":"
+                << checksum(std::vector<uint8_t>(
+                       a.core.snapshot.vram, a.core.snapshot.vram + sizeof a.core.snapshot.vram))
                 << ",\n  \"spindash_charge\":" << a.core.spinCharge << "\n}\n";
         }
         a.dirty = true;

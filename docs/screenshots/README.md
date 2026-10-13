@@ -1,6 +1,6 @@
 # Screenshot credits and capture notes
 
-These images document actual Sonic Compilation Ultra renderer output, captured on 13 October 2026 from a locally supplied Sonic the Hedgehog cartridge. They are not concept images or application asset packs.
+These images document actual Sonic Compilation Ultra renderer output, captured on 13 October 2026 from locally supplied Sonic the Hedgehog and Sonic the Hedgehog 2 cartridges. They are not concept images or application asset packs.
 
 | File | Actual output |
 |---|---|
@@ -11,5 +11,7 @@ These images document actual Sonic Compilation Ultra renderer output, captured o
 | `overview-48x9.png` | 7680 x 1440; whole-stage overview with centred HUD and native player inset |
 | `fullscreen-options.png` | 1920 x 1080; fullscreen options layout in a selected capture window |
 | `overview.png` | 1920 x 1080; current act's foreground geometry fitted into the output |
+| `boss-spawns-0.2.1.png` | 1920 x 1080; Sonic 2 Death Egg, both future boss locations and script-origin markers; private native stage-entry test |
+| `camera-options-0.2.1.png` | 1920 x 1080; Camera & HUD menu with the boss/script controls |
 
 Game graphics, characters and names are copyrighted by SEGA / their respective rights holders. The project does not claim authorship of those pixels. These documentation images are outside the licence grant for original software code. They are not loaded by the executable as replacement artwork, and do not contain a playable cartridge or an extracted reusable asset pack.

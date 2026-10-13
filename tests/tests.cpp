@@ -6,6 +6,7 @@
 #include <cassert>
 using namespace scu;
 void testEnemyPreviews();
+void testBossScriptPreviews();
 static void require(bool c, const char *msg) {
     if (!c) {
         std::cerr << msg << "\n";
@@ -14,6 +15,7 @@ static void require(bool c, const char *msg) {
 }
 int main() {
     testEnemyPreviews();
+    testBossScriptPreviews();
     require(games().size() >= 12, "collection identities missing");
     require(gameById("sonic3k")->size == 4194304, "lock-on size");
     require(detectLanguage(3) == 3, "explicit Japanese language");

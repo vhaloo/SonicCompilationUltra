@@ -69,10 +69,10 @@ Scene World::inspect(const SCUSnapshot &s, const Game *g) const {
         auto row = be16(r, 0x8008);
         if (row < 0x8088 || row >= 0x9000)
             return v;
-        if (v.height < 128 || v.height > 2048)
+        if (v.height < 128 || v.height > 4096)
             v.height = 2048;
     }
-    v.ready = v.width >= 320 && v.width <= 32768 && v.height >= 128 && v.height <= 2048;
+    v.ready = v.width >= 320 && v.width <= 32768 && v.height >= 128 && v.height <= 4096;
     // Cinematic transitions retain the native framebuffer until the stage is installed.
     if (r[0xF600] & 128)
         v.ready = false;
@@ -80,7 +80,7 @@ Scene World::inspect(const SCUSnapshot &s, const Game *g) const {
 }
 uint16_t World::attribute(const SCUSnapshot &s, int family, int x, int y, bool bg) const {
     auto r = s.ram;
-    if (x < 0 || x >= 32768 || y < 0 || y >= 2048)
+    if (x < 0 || x >= 32768 || y < 0 || y >= (family == 3 ? 4096 : 2048))
         return 0;
     uint16_t block = 0;
     unsigned bank;
@@ -312,6 +312,15 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
     int w, h;
     double coverW = 0, coverH = 0;
     bool overview = cfg.view == 2;
+    if (cfg.enemyPreview) {
+        enemies.update(s, g, rom, v.stage, v.cameraX, v.cameraY, cfg.bossPreview, cfg.scriptPreview);
+        if (overview && cfg.fitSpawns)
+            for (const auto &p : enemies.visible) {
+                v.width = std::min(32768, std::max(v.width, p.x + 96));
+                v.height = std::min(4096, std::max(v.height, p.y + 96));
+            }
+    } else
+        enemies.visible.clear();
     if (cfg.view == 1) {
         h = 224;
         w = std::max(320, (int)std::lround(double(dw) * h / std::max(1, dh)));
@@ -503,7 +512,6 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
         }
     }
     if (cfg.enemyPreview) {
-        enemies.update(s, g, rom, v.stage, v.cameraX, v.cameraY);
         unsigned alpha = std::clamp(cfg.enemyOpacity, 10, 80) * 255 / 100;
         auto blend = [&](int x, int y, uint32_t color) {
             if (x < 0 || x >= w || y < 0 || y >= h)
@@ -521,6 +529,8 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
             destination = out;
         };
         for (auto &p : enemies.visible) {
+            uint32_t tint = p.kind == SpawnKind::Boss ? 0xFFFF8194
+                            : p.kind == SpawnKind::Scripted ? 0xFFC18CFF : 0xFFFFCA75;
             bool drawn = false;
             if (p.image && cfg.enemyStyle != 2) {
                 auto &image = *p.image;
@@ -541,7 +551,15 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
                             iy = image.height - 1 - iy;
                         unsigned color = image.pixels[size_t(iy) * image.width + ix];
                         if (color) {
-                            blend(x, y, s.palettes[clampi(p.y - v.cameraY, 0, 223)][color]);
+                            uint32_t pixel = s.palettes[clampi(p.y - v.cameraY, 0, 223)][color];
+                            if (cfg.spawnTint && p.kind != SpawnKind::Enemy) {
+                                uint32_t tinted = 0xFF000000;
+                                for (unsigned shift : {0u, 8u, 16u})
+                                    tinted |= ((((pixel >> shift) & 255) * 2 +
+                                                ((tint >> shift) & 255)) / 3) << shift;
+                                pixel = tinted;
+                            }
+                            blend(x, y, pixel);
                             drawn = true;
                         }
                     }
@@ -553,16 +571,22 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
             if (cfg.enemyStyle != 1 || !p.image || !drawn) {
                 int x = int(std::lround((p.x - canvas.left) * w / coverW)),
                     y = int(std::lround((p.y - canvas.top) * h / coverH)),
-                    radius = std::max(2, int(std::lround(5 / canvas.scale)));
+                    radius = std::max(2, int(std::lround((p.kind == SpawnKind::Boss ? 9 : 5) / canvas.scale)));
                 if (x + radius < 0 || x - radius >= w || y + radius < 0 || y - radius >= h)
                     continue;
                 for (int k = -radius; k <= radius; ++k) {
                     int dy = radius - std::abs(k);
-                    blend(x + k, y + dy, 0xFFFFCA75);
+                    blend(x + k, y + dy, tint);
                     if (dy)
-                        blend(x + k, y - dy, 0xFFFFCA75);
+                        blend(x + k, y - dy, tint);
                 }
-                blend(x, y, 0xFFFFCA75);
+                blend(x, y, tint);
+                if (p.kind != SpawnKind::Enemy)
+                    for (int k = -radius / 2; k <= radius / 2; ++k) {
+                        blend(x + k, y, tint);
+                        if (p.kind == SpawnKind::Scripted)
+                            blend(x, y + k, tint);
+                    }
                 ++enemyMarkerCount;
             }
         }

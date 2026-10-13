@@ -649,11 +649,26 @@ void App::present(bool capture) {
     SDL_RenderClear(renderer);
     Scene scene = core.world.inspect(core.snapshot, core.game);
     uint64_t hash = 1469598103934665603ull;
-    for (int v :
-         {drawableW, drawableH, settings.view, settings.zoom, settings.camera, settings.left,
-          settings.top, settings.background, settings.blur, settings.brightness,
-          settings.overviewStyle, (int)settings.parallax, (int)settings.reduceMotion,
-          (int)settings.enemyPreview, settings.enemyOpacity, settings.enemyStyle}) {
+    for (int v : {drawableW,
+                  drawableH,
+                  settings.view,
+                  settings.zoom,
+                  settings.camera,
+                  settings.left,
+                  settings.top,
+                  settings.background,
+                  settings.blur,
+                  settings.brightness,
+                  settings.overviewStyle,
+                  (int)settings.parallax,
+                  (int)settings.reduceMotion,
+                  (int)settings.enemyPreview,
+                  settings.enemyOpacity,
+                  settings.enemyStyle,
+                  (int)settings.bossPreview,
+                  (int)settings.scriptPreview,
+                  (int)settings.spawnTint,
+                  (int)settings.fitSpawns}) {
         hash ^= (uint32_t)v;
         hash *= 1099511628211ull;
     }
@@ -855,6 +870,41 @@ void App::hud() {
           sy = (float)(io.DisplaySize.y / c.coverageH), px = (v.playerX - c.left) * sx,
           py = (v.playerY - c.top) * sy;
     auto draw = ImGui::GetBackgroundDrawList();
+    if (settings.enemyPreview && settings.spawnLabels) {
+        std::vector<ImVec4> labels;
+        // Boss labels have priority. Avoid overlapping labels on tiny maps.
+        for (auto kind : {SpawnKind::Boss, SpawnKind::Scripted})
+            for (const auto &p : core.world.enemies.visible) {
+                size_t maxLabels = size_t(std::clamp(int(io.DisplaySize.x / 350), 3, 12));
+                if (p.kind != kind || labels.size() >= maxLabels ||
+                    (kind == SpawnKind::Scripted && !p.variable))
+                    continue;
+                float x = (p.x - c.left) * sx, y = (p.y - c.top) * sy;
+                if (x < 0 || y < 0 || x >= io.DisplaySize.x || y >= io.DisplaySize.y)
+                    continue;
+                const char *text = tr(p.variable                ? "spawnorigin"
+                                      : kind == SpawnKind::Boss ? "bosslabel"
+                                                                : "scriptlabel",
+                                      language);
+                auto size = ImGui::CalcTextSize(text);
+                x = std::clamp(x - size.x / 2, 4.0f, std::max(4.0f, io.DisplaySize.x - size.x - 4));
+                y = std::clamp(y - size.y - 12, 4.0f,
+                               std::max(4.0f, io.DisplaySize.y - size.y - 4));
+                ImVec4 box{x - 3, y - 2, x + size.x + 3, y + size.y + 2};
+                bool overlap = false;
+                for (auto b : labels)
+                    overlap |=
+                        box.x < b.z + 8 && box.z + 8 > b.x && box.y < b.w + 4 && box.w + 4 > b.y;
+                if (overlap)
+                    continue;
+                labels.push_back(box);
+                draw->AddRectFilled({box.x, box.y}, {box.z, box.w}, IM_COL32(6, 12, 24, 185), 3);
+                draw->AddText({x, y},
+                              kind == SpawnKind::Boss ? IM_COL32(255, 129, 148, 230)
+                                                      : IM_COL32(193, 140, 255, 230),
+                              text);
+            }
+    }
     if (settings.locator) {
         float r = 18, mx = std::clamp(px, 24.0f, io.DisplaySize.x - 24),
               my = std::clamp(py, 32.0f, io.DisplaySize.y - 60);
@@ -1340,9 +1390,14 @@ void App::optionsUi(int section) {
         check("playerinset", settings.playerInset);
         check("enemypreview", settings.enemyPreview);
         ImGui::BeginDisabled(!settings.enemyPreview);
+        check("bosspreview", settings.bossPreview);
+        check("scriptpreview", settings.scriptPreview);
         changed |= choice("enemystyle", settings.enemyStyle,
                           {"enemyspritesmarkers", "enemysprites", "enemymarkers"});
         slide("enemyopacity", settings.enemyOpacity, 10, 80, "%d%%");
+        check("spawntint", settings.spawnTint);
+        check("spawnlabels", settings.spawnLabels);
+        check("fitspawns", settings.fitSpawns);
         ImGui::EndDisabled();
         ImGui::TextWrapped("%s", tr("enemyhelp", language));
         if (choice("cameramode", settings.camera,

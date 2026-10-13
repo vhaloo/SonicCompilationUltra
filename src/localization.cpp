@@ -13,6 +13,22 @@ struct Text {
         }                                                                                          \
     }
 static const Text texts[] = {
+    T("bosspreview", "Preview bosses", "Aperçu des boss", "Vista previa de jefes",
+      "ボスの出現位置を表示"),
+    T("scriptpreview", "Preview scripted spawns", "Aperçu des apparitions scriptées",
+      "Vista previa de apariciones programadas", "イベントによる出現を表示"),
+    T("spawntint", "Tint boss and scripted ghosts", "Teinter les boss et les apparitions scriptées",
+      "Colorear jefes y apariciones programadas", "ボスとイベントの色分け"),
+    T("spawnlabels", "Label bosses and scripted origins",
+      "Étiquettes des boss et des origines scriptées", "Etiquetas de jefes y orígenes programados",
+      "ボスと出現元のラベル"),
+    T("fitspawns", "Include distant spawns in stage overview",
+      "Inclure les apparitions éloignées dans le cadrage",
+      "Incluir apariciones lejanas en la vista completa", "全体表示に遠くの出現位置を含める"),
+    T("bosslabel", "BOSS", "BOSS", "JEFE", "ボス"),
+    T("scriptlabel", "SCRIPT", "SCRIPT", "EVENTO", "イベント"),
+    T("spawnorigin", "ORIGIN · position varies", "ORIGINE · position variable",
+      "ORIGEN · posición variable", "出現元・位置は変動"),
     T("enemypreview", "Preview distant enemy spawns", "Aperçu des apparitions d’ennemis éloignés",
       "Vista previa de enemigos lejanos", "遠くの敵の出現位置を表示"),
     T("enemystyle", "Enemy preview style", "Style de l’aperçu des ennemis",
@@ -26,23 +42,30 @@ static const Text texts[] = {
     T("enemymarkers", "Spawn markers", "Repères d’apparition", "Marcadores de aparición",
       "出現マーカー"),
     T("enemyhelp",
-      "Expanded views show translucent enemies at their authored spawn points until the native "
-      "sprite is visible. Defeated enemies are hidden when the game remembers them. Markers stay "
-      "readable when zoomed out and cover unavailable sprite art. These are spawn previews, not "
-      "moving enemies or attack predictions. Sonic 1, 2, 3 and Knuckles platform stages only.",
-      "Les vues étendues montrent les ennemis transparents à leur point d’apparition jusqu’à ce "
-      "que leur sprite natif soit visible. Les ennemis détruits sont masqués lorsque le jeu s’en "
-      "souvient. Les repères restent lisibles en dézoom et remplacent les images indisponibles. "
-      "Ils indiquent les apparitions, pas les mouvements ni les attaques. Niveaux de plateforme "
-      "de Sonic 1, 2, 3 et Knuckles uniquement.",
-      "Las vistas ampliadas muestran enemigos transparentes en sus puntos de aparición hasta "
-      "que el sprite original es visible. Los derrotados se ocultan si el juego los recuerda. "
-      "Los marcadores siguen legibles al alejar la vista y cubren imágenes no disponibles. Son "
-      "puntos de aparición, no movimientos ni predicciones de ataques. Solo niveles de "
-      "plataformas de Sonic 1, 2, 3 y Knuckles.",
-      "拡張表示では、元の敵が見えるまで出現位置に半透明の敵を表示します。ゲームが記録した倒した敵は"
-      "非表示になります。縮小時や画像が使えない場合はマーカーで位置を示します。敵の移動や攻撃を予測"
-      "する表示ではありません。Sonic 1、2、3 と Knuckles の通常ステージで使えます。"),
+      "Amber: enemies. Red: bosses. Purple: scripted objects and projectiles. Fixed points use "
+      "the cartridge's placements and supported event programs. ORIGIN marks a source whose "
+      "attack position varies; it is not a trajectory prediction. Parent-relative points follow "
+      "their live source. Ghosts disappear when their native sprite is visible. Remembered "
+      "defeated objects are hidden. Markers cover unavailable art. Platform stages only.",
+      "Ambre : ennemis. Rouge : boss. Violet : objets et tirs scriptés. Les points fixes viennent "
+      "des placements et des événements reconnus de la cartouche. ORIGINE indique une source "
+      "dont la position d’attaque varie, sans prédire la trajectoire. Les points relatifs suivent "
+      "leur source active. Les aperçus disparaissent quand le sprite natif est visible. Les objets "
+      "détruits sont masqués si le jeu les mémorise. Repères si l’image manque. Plateforme "
+      "uniquement.",
+      "Ámbar: enemigos. Rojo: jefes. Violeta: objetos y proyectiles programados. Los puntos fijos "
+      "proceden de posiciones y eventos reconocidos del cartucho. ORIGEN indica una fuente cuya "
+      "posición de ataque varía; no predice trayectorias. Los puntos relativos siguen su fuente. "
+      "Las vistas previas se ocultan al verse el sprite original o si el juego recuerda su "
+      "derrota. "
+      "Los marcadores cubren imágenes no disponibles. Solo fases de plataformas.",
+      "黄色は敵、赤はボス、紫はイベントのオブジェクトと弾です。固定位置はカートリッジの配置と対応す"
+      "る"
+      "イベントから読み取ります。出現元は攻撃の位置が変動する場所で、弾道の予測ではありません。相対"
+      "位置は"
+      "動く出現元を追います。元の画像が見える場合や倒した記録がある場合は非表示です。画像がない場合"
+      "は"
+      "マーカーを使います。通常ステージで使えます。"),
     T("overviewstyle", "Overview terrain", "Décor du niveau entier", "Terreno en vista completa",
       "全体表示の地形"),
     T("nativeart", "Original game artwork", "Graphismes d’origine", "Gráficos originales",
