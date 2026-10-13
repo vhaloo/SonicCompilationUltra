@@ -89,15 +89,19 @@ struct Harness {
         if (!app->menu)
             press(SDL_CONTROLLER_BUTTON_BACK);
         int attempts = 0;
+        bool alreadyHere = app->menuTab() == target;
         while (app->menuTab() != target && attempts++ < 12)
             press(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
         require(app->menuTab() == target, "shoulder cannot reach tab " + std::to_string(target) +
                                               "; current=" + std::to_string(app->menuTab()) +
                                               "; modal=" + std::to_string(app->confirmation()) +
                                               "; active=" + std::to_string(GImGui->ActiveId));
-        // Re-enter the section to get its intentional first-control focus.
-        press(SDL_CONTROLLER_BUTTON_LEFTSHOULDER);
-        press(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
+        // A section change already focuses its first control. Only re-enter
+        // when a caller asks to reset focus on the section it is already in.
+        if (alreadyHere) {
+            press(SDL_CONTROLLER_BUTTON_LEFTSHOULDER);
+            press(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
+        }
         frame();
     }
     void find(const std::string &key) {
@@ -316,6 +320,18 @@ int main() {
                 require(!pad ||
                             std::string(SDL_GameControllerName(pad)) != "SCU virtual controller",
                         "removed gamepad remained connected");
+            h.index =
+                SDL_JoystickAttachVirtual(SDL_JOYSTICK_TYPE_GAMECONTROLLER, SDL_CONTROLLER_AXIS_MAX,
+                                          SDL_CONTROLLER_BUTTON_MAX, 0);
+            require(h.index >= 0, "virtual gamepad reconnect");
+            h.joystick = SDL_JoystickOpen(h.index);
+            require(h.joystick != nullptr, "open reconnected gamepad");
+            SDL_JoystickSetVirtualAxis(h.joystick, SDL_CONTROLLER_AXIS_TRIGGERLEFT, -32768);
+            SDL_JoystickSetVirtualAxis(h.joystick, SDL_CONTROLLER_AXIS_TRIGGERRIGHT, -32768);
+            h.frame();
+            int before = a.menuTab();
+            h.press(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
+            require(a.menuTab() == (before + 1) % 9, "reconnected controller cannot navigate");
             std::cout << "PASS: SDL virtual gamepad import, path keyboard, all settings/pages, "
                          "sliders/choices, saves, confirmations, shortcuts, 5 sizes and reconnect; "
                       << h.visited.size() << " focused controls\n";
