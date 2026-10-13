@@ -72,12 +72,13 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(brightness)
     SET(parallax)
     SET(minimap)
-    SET(locator) SET(spindash) SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale)
-        SET(ghost) SET(left) SET(top) SET(volume) SET(language) SET(help) SET(workers)
-            SET(fullscreen) SET(span) SET(vsync) SET(uiScale) SET(scanlines) SET(lockon)
-                SET(fastBoot) SET(menuLayout) SET(display) SET(padLabels) SET(jumpLayout)
-                    SET(quickControls) SET(confirmActions) SET(confirmQuit) SET(highContrast)
-                        SET(readyOnly) SET(playerInset) SET(quality) SET(overviewStyle)
+    SET(locator)
+    SET(spindash) SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left)
+        SET(top) SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen) SET(span)
+            SET(vsync) SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot) SET(menuLayout)
+                SET(display) SET(padLabels) SET(jumpLayout) SET(quickControls) SET(confirmActions)
+                    SET(confirmQuit) SET(highContrast) SET(readyOnly) SET(playerInset) SET(quality)
+                        SET(overviewStyle) SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle)
 #undef SET
                             throw std::runtime_error("Unknown option: " + key);
 }
@@ -412,6 +413,11 @@ int main(int argc, char **argv) {
                 << a.core.world.canvas.coverageH << "]"
                 << ",\n  \"menu_layout\":" << a.settings.menuLayout
                 << ",\n  \"player_inset\":" << (a.settings.playerInset ? "true" : "false")
+                << ",\n  \"enemy_preview\":" << (a.settings.enemyPreview ? "true" : "false")
+                << ",\n  \"enemy_placements\":" << a.core.world.enemies.placementCount
+                << ",\n  \"enemy_previews\":" << a.core.world.enemies.visible.size()
+                << ",\n  \"enemy_sprites_drawn\":" << a.core.world.enemySpriteCount
+                << ",\n  \"enemy_markers_drawn\":" << a.core.world.enemyMarkerCount
                 << ",\n  \"spindash_charge\":" << a.core.spinCharge << "\n}\n";
         }
         a.dirty = true;

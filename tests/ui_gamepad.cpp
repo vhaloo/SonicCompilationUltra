@@ -217,6 +217,12 @@ int main() {
             require(a.settings.view == 2, "stage shortcut");
             h.activate("focusplayer");
             require(a.settings.view == 0 && a.settings.camera == 1, "focus shortcut");
+            h.activate("enemypreview");
+            require(!a.settings.enemyPreview, "enemy preview toggle via gamepad");
+            h.activate("enemypreview");
+            h.choose("enemystyle");
+            require(a.settings.enemyStyle == 1, "enemy style choice via gamepad");
+            h.adjust("enemyopacity", a.settings.enemyOpacity);
             h.tab(3);
             h.choose("backgroundstyle");
             h.adjust("blur", a.settings.blur);
@@ -271,8 +277,9 @@ int main() {
                 {"language", "preset", "view", "overviewstyle", "zoom", "fullscreen", "span",
                  "display", "menulayout", "uiscale", "contrast", "vsync", "nearest", "nativescale",
                  "workers", "soft", "scanlines", "performance", "defaults"},
-                {"showstage", "focusplayer", "playerinset", "cameramode", "follow", "panspeed",
-                 "hud", "hudsize", "locator", "minimap", "ghost", "help"},
+                {"showstage", "focusplayer", "playerinset", "enemypreview", "enemystyle",
+                 "enemyopacity", "cameramode", "follow", "panspeed", "hud", "hudsize", "locator",
+                 "minimap", "ghost", "help"},
                 {"backgroundstyle", "blur", "brightness", "parallax", "motion"},
                 {"volume", "mute", "pausefocus"},
                 {"padlabels", "jumpbuttons", "quickcontrols", "deadzone"},

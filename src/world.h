@@ -1,6 +1,7 @@
 #pragma once
 #include "observer.h"
 #include "settings.h"
+#include "enemies.h"
 #include <array>
 namespace scu {
 inline uint16_t be16(const uint8_t *p, unsigned a) {
@@ -39,6 +40,8 @@ class World {
     void captureActors(const Scene &scene, const Game *game);
 
   public:
+    EnemyPreviews enemies;
+    int enemySpriteCount = 0, enemyMarkerCount = 0;
     Canvas canvas;
     std::array<uint32_t, 320 * 224> backdrop{};
     Scene inspect(const SCUSnapshot &s, const Game *game) const;
@@ -49,6 +52,7 @@ class World {
     void reset() {
         lastStage = -1;
         cameraValid = false;
+        enemies.reset();
     }
     void freeze(const Scene &scene, Settings &settings);
     uint16_t attribute(const SCUSnapshot &s, int family, int x, int y, bool bg = false) const;

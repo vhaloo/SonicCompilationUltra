@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cassert>
 using namespace scu;
+void testEnemyPreviews();
 static void require(bool c, const char *msg) {
     if (!c) {
         std::cerr << msg << "\n";
@@ -12,6 +13,7 @@ static void require(bool c, const char *msg) {
     }
 }
 int main() {
+    testEnemyPreviews();
     require(games().size() >= 12, "collection identities missing");
     require(gameById("sonic3k")->size == 4194304, "lock-on size");
     require(detectLanguage(3) == 3, "explicit Japanese language");
@@ -44,7 +46,9 @@ int main() {
     require(world->attribute(*s, 1, -8, 0) == 0, "outside stage guard");
     auto before = s->ram[0xD008];
     Settings settings;
-    require(settings.fullscreen && !settings.span && settings.view == 2 && settings.menuLayout == 0,
+    require(settings.fullscreen && !settings.span && settings.view == 2 &&
+                settings.menuLayout == 0 && settings.enemyPreview && settings.enemyOpacity == 35 &&
+                settings.enemyStyle == 0,
             "new installations must use fullscreen, full menu and stage overview");
     settings.view = 0;
     settings.zoom = 1;

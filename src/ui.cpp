@@ -652,7 +652,8 @@ void App::present(bool capture) {
     for (int v :
          {drawableW, drawableH, settings.view, settings.zoom, settings.camera, settings.left,
           settings.top, settings.background, settings.blur, settings.brightness,
-          settings.overviewStyle, (int)settings.parallax, (int)settings.reduceMotion}) {
+          settings.overviewStyle, (int)settings.parallax, (int)settings.reduceMotion,
+          (int)settings.enemyPreview, settings.enemyOpacity, settings.enemyStyle}) {
         hash ^= (uint32_t)v;
         hash *= 1099511628211ull;
     }
@@ -1337,6 +1338,13 @@ void App::optionsUi(int section) {
             changed = true;
         }
         check("playerinset", settings.playerInset);
+        check("enemypreview", settings.enemyPreview);
+        ImGui::BeginDisabled(!settings.enemyPreview);
+        changed |= choice("enemystyle", settings.enemyStyle,
+                          {"enemyspritesmarkers", "enemysprites", "enemymarkers"});
+        slide("enemyopacity", settings.enemyOpacity, 10, 80, "%d%%");
+        ImGui::EndDisabled();
+        ImGui::TextWrapped("%s", tr("enemyhelp", language));
         if (choice("cameramode", settings.camera,
                    {"bounded", "centred", "fixed", "free", "level"})) {
             settings.view = settings.camera == 4 ? 2 : 0;

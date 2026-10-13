@@ -5,10 +5,11 @@ This report separates successful checks from coverage that has not been measured
 ## 0.2.0 additions
 
 - SDL virtual gamepad reaches every setting and all nine pages. Confirm/back, shoulder tabs, trigger scrolling, sliders, choices, ROM import, on-screen path entry, save/load, safe dialogs and controller shortcuts are exercised through the SDL input path.
-- Controller menu resizing checks cover 320×240, 640×360, portrait 1080×1920, 1920×1080 and 7680×1440, plus disconnect/reconnect.
+- Controller menu resizing checks cover 320Ã—240, 640Ã—360, portrait 1080Ã—1920, 1920Ã—1080 and 7680Ã—1440, plus disconnect/reconnect.
 - ROM-free rendering checks capture all nine pages in four languages at three sizes: **108 captures**, repeated against each portable package in CI.
 - All eleven cartridge entries retain the overview setting, produce their appropriate expanded/native frame and save/load successfully. The six supported platform-game layouts fit within the reported world coverage. Puzzle/3D/special-stage/Compilation projections retain native framing.
 - The live player inset preserves the native view when the world is zoomed out. Sonic 3-era overview can use a clean schematic map; it does not claim unloaded art or collision accuracy.
+- Enemy-preview tests cover all six platform address profiles, lock-on/mirrored art, spawn coordinates, remembered defeat, waiting/visible native sprites, ROM-backed dynamic art, configurable transparency, tiny-view markers and unchanged guest snapshots. Six locally supplied opening-stage runs produce preview sprites and markers. The virtual gamepad changes the toggle, style and opacity.
 
 These are virtual-controller and sampled game checks, not certification of every physical controller or a full campaign.
 

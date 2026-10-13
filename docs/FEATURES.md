@@ -54,6 +54,7 @@ Adjust blur and brightness. Freeze the background independently, reduce its moti
 - Game volume, mute and pause on loss of focus. Opening the app menu pauses simulation and clears queued audio.
 - Two controllers or keyboard players, analogue dead-zone adjustment and hot-plug support.
 - English, French, Spanish and Japanese; automatic machine language with English fallback.
+- Enemy spawn previews enabled by default in expanded platform views: transparent original sprites, amber position markers or both; adjustable 10–80% opacity. Markers cover missing art and remain readable in stage overviews. [Details and coverage](ENEMY_PREVIEWS.md).
 
 ## Controller-first menus
 
@@ -69,7 +70,7 @@ Save slots show occupied/empty status and dates. Empty-slot loading is disabled.
 
 ## Known limits
 
-The expanded compositor is experimental. It reconstructs **terrain and static rings**, while enemies and other dynamic objects follow the cartridge's original spawn/culling rules. A distant enemy is not simulated merely because the large view can show its terrain. This avoids changing object-pool pressure and gameplay timing.
+The expanded compositor is experimental. It reconstructs **terrain, static rings and enemy spawn previews**, while actual enemies and other dynamic objects follow the cartridge's original spawn/culling rules. A translucent preview marks an authored spawn point; it does not simulate distant movement or predict a projectile. Boss scripts and event-created enemies are not included. This preserves native object-pool pressure and gameplay timing.
 
 Only the current act's installed layout is shown. Connected acts, interiors or art banks that have not been loaded are not an atlas of the whole campaign. Sonic 3's streamed edits, burning scenery, palette changes and unusual scrolling can make distant scenery imperfect. The native visible region is retained where possible; Original framing is always available.
 

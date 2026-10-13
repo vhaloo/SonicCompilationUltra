@@ -13,6 +13,36 @@ struct Text {
         }                                                                                          \
     }
 static const Text texts[] = {
+    T("enemypreview", "Preview distant enemy spawns", "Aperçu des apparitions d’ennemis éloignés",
+      "Vista previa de enemigos lejanos", "遠くの敵の出現位置を表示"),
+    T("enemystyle", "Enemy preview style", "Style de l’aperçu des ennemis",
+      "Estilo de vista previa de enemigos", "敵のプレビュー表示"),
+    T("enemyopacity", "Enemy preview opacity", "Opacité de l’aperçu des ennemis",
+      "Opacidad de los enemigos", "敵のプレビュー不透明度"),
+    T("enemyspritesmarkers", "Ghost sprites + spawn markers", "Sprites transparents et repères",
+      "Sprites transparentes y marcadores", "半透明の敵と出現マーカー"),
+    T("enemysprites", "Ghost sprites", "Sprites transparents", "Sprites transparentes",
+      "半透明の敵"),
+    T("enemymarkers", "Spawn markers", "Repères d’apparition", "Marcadores de aparición",
+      "出現マーカー"),
+    T("enemyhelp",
+      "Expanded views show translucent enemies at their authored spawn points until the native "
+      "sprite is visible. Defeated enemies are hidden when the game remembers them. Markers stay "
+      "readable when zoomed out and cover unavailable sprite art. These are spawn previews, not "
+      "moving enemies or attack predictions. Sonic 1, 2, 3 and Knuckles platform stages only.",
+      "Les vues étendues montrent les ennemis transparents à leur point d’apparition jusqu’à ce "
+      "que leur sprite natif soit visible. Les ennemis détruits sont masqués lorsque le jeu s’en "
+      "souvient. Les repères restent lisibles en dézoom et remplacent les images indisponibles. "
+      "Ils indiquent les apparitions, pas les mouvements ni les attaques. Niveaux de plateforme "
+      "de Sonic 1, 2, 3 et Knuckles uniquement.",
+      "Las vistas ampliadas muestran enemigos transparentes en sus puntos de aparición hasta "
+      "que el sprite original es visible. Los derrotados se ocultan si el juego los recuerda. "
+      "Los marcadores siguen legibles al alejar la vista y cubren imágenes no disponibles. Son "
+      "puntos de aparición, no movimientos ni predicciones de ataques. Solo niveles de "
+      "plataformas de Sonic 1, 2, 3 y Knuckles.",
+      "拡張表示では、元の敵が見えるまで出現位置に半透明の敵を表示します。ゲームが記録した倒した敵は"
+      "非表示になります。縮小時や画像が使えない場合はマーカーで位置を示します。敵の移動や攻撃を予測"
+      "する表示ではありません。Sonic 1、2、3 と Knuckles の通常ステージで使えます。"),
     T("overviewstyle", "Overview terrain", "Décor du niveau entier", "Terreno en vista completa",
       "全体表示の地形"),
     T("nativeart", "Original game artwork", "Graphismes d’origine", "Gráficos originales",

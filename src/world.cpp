@@ -297,9 +297,12 @@ void World::freeze(const Scene &, Settings &s) {
 }
 bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, int dh,
                     const std::vector<uint32_t> *native, int nw, int nh) {
+    enemySpriteCount = enemyMarkerCount = 0;
     Scene v = inspect(s, g);
-    if (!v.ready || cfg.view == 4)
+    if (!v.ready || cfg.view == 4) {
+        enemies.visible.clear();
         return false;
+    }
     snap = &s;
     lastFamily = v.family;
     if (lastStage != v.stage) {
@@ -499,6 +502,72 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
             }
         }
     }
+    if (cfg.enemyPreview) {
+        enemies.update(s, g, rom, v.stage, v.cameraX, v.cameraY);
+        unsigned alpha = std::clamp(cfg.enemyOpacity, 10, 80) * 255 / 100;
+        auto blend = [&](int x, int y, uint32_t color) {
+            if (x < 0 || x >= w || y < 0 || y >= h)
+                return;
+            auto &destination = canvas.pixels[size_t(y) * w + x];
+            unsigned retained = (destination >> 24) * (255 - alpha) / 255,
+                     combined = alpha + retained;
+            uint32_t out = combined << 24;
+            for (unsigned shift : {0u, 8u, 16u}) {
+                unsigned value =
+                    (((color >> shift) & 255) * alpha + ((destination >> shift) & 255) * retained) /
+                    combined;
+                out |= value << shift;
+            }
+            destination = out;
+        };
+        for (auto &p : enemies.visible) {
+            bool drawn = false;
+            if (p.image && cfg.enemyStyle != 2) {
+                auto &image = *p.image;
+                int left = (p.flags & 1) ? -image.left - image.width : image.left,
+                    top = (p.flags & 2) ? -image.top - image.height : image.top;
+                double screenX = (p.x + left - canvas.left) * w / coverW,
+                       screenY = (p.y + top - canvas.top) * h / coverH;
+                int x0 = int(std::floor(screenX)), y0 = int(std::floor(screenY)),
+                    x1 = int(std::ceil(screenX + image.width * w / coverW)),
+                    y1 = int(std::ceil(screenY + image.height * h / coverH));
+                for (int y = std::max(0, y0); y < std::min(h, y1); ++y)
+                    for (int x = std::max(0, x0); x < std::min(w, x1); ++x) {
+                        int ix = clampi(int((x - screenX) * coverW / w), 0, image.width - 1),
+                            iy = clampi(int((y - screenY) * coverH / h), 0, image.height - 1);
+                        if (p.flags & 1)
+                            ix = image.width - 1 - ix;
+                        if (p.flags & 2)
+                            iy = image.height - 1 - iy;
+                        unsigned color = image.pixels[size_t(iy) * image.width + ix];
+                        if (color) {
+                            blend(x, y, s.palettes[clampi(p.y - v.cameraY, 0, 223)][color]);
+                            drawn = true;
+                        }
+                    }
+                if (drawn)
+                    ++enemySpriteCount;
+            }
+            // A small, original marker makes a spawn visible even when a full
+            // stage reduces its sprite below a few pixels or art is unavailable.
+            if (cfg.enemyStyle != 1 || !p.image || !drawn) {
+                int x = int(std::lround((p.x - canvas.left) * w / coverW)),
+                    y = int(std::lround((p.y - canvas.top) * h / coverH)),
+                    radius = std::max(2, int(std::lround(5 / canvas.scale)));
+                if (x + radius < 0 || x - radius >= w || y + radius < 0 || y - radius >= h)
+                    continue;
+                for (int k = -radius; k <= radius; ++k) {
+                    int dy = radius - std::abs(k);
+                    blend(x + k, y + dy, 0xFFFFCA75);
+                    if (dy)
+                        blend(x + k, y - dy, 0xFFFFCA75);
+                }
+                blend(x, y, 0xFFFFCA75);
+                ++enemyMarkerCount;
+            }
+        }
+    } else
+        enemies.visible.clear();
     return true;
 }
 static void blurImage(std::array<uint32_t, 320 * 224> &img, int r) {
