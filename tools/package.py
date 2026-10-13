@@ -49,7 +49,8 @@ def main():
         resources=payload/'Resources'
         resources.mkdir(parents=True,exist_ok=True)
         shutil.copytree(ROOT/'assets',resources/'assets')
-        info={'CFBundleName':'Sonic Compilation Ultra','CFBundleDisplayName':'Sonic Compilation Ultra','CFBundleIdentifier':'com.vhaloo.soniccompilationultra','CFBundleExecutable':'SonicCompilationUltra','CFBundlePackageType':'APPL','CFBundleShortVersionString':args.version,'CFBundleVersion':args.version,'NSHighResolutionCapable':True,'LSMinimumSystemVersion':'11.0' if args.arch=='arm64' else '10.15'}
+        copy_file(ROOT/'assets/SCU.icns',resources/'SCU.icns')
+        info={'CFBundleName':'Sonic Compilation Ultra','CFBundleDisplayName':'Sonic Compilation Ultra','CFBundleIdentifier':'com.vhaloo.soniccompilationultra','CFBundleExecutable':'SonicCompilationUltra','CFBundleIconFile':'SCU.icns','CFBundlePackageType':'APPL','CFBundleShortVersionString':args.version,'CFBundleVersion':args.version,'NSHighResolutionCapable':True,'LSMinimumSystemVersion':'11.0' if args.arch=='arm64' else '10.15'}
         import plistlib
         (payload/'Info.plist').write_bytes(plistlib.dumps(info))
         result=subprocess.check_output(['otool','-L',str(binary)],text=True)

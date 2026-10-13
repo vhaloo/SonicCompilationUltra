@@ -72,6 +72,17 @@ int main() {
     require(!world->inspect(*s, gameById("meanbean")).ready, "puzzle must keep native framing");
     // S2 flip bits differ from S1. Test a flipped block without confusing them.
     s->ram[0x8000] = 2;
+    s->ram[0xB000] = 1;
+    s->ram[0x8002] = 2;
+    put(0xFFD8, 0x8000);
+    require(world->inspect(*s, gameById("sonic2k")).ready,
+            "Knuckles lock-on flag mistaken for competition mode");
+    require(!world->inspect(*s, gameById("sonic2")).ready,
+            "Sonic 2 competition must keep native framing");
+    put(0xFFD8, 1);
+    require(!world->inspect(*s, gameById("sonic2k")).ready,
+            "Knuckles competition must keep native framing");
+    put(0xFFD8, 0);
     put(2 * 128, 0x400 | 3);
     put(0x9000 + 3 * 8 + 2, 0x55);
     require(world->attribute(*s, 2, 0, 0) == (0x55 ^ 0x800), "S2 block flip decode");

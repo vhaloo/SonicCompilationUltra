@@ -16,10 +16,15 @@ Physical host: Windows, AMD Ryzen 7 5800X, Nvidia GeForce RTX 5070. The three-sc
 | Real-time small/software run | **59.77 simulation fps**, 640×360, Lightweight, about 14.4 s measured host loop |
 | Screenshot review | Actual 7680×1440, 1920×1080 Panorama, 640×360, original view and overview captures reviewed |
 | Collection cartridge smoke | All 11 listed entries boot, produce a frame and save/load a state successfully |
-| Platform-game entry | Sonic 1 and Sonic 2 single-player entries reached, movement/jump exercised, expanded terrain and actors captured |
-| S3-family scenes | Original title/save/intro and installed level layouts observed; native visible-region composition retained |
+| Platform-game entry | Sonic 1, Sonic 2, Sonic 3, S&K, Sonic 3 & Knuckles and Knuckles in Sonic 2 opening-stage entries reached; native movement/jump exercised |
+| S3-family scenes | Original title/save/intro and installed level layouts observed; native visible-region composition retained; distant art limits remain |
+| Puzzle and pinball | Mean Bean scenario board and Spinball opening playfield reached with native inputs |
+| Cartridge lock-on | S1 → Blue Sphere; S3 → S3&K; S2 → Knuckles using either separate UPMEM or a combined dump; Mean Bean lock-on produces its Blue Sphere stage |
 | Blue Sphere | Original NO WAY entry advances through native A+B+C input into the special-stage mode |
-| State files | Original build/cartridge identity checked; previous files preserved as `.bak` |
+| State files | Corrupt payload and wrong-cartridge states rejected; charged S1 spin dash survives save/load; previous files preserved as `.bak` |
+| Spin dash option | Identical Down/jump inputs: disabled Sonic stays near the start; enabled charge reaches 3, then launches forward and clears on release |
+| App-menu input | Injected SDL Select/View and Esc events toggle the menu; native frame stays unchanged while paused and resumes when closed |
+| Rewind | Native checkpoint restoration exercised after a save/load |
 
 Headless test throughput exceeding hundreds of ticks per second is deliberately not presented as display performance. Real-time measurements above count executed native ticks during the measured loop; neutral startup fast-forward is excluded from that rate.
 
@@ -33,6 +38,6 @@ Successful CI means compiler, linkage and the tested software-rendering UI paths
 
 ## Limits of the game tests
 
-The engine executes the original cartridges. These tests exercise boot/menu/gameplay samples, selected native inputs and state round trips. They do not complete every act, boss, ending, character, multiplayer route or special stage. Mean Bean, Spinball and 3D Blast use their native projection; title/dialogue and game-rendering smoke paths are not complete campaign playthroughs.
+The engine executes the original cartridges. These tests exercise boot/menu/gameplay samples, selected native inputs and state round trips. They do not complete every act, boss, ending, character, multiplayer route or special stage. Mean Bean, Spinball and 3D Blast use their native projection. Mean Bean's scenario board and Spinball's playfield were observed; 3D Blast's title/options and story were exercised. None is a complete campaign playthrough.
 
 The host world renderer is experimental. Far-away geometry/rings are shown without expanding the native enemy simulation. Sonic 3 art banks, streamed edits, fire transitions and unusual scroll modes can require Original framing. [Feature boundaries](FEATURES.md#known-limits) remain part of the release description.

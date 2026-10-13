@@ -2,6 +2,15 @@
 
 Download the package for your computer from [Releases](https://github.com/vhaloo/SonicCompilationUltra/releases/latest). Extract the whole folder before opening the app. Keep the executable, libraries and `assets` folder together.
 
+| Download | Designed for |
+|---|---|
+| Windows x64 | Windows 10/11 on a 64-bit Intel or AMD PC |
+| macOS x64 | Intel Macs; deployment target 10.15 |
+| macOS arm64 | Apple Silicon Macs; deployment target 11.0 |
+| Linux x64 | Ubuntu 22.04 or a compatible newer 64-bit desktop; run `SonicCompilationUltra.sh` |
+
+The macOS app has an ad-hoc signature, not Apple notarization. If Gatekeeper asks, follow Apple's [instructions for opening an app from an identified download](https://support.apple.com/en-us/102445) after checking you downloaded the package from this repository. The Windows app is unsigned; its publisher cannot be verified by a commercial signing certificate. These packages do not change your computer's security settings.
+
 Click **Choose ROM…**. Navigate to your own cartridge dump and select it. ZIP files can stay zipped. **Import folder…** adds recognised collection editions from a folder; other Mega Drive revisions can be chosen individually and played with original framing.
 
 The app remembers where the original file is. Moving or deleting it later means you must choose it again. Import does not alter your cartridge file.
@@ -51,3 +60,5 @@ Settings and saves live in your user profile, not inside the downloaded package:
 | Linux | `~/.local/share/vhaloo/SonicCompilationUltra/` |
 
 The advanced `--data-dir` option selects a portable data folder. Updating the application does not require deleting your data. Keep backups before changing builds; cross-build state compatibility is not guaranteed.
+
+For a direct-play desktop shortcut, add `--resume-last` to its arguments. It opens the last selected cartridge and uses your saved presentation settings. The regular app opens the collection library.

@@ -67,10 +67,11 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(camera)
     SET(hud)
     SET(hudScale)
-    SET(background) SET(blur) SET(brightness) SET(parallax) SET(minimap) SET(locator) SET(spindash)
-        SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top)
-            SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen) SET(span) SET(vsync)
-                SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot)
+    SET(background)
+    SET(blur) SET(brightness) SET(parallax) SET(minimap) SET(locator) SET(spindash) SET(invincible)
+        SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top) SET(volume)
+            SET(language) SET(help) SET(workers) SET(fullscreen) SET(span) SET(vsync) SET(uiScale)
+                SET(scanlines) SET(lockon) SET(fastBoot)
 #undef SET
                     throw std::runtime_error("Unknown option: " + key);
 }
@@ -177,12 +178,13 @@ int main(int argc, char **argv) {
                     "en|fr|es|ja|auto\n  --view pixel|panorama|overview|classic --zoom 1..8 "
                     "--preset light|balanced|ultra\n  --size WIDTHxHEIGHT --headless --frames N "
                     "--script TIMELINE\n  --capture FILE.bmp --report FILE.json --render-every N "
-                    "--realtime\nROMs and copyrighted game assets are not included.\n");
+                    "--realtime --resume-last\nROMs and copyrighted game assets are not "
+                    "included.\n");
                 return 0;
             }
             if (k == "--fullscreen" || k == "--mute" || k == "--software" || k == "--headless" ||
                 k == "--realtime" || k == "--menu" || k == "--no-autoresume" ||
-                k == "--no-fast-boot") {
+                k == "--no-fast-boot" || k == "--resume-last") {
                 args[k] = "1";
                 continue;
             }
@@ -267,6 +269,9 @@ int main(int argc, char **argv) {
             a.import(fs::u8path(args["--scan"]), true);
         if (args.count("--game")) {
             if (!a.play(args["--game"]))
+                throw std::runtime_error(a.notice);
+        } else if (args.count("--resume-last") && a.library.find(a.settings.lastGame)) {
+            if (!a.play(a.settings.lastGame))
                 throw std::runtime_error(a.notice);
         }
         if (args.count("--menu"))
