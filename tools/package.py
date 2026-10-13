@@ -102,15 +102,20 @@ def main():
     if args.source:
         source=out/f'SonicCompilationUltra-{args.version}-source.zip'
         tracked=subprocess.check_output(['git','ls-files','-z'],cwd=ROOT).decode().split('\0')
-        sdl=build/'_deps/sdl2-src'
-        if not sdl.exists():raise RuntimeError('Pinned SDL source required for corresponding-source archive')
+        # Preserve the canonical archive, including upstream symlinks. Windows
+        # extraction creates inaccessible Android links on some build hosts.
+        candidates=list(build.rglob('SDL2-2.32.10.tar.gz'))
+        bundled=ROOT/'vendor/SDL2-2.32.10.tar.gz'
+        if bundled.exists():candidates.insert(0,bundled)
+        if not candidates:raise RuntimeError('Pinned SDL archive required for corresponding source')
+        sdl=candidates[0]
+        if hashlib.sha256(sdl.read_bytes()).hexdigest()!='5f5993c530f084535c65a6879e9b26ad441169b3e25d789d83287040a9ca5165':
+            raise RuntimeError('SDL source archive checksum mismatch')
         with zipfile.ZipFile(source,'w',zipfile.ZIP_DEFLATED,compresslevel=9) as z:
             for name in sorted(n for n in tracked if n):
                 p=ROOT/name
                 if p.is_file():z.write(p,'SonicCompilationUltra/'+name)
-            for p in sorted(sdl.rglob('*')):
-                if p.is_file() and '.git' not in p.relative_to(sdl).parts:
-                    z.write(p,'SonicCompilationUltra/vendor/sdl2/'+p.relative_to(sdl).as_posix())
+            z.write(sdl,'SonicCompilationUltra/vendor/SDL2-2.32.10.tar.gz')
         print(source)
     sums=[]
     for p in sorted(out.glob('*.zip'))+sorted(out.glob('*.tar.gz')):

@@ -40,7 +40,9 @@ ctest --test-dir build --output-on-failure
 ./build/SonicCompilationUltra
 ```
 
-The release packager assembles the `.app`, resources and SDL library. Intel and Apple Silicon builds are separate; no physical Mac gameplay certification is implied by a successful build.
+The release packager assembles the `.app`, resources and SDL library. Intel and Apple Silicon builds are separate. Release builds target macOS 10.15 on Intel and 11.0 on Apple Silicon; use `-DCMAKE_OSX_DEPLOYMENT_TARGET=10.15` or `11.0` when reproducing them. No physical Mac gameplay certification is implied by a successful build.
+
+The downloadable corresponding-source archive includes the complete, unmodified SDL tarball under `vendor/`. CMake verifies and extracts this local archive, so rebuilding requires no SDL download.
 
 ## Development and validation
 

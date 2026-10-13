@@ -5,7 +5,11 @@ set(GX_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/vendor/zlib ${GX}/libretro ${GX}/lib
 foreach(d ${GX_DIRS})
   file(GLOB files CONFIGURE_DEPENDS ${GX}/${d}/*.c)
   list(APPEND GX_SOURCES ${files})
-  list(APPEND GX_INCLUDES ${GX}/${d})
+  # Tremor includes its own headers relative to each source. Adding this directory
+  # globally shadows Apple's system Block.h on case-insensitive filesystems.
+  if(NOT d STREQUAL "core/sound/tremor")
+    list(APPEND GX_INCLUDES ${GX}/${d})
+  endif()
 endforeach()
 foreach(f streams/file_stream.c streams/file_stream_transforms.c compat/fopen_utf8.c compat/compat_snprintf.c compat/compat_strl.c compat/compat_strcasestr.c compat/compat_posix_string.c encodings/encoding_utf.c file/file_path.c file/retro_dirent.c lists/string_list.c lists/dir_list.c memmap/memalign.c string/stdstring.c vfs/vfs_implementation.c)
   list(APPEND GX_SOURCES ${GX}/libretro/libretro-common/${f})

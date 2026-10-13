@@ -22,9 +22,11 @@ jobs:
           - os: macos-15-intel
             platform: macos
             arch: x64
+            deployment: '10.15'
           - os: macos-15
             platform: macos
             arch: arm64
+            deployment: '11.0'
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -40,8 +42,11 @@ jobs:
         if: runner.os == 'Windows'
         run: cmake -S . -B build -A x64 -DBUILD_TESTING=ON -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON
       - name: Configure Unix
-        if: runner.os != 'Windows'
+        if: runner.os == 'Linux'
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON
+      - name: Configure macOS
+        if: runner.os == 'macOS'
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=${{ matrix.deployment }}
       - name: Build
         run: cmake --build build --config Release --parallel 3 --target SonicCompilationUltra scu_tests
       - name: Unit tests
