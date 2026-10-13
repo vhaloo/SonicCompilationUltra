@@ -316,8 +316,9 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
         double scale = std::min(double(dw) / v.width, double(dh) / v.height);
         coverW = dw / scale;
         coverH = dh / scale;
-        w = dw;
-        h = dh;
+        int sample = cfg.quality == 0 ? 3 : cfg.quality == 1 ? 2 : 1;
+        w = std::max(1, dw / sample);
+        h = std::max(1, dh / sample);
     } else {
         w = std::max(1, dw / cfg.zoom);
         h = std::max(1, dh / cfg.zoom);
@@ -356,11 +357,13 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
     }
     canvas.pixels.assign((size_t)w * h, 0);
     priority.assign((size_t)w * h, 0);
+    std::array<bool, 2048> visibleTile{};
     for (unsigned t = 0; t < 2048; t++)
         for (int y = 0; y < 8; y++)
             for (int x = 0; x < 8; x++) {
                 int b = s.vram[t * 32 + y * 4 + x / 2];
                 patterns[t][y * 8 + x] = (uint8_t)((x & 1) ? b & 15 : b >> 4);
+                visibleTile[t] = visibleTile[t] || patterns[t][y * 8 + x] != 0;
             }
     int workers = cfg.workers;
 #ifdef _OPENMP
@@ -369,6 +372,7 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
     omp_set_num_threads(workers);
 #endif
     if (overview) {
+        bool map = cfg.overviewStyle == 2 || (cfg.overviewStyle == 0 && v.family == 3);
         int row;
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static) if (w * h > 500000)
@@ -382,6 +386,13 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
                 uint16_t a = attribute(s, v.family, wx, wy);
                 if (!a)
                     continue;
+                if (map) {
+                    // This is an explicitly schematic loaded-layout map. Solid
+                    // tile silhouettes avoid borrowing unrelated streamed art.
+                    if ((a & 2047) && visibleTile[a & 2047])
+                        canvas.pixels[(size_t)row * w + x] = 0xD03F8C9D;
+                    continue;
+                }
                 int ix = (wx & 7) ^ ((a & 0x800) ? 7 : 0), iy = (wy & 7) ^ ((a & 0x1000) ? 7 : 0);
                 int p = patterns[a & 2047][iy * 8 + ix];
                 if (p) {

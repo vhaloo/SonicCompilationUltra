@@ -1,6 +1,6 @@
 """Portable distribution packager. Reads build outputs, never user data/ROMs."""
 from __future__ import annotations
-import argparse, hashlib, json, os, pathlib, platform, shutil, subprocess, tarfile, zipfile
+import argparse, hashlib, json, os, pathlib, platform, re, shutil, subprocess, tarfile, zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 BANNED = {'.bin','.rom','.gen','.smd','.rsdk','.srm','.state','.ram','.wav','.mp3','.ogg','.tga','.bmp'}
@@ -30,7 +30,7 @@ def main():
     parser.add_argument('--out',type=pathlib.Path,default=ROOT/'dist')
     parser.add_argument('--platform',choices=['windows','linux','macos'],required=True)
     parser.add_argument('--arch',default=platform.machine())
-    parser.add_argument('--version',default='0.1.0')
+    parser.add_argument('--version', default=re.search(r'project\(SonicCompilationUltra VERSION ([0-9.]+)', (ROOT/'CMakeLists.txt').read_text()).group(1))
     parser.add_argument('--source',action='store_true')
     args=parser.parse_args()
     build=args.build.resolve();out=args.out.resolve();out.mkdir(parents=True,exist_ok=True)

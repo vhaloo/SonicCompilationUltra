@@ -5,17 +5,23 @@
 namespace scu {
 #define INT_FIELDS(X)                                                                              \
     X(language, -1, 3)                                                                             \
-    X(view, 0, 4) X(zoom, 1, 8) X(camera, 0, 4) X(background, 0, 5) X(blur, 0, 16)                 \
-        X(brightness, 10, 100) X(hud, 0, 3) X(hudScale, 0, 6) X(nativeScale, 0, 8)                 \
-            X(workers, 0, 16) X(volume, 0, 100) X(quality, 0, 2) X(uiScale, 0, 3) X(slot, 1, 9)    \
-                X(region, 0, 3) X(renderer, 0, 1) X(scanlines, 0, 60) X(panSpeed, 1, 32)           \
-                    X(deadzone, 3000, 28000) X(left, -32768, 32768) X(top, -16384, 16384)
+    X(view, 0, 4)                                                                                  \
+    X(zoom, 1, 8)                                                                                  \
+    X(camera, 0, 4) X(background, 0, 5) X(blur, 0, 16) X(brightness, 10, 100) X(hud, 0, 3)         \
+        X(hudScale, 0, 6) X(nativeScale, 0, 8) X(workers, 0, 16) X(volume, 0, 100)                 \
+            X(quality, 0, 2) X(uiScale, 0, 3) X(slot, 1, 9) X(region, 0, 3) X(renderer, 0, 1)      \
+                X(scanlines, 0, 60) X(panSpeed, 1, 32) X(deadzone, 3000, 28000)                    \
+                    X(left, -32768, 32768) X(top, -16384, 16384) X(menuLayout, 0, 1)               \
+                        X(display, -1, 31) X(padLabels, 0, 3) X(jumpLayout, 0, 2)                  \
+                            X(overviewStyle, 0, 2)
 #define BOOL_FIELDS(X)                                                                             \
     X(fullscreen)                                                                                  \
-    X(span) X(vsync) X(parallax) X(locator) X(minimap) X(help) X(spindash) X(noSpriteLimit)        \
-        X(integerScale) X(mute) X(pauseUnfocused) X(performance) X(reduceMotion) X(autosave)       \
-            X(rewind) X(ghost) X(invincible) X(infiniteAir) X(safeEffects) X(confirmQuit)          \
-                X(fastBoot) X(lockon)
+    X(span)                                                                                        \
+    X(vsync)                                                                                       \
+    X(parallax) X(locator) X(minimap) X(help) X(spindash) X(noSpriteLimit) X(integerScale) X(mute) \
+        X(pauseUnfocused) X(performance) X(reduceMotion) X(autosave) X(rewind) X(ghost)            \
+            X(invincible) X(infiniteAir) X(safeEffects) X(confirmQuit) X(fastBoot) X(lockon)       \
+                X(confirmActions) X(quickControls) X(readyOnly) X(highContrast) X(playerInset)
 void Settings::load(const fs::path &dir) {
     std::ifstream f(dir / "settings.ini");
     std::string s;
@@ -65,9 +71,7 @@ void Settings::save(const fs::path &dir) const {
 }
 void Settings::preset(int n) {
     quality = n;
-    view = 0;
-    camera = n == 2 ? 1 : 0;
-    zoom = n == 0 ? 3 : n == 1 ? 2 : 1;
+    // Performance changes should not move the camera or replace a chosen view.
     background = n == 0 ? 3 : 0;
     blur = n == 0 ? 0 : n == 1 ? 5 : 9;
     brightness = 60;

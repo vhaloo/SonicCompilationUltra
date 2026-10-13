@@ -48,7 +48,7 @@ jobs:
         if: runner.os == 'macOS'
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=${{ matrix.deployment }}
       - name: Build
-        run: cmake --build build --config Release --parallel 3 --target SonicCompilationUltra scu_tests scu_runtime_tests
+        run: cmake --build build --config Release --parallel 3 --target SonicCompilationUltra scu_tests scu_runtime_tests scu_ui_tests
       - name: Unit tests
         run: ctest --test-dir build -C Release --output-on-failure
       - name: ROM-free UI validation
@@ -62,7 +62,7 @@ jobs:
         env:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
-        run: python tools/smoke_ui.py --build build --package dist/SonicCompilationUltra-0.1.0-${{ matrix.platform }}-${{ matrix.arch }}
+        run: python tools/smoke_ui.py --build build --package dist/SonicCompilationUltra-0.2.0-${{ matrix.platform }}-${{ matrix.arch }}
       - name: Upload packages and validation
         uses: actions/upload-artifact@v4
         with:

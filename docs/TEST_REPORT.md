@@ -2,7 +2,17 @@
 
 This report separates successful checks from coverage that has not been measured. A boot test or source build is not a full-game completion certificate.
 
-## Windows checks
+## 0.2.0 additions
+
+- SDL virtual gamepad reaches every setting and all nine pages. Confirm/back, shoulder tabs, trigger scrolling, sliders, choices, ROM import, on-screen path entry, save/load, safe dialogs and controller shortcuts are exercised through the SDL input path.
+- Controller menu resizing checks cover 320×240, 640×360, portrait 1080×1920, 1920×1080 and 7680×1440, plus disconnect/reconnect.
+- ROM-free rendering checks capture all nine pages in four languages at three sizes: **108 captures**, repeated against each portable package in CI.
+- All eleven cartridge entries retain the overview setting, produce their appropriate expanded/native frame and save/load successfully. The six supported platform-game layouts fit within the reported world coverage. Puzzle/3D/special-stage/Compilation projections retain native framing.
+- The live player inset preserves the native view when the world is zoomed out. Sonic 3-era overview can use a clean schematic map; it does not claim unloaded art or collision accuracy.
+
+These are virtual-controller and sampled game checks, not certification of every physical controller or a full campaign.
+
+## Earlier Windows baseline (0.1.0)
 
 Physical host: Windows, AMD Ryzen 7 5800X, Nvidia GeForce RTX 5070. The three-screen desktop is exposed as one **7680 Ã— 1440** display. Test runs kept application audio muted and did not alter system volume.
 
@@ -36,7 +46,7 @@ The screenshots are real renderer output from a locally supplied cartridge, not 
 
 ## Portable build checks
 
-The repository workflow builds Windows x64, Linux x64, macOS Intel and macOS Apple Silicon, runs synthetic addressing and native-runtime tests, validates the four-language UI without commercial ROM data, and prepares corresponding-source packages. It repeats all 12 UI cases against the portable launcher or app bundle itself. The workflow result is the authority for each submitted revision; inspect the [current Actions run](https://github.com/vhaloo/SonicCompilationUltra/actions).
+The repository workflow builds Windows x64, Linux x64, macOS Intel and macOS Apple Silicon, runs synthetic addressing, native-runtime and virtual-controller UI tests, validates the four-language UI without commercial ROM data, and prepares corresponding-source packages. It repeats all 108 page captures against the portable launcher or app bundle itself. The workflow result is the authority for each submitted revision; inspect the [current Actions run](https://github.com/vhaloo/SonicCompilationUltra/actions).
 
 Successful CI means compiler, linkage and the tested software-rendering UI paths passed. It does **not** prove physical Mac/Linux controllers, audio devices, Retina rendering or full gameplay on those hosts. Physical integrated-GPU gameplay is also not certified by a software-renderer test on this Windows CPU.
 

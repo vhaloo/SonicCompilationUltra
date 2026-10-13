@@ -44,6 +44,9 @@ int main() {
     require(world->attribute(*s, 1, -8, 0) == 0, "outside stage guard");
     auto before = s->ram[0xD008];
     Settings settings;
+    require(settings.fullscreen && !settings.span && settings.view == 2 && settings.menuLayout == 0,
+            "new installations must use fullscreen, full menu and stage overview");
+    settings.view = 0;
     settings.zoom = 1;
     settings.camera = 2;
     settings.left = 0;
@@ -59,6 +62,7 @@ int main() {
     world->compose(*s, gameById("sonic1"), settings, 320, 240);
     require(world->canvas.width == 320 && world->canvas.height == 240, "tiny window");
     settings.view = 2;
+    settings.quality = 2;
     world->compose(*s, gameById("sonic1"), settings, 1920, 1080);
     require(world->canvas.coverageW >= scene.width && world->canvas.coverageH >= scene.height &&
                 world->canvas.width == 1920,
@@ -92,6 +96,19 @@ int main() {
     put(0x8008, 0x8088);
     s->ram[0x8088] = 2;
     require(world->attribute(*s, 3, 0, 0) == (0x55 ^ 0x800), "S3 row-pointer decode");
+    Settings mapSettings;
+    mapSettings.quality = 2;
+    world->compose(*s, gameById("sonic3"), mapSettings, 640, 360);
+    require(world->canvas.coverageW >= 5120 && world->canvas.coverageH >= 1024,
+            "schematic overview must retain stage coverage");
+    for (int n = 0; n < 3; ++n) {
+        settings.view = 2;
+        settings.preset(n);
+        world->compose(*s, gameById("sonic1"), settings, 1920, 1080);
+        require(settings.view == 2 && world->canvas.coverageW >= scene.width &&
+                    world->canvas.coverageH >= scene.height,
+                "quality preset must not crop the overview");
+    }
     std::cout << "PASS: cartridge identities, localisation, world addressing, 1:1 / zoom / "
                  "overview / portrait / tiny / classic and read-only guest memory\n";
 }

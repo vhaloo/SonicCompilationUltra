@@ -69,12 +69,17 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(hudScale)
     SET(background)
     SET(blur)
-    SET(brightness) SET(parallax) SET(minimap) SET(locator) SET(spindash) SET(invincible)
-        SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top) SET(volume)
-            SET(language) SET(help) SET(workers) SET(fullscreen) SET(span) SET(vsync) SET(uiScale)
-                SET(scanlines) SET(lockon) SET(fastBoot)
+    SET(brightness)
+    SET(parallax)
+    SET(minimap)
+    SET(locator) SET(spindash) SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale)
+        SET(ghost) SET(left) SET(top) SET(volume) SET(language) SET(help) SET(workers)
+            SET(fullscreen) SET(span) SET(vsync) SET(uiScale) SET(scanlines) SET(lockon)
+                SET(fastBoot) SET(menuLayout) SET(display) SET(padLabels) SET(jumpLayout)
+                    SET(quickControls) SET(confirmActions) SET(confirmQuit) SET(highContrast)
+                        SET(readyOnly) SET(playerInset) SET(quality) SET(overviewStyle)
 #undef SET
-                    throw std::runtime_error("Unknown option: " + key);
+                            throw std::runtime_error("Unknown option: " + key);
 }
 static void execute(App &a, const Action &cmd, uint16_t &mask) {
     std::istringstream in(cmd.args);
@@ -82,6 +87,8 @@ static void execute(App &a, const Action &cmd, uint16_t &mask) {
         mask = buttonMask(cmd.args);
     else if (cmd.verb == "menu")
         a.menu = cmd.args == "on";
+    else if (cmd.verb == "tab")
+        a.showSection(std::stoi(cmd.args));
     else if (cmd.verb == "option") {
         std::string key, val;
         in >> key >> val;
@@ -262,6 +269,7 @@ int main(int argc, char **argv) {
             if (x == std::string::npos)
                 throw std::runtime_error("Size format must be WIDTHxHEIGHT");
             a.settings.fullscreen = false;
+            a.applyDisplay();
             SDL_SetWindowSize(a.window, std::stoi(v.substr(0, x)), std::stoi(v.substr(x + 1)));
         }
         for (auto &p : imports)
@@ -272,8 +280,8 @@ int main(int argc, char **argv) {
             if (!a.play(args["--game"]))
                 throw std::runtime_error(a.notice);
         } else if (args.count("--resume-last") && a.library.find(a.settings.lastGame)) {
-            if (!a.play(a.settings.lastGame))
-                throw std::runtime_error(a.notice);
+            // If a cartridge has moved, keep the GUI and importer available.
+            a.play(a.settings.lastGame);
         }
         if (args.count("--menu"))
             a.menu = true;
@@ -399,7 +407,11 @@ int main(int argc, char **argv) {
                 << v.height << "],\n  \"player\":[" << v.playerX << "," << v.playerY
                 << "],\n  \"world_ready\":" << (v.ready ? "true" : "false")
                 << ",\n  \"game_mode\":" << (int)a.core.snapshot.ram[0xF600]
-                << ",\n  \"language\":" << a.language
+                << ",\n  \"language\":" << a.language << ",\n  \"view\":" << a.settings.view
+                << ",\n  \"stage_coverage\":[" << a.core.world.canvas.coverageW << ","
+                << a.core.world.canvas.coverageH << "]"
+                << ",\n  \"menu_layout\":" << a.settings.menuLayout
+                << ",\n  \"player_inset\":" << (a.settings.playerInset ? "true" : "false")
                 << ",\n  \"spindash_charge\":" << a.core.spinCharge << "\n}\n";
         }
         a.dirty = true;
