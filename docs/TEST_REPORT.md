@@ -10,6 +10,7 @@ Physical host: Windows, AMD Ryzen 7 5800X, Nvidia GeForce RTX 5070. The three-sc
 |---|---|
 | Original-source compilation | MSVC Release build succeeds with pinned SDL2 2.32.10 |
 | Unit checks | Pass: ROM identities, layout/flip addressing, read-only compositor, 1:1, zoom, overview, portrait, tiny and original-view fallback |
+| Original synthetic runtime | Pass: our own 68000 program executes, VDP backdrop reaches the framebuffer, native RAM/time restore, damaged/foreign states reject and rewind restores an earlier frame |
 | ROM-free language/UI checks | 12 cases pass: EN/FR/ES/JA × 320×240, 640×360, 1280×720; software rendering and exact captured dimensions |
 | Pixel 1:1 | Drawable and world canvas both **7680×1440** |
 | Real-time wide run | **59.57 simulation fps**, Direct3D 11, about 15.1 s measured host loop |
@@ -32,7 +33,7 @@ The screenshots are real renderer output from a locally supplied cartridge, not 
 
 ## Portable build checks
 
-The repository workflow builds Windows x64, Linux x64, macOS Intel and macOS Apple Silicon, runs synthetic tests, validates the four-language UI without ROM data, and prepares corresponding-source packages. The workflow result is the authority for each submitted revision; inspect the [current Actions run](https://github.com/vhaloo/SonicCompilationUltra/actions).
+The repository workflow builds Windows x64, Linux x64, macOS Intel and macOS Apple Silicon, runs synthetic addressing and native-runtime tests, validates the four-language UI without commercial ROM data, and prepares corresponding-source packages. The workflow result is the authority for each submitted revision; inspect the [current Actions run](https://github.com/vhaloo/SonicCompilationUltra/actions).
 
 Successful CI means compiler, linkage and the tested software-rendering UI paths passed. It does **not** prove physical Mac/Linux controllers, audio devices, Retina rendering or full gameplay on those hosts. Physical integrated-GPU gameplay is also not certified by a software-renderer test on this Windows CPU.
 

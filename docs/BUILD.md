@@ -46,7 +46,7 @@ The downloadable corresponding-source archive includes the complete, unmodified 
 
 ## Development and validation
 
-`scu_tests` uses synthetic tile/layout data, never copyrighted game fixtures. A ROM-free UI smoke test can run with `SDL_VIDEODRIVER=dummy` and `SDL_AUDIODRIVER=dummy` plus `--software --headless --frames 10 --menu`.
+`scu_tests` uses synthetic tile/layout data, never copyrighted game fixtures. `scu_runtime_tests` generates an original minimal 68000 program at runtime to verify CPU execution, VDP output, saves, integrity checks and rewind. It contains no commercial cartridge code or art. A ROM-free UI smoke test can run with `SDL_VIDEODRIVER=dummy` and `SDL_AUDIODRIVER=dummy` plus `--software --headless --frames 10 --menu`.
 
 ```sh
 SonicCompilationUltra --help

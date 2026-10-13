@@ -35,6 +35,8 @@ are relevant variants of the same engine family. Their current compatibility and
 |---|---|
 | [sonicretro/s1disasm](https://github.com/sonicretro/s1disasm) | Community disassembly of the Genesis original; essential memory, object, tile and layout documentation; builds cartridge code rather than a standalone PC renderer |
 | [cvghivebrain/s1disasm](https://github.com/cvghivebrain/s1disasm) | Related maintained disassembly branch/toolchain |
+| [Iso-Kilo/Sonic-1-Mega-Play-Disassembly](https://github.com/Iso-Kilo/Sonic-1-Mega-Play-Disassembly) | Mega Play arcade adaptation; an assembly route, not a standalone modern PC renderer |
+| [Sonic-1-Prototype-Disassembly](https://github.com/Iso-Kilo/Sonic-1-Prototype-Disassembly) and [Sonic-1-Prototype](https://github.com/Iso-Kilo/Sonic-1-Prototype) | Prototype analysis and restoration work; distinct from a completed retail-game C decompilation |
 | [OrionNavattan/Sonic1](https://github.com/OrionNavattan/Sonic1) | Additional original-game assembly work / branch |
 | [JarrettBillingsley/DecompilingSonic1](https://github.com/JarrettBillingsley/DecompilingSonic1) | Educational decompilation/analysis in C++; the author does not present it as a guaranteed runnable port |
 | [Wilps93/sonic1-genesis-decompilation](https://github.com/Wilps93/sonic1-genesis-decompilation) | Pseudo-C reverse-engineering analysis; not a drop-in playable engine |
@@ -52,7 +54,7 @@ Disassemblies sometimes contain extracted game data. Their existence on a public
 | [Iso-Kilo/Sonic-1-J2ME-Decompilation](https://github.com/Iso-Kilo/Sonic-1-J2ME-Decompilation) | Decompiled 2005 Java mobile parts; upstream describes obfuscation/unbuildable work, includes several original phone resolutions |
 | [yowari/sonic-j2me-decompilation](https://github.com/yowari/sonic-j2me-decompilation) | Buildable-workflow effort for the J2ME Part One game; separate phone implementation |
 | [josepilas/sonic-j2me-decomp](https://github.com/josepilas/sonic-j2me-decomp) | Related Java mobile work |
-| [Iso-Kilo/Sonic-1-EB-VS3-Decomp](https://github.com/Iso-Kilo/Sonic-1-EB-VS3-Decomp) | Phone/device-specific version analysis |
+| [IsoKilo/Sonic-1-EB-VS3-Decomp](https://github.com/IsoKilo/Sonic-1-EB-VS3-Decomp) | Phone/device-specific version analysis |
 | [ArchiverXP/sncdecomp](https://github.com/ArchiverXP/sncdecomp) | Didj “Sonic the Hedgehog” project; not the 1991 Genesis game |
 
 ## Origins and the expanded collection
