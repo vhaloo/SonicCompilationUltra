@@ -456,7 +456,15 @@ std::vector<uint8_t> Core::state() const {
     std::vector<uint8_t> body(n);
     if (!retro_serialize(body.data(), body.size()))
         throw std::runtime_error("State save failed");
-    std::vector<uint8_t> b{'S', 'C', 'U', '1'};
+    // Preserve the completed raster as well as guest state. Otherwise a paused
+    // load or rewind can briefly mix the previous scene with restored geometry.
+    const auto *image = reinterpret_cast<const uint8_t *>(&snapshot);
+    body.insert(body.end(), image, image + sizeof snapshot);
+    unsigned width = native.empty() ? 0 : nativeW, height = native.empty() ? 0 : nativeH;
+    const auto *pixels = reinterpret_cast<const uint8_t *>(native.data());
+    if (!native.empty())
+        body.insert(body.end(), pixels, pixels + native.size() * sizeof(uint32_t));
+    std::vector<uint8_t> b{'S', 'C', 'U', '2'};
     put32(b, runningCrc);
     put32(b, (uint32_t)n);
     put32(b, checksum(body));
@@ -464,23 +472,51 @@ std::vector<uint8_t> Core::state() const {
     put32(b, spinCharge);
     put32(b, (uint32_t)spinFacing);
     put32(b, lastButtons);
+    put32(b, width);
+    put32(b, height);
     b.insert(b.end(), body.begin(), body.end());
     return b;
 }
 bool Core::restore(const std::vector<uint8_t> &b) {
-    if (!loaded || b.size() < 32 || std::memcmp(b.data(), "SCU1", 4) || get32(b, 4) != runningCrc ||
-        get32(b, 8) != b.size() - 32)
+    if (!loaded || b.size() < 32 || get32(b, 4) != runningCrc)
         return false;
-    std::vector<uint8_t> body(b.begin() + 32, b.end());
+    bool raster = std::memcmp(b.data(), "SCU2", 4) == 0;
+    if (!raster && std::memcmp(b.data(), "SCU1", 4))
+        return false;
+    size_t header = raster ? 40 : 32, n = get32(b, 8), pixels = 0;
+    unsigned width = 0, height = 0;
+    if (n > 16 * 1024 * 1024 || b.size() < header)
+        return false;
+    if (raster) {
+        width = get32(b, 32);
+        height = get32(b, 36);
+        if (width > 720 || height > 576 || (!width != !height))
+            return false;
+        pixels = size_t(width) * height;
+    }
+    size_t expected = n + (raster ? sizeof snapshot + pixels * sizeof(uint32_t) : 0);
+    if (b.size() - header != expected)
+        return false;
+    std::vector<uint8_t> body(b.begin() + header, b.end());
     if (checksum(body) != get32(b, 12))
         return false;
-    if (!retro_unserialize(body.data(), body.size()))
+    if (!retro_unserialize(body.data(), n))
         return false;
     frame = get32(b, 16);
     spinCharge = std::min(8, (int)get32(b, 20));
-    spinFacing = (int32_t)get32(b, 24);
+    spinFacing = (int32_t)get32(b, 24) < 0 ? -1 : 1;
     lastButtons = (uint16_t)get32(b, 28);
     scu_snapshot(&snapshot);
+    native.clear();
+    if (raster) {
+        std::memcpy(&snapshot, body.data() + n, sizeof snapshot);
+        nativeW = width;
+        nativeH = height;
+        native.resize(pixels);
+        if (pixels)
+            std::memcpy(native.data(), body.data() + n + sizeof snapshot,
+                        pixels * sizeof(uint32_t));
+    }
     ++imageVersion;
     world.reset();
     clearAudio();

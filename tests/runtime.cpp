@@ -87,13 +87,19 @@ int main() {
             red |= (pixel & 0xFF0000) >= 0xB00000 && (pixel & 0xFFFF) == 0;
         require(red, "VDP backdrop did not reach host framebuffer");
         auto state = core->state();
+        const auto savedVideo = core->native;
+        const auto savedBackdrop = core->snapshot.background[0][0];
         const auto counter = core->snapshot.ram[0x1235];
         const auto savedFrame = core->frame;
         for (int n = 0; n < 15; ++n)
             core->tick();
+        core->native.assign(core->native.size(), 0);
+        core->snapshot.background[0][0] ^= 0xFFFFFF;
         require(core->restore(state), "State restore");
         require(core->frame == savedFrame && core->snapshot.ram[0x1235] == counter,
                 "State failed to restore native RAM and host time");
+        require(core->native == savedVideo && core->snapshot.background[0][0] == savedBackdrop,
+                "State failed to restore the paused presentation raster");
         auto damaged = state;
         damaged.back() ^= 1;
         require(!core->restore(damaged), "Corrupt state accepted");

@@ -29,6 +29,7 @@ class App {
     SDL_Window *window = nullptr;
     SDL_Renderer *renderer = nullptr;
     SDL_GameController *pads[2]{};
+    uint16_t pendingButtons[2]{};
     bool running = true, menu = true, focused = true, headless = false, dirty = false;
     bool screenshotRequested = false;
     int language = 0, drawableW = 1280, drawableH = 720;

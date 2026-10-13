@@ -34,6 +34,8 @@ Click **Play**, then press **Enter** or **gamepad Start** on the original title 
 
 The first two controllers drive players 1 and 2. A second keyboard player uses **I/J/K/L**, **U/O/P** and **right Shift**. The games retain their original multiplayer rules.
 
+You can also click the menu reminder at the bottom of the game. Short keyboard presses are kept until the next game tick, so a fast display refresh does not swallow a quick Start or jump.
+
 ## Pick a comfortable view
 
 - **Balanced:** a useful first choice on ordinary PCs.

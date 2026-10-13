@@ -68,7 +68,8 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(hud)
     SET(hudScale)
     SET(background)
-    SET(blur) SET(brightness) SET(parallax) SET(minimap) SET(locator) SET(spindash) SET(invincible)
+    SET(blur)
+    SET(brightness) SET(parallax) SET(minimap) SET(locator) SET(spindash) SET(invincible)
         SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top) SET(volume)
             SET(language) SET(help) SET(workers) SET(fullscreen) SET(span) SET(vsync) SET(uiScale)
                 SET(scanlines) SET(lockon) SET(fastBoot)
@@ -333,6 +334,7 @@ int main(int argc, char **argv) {
                 else {
                     if (limit && !args.count("--realtime")) {
                         a.core.tick();
+                        a.pendingButtons[0] = a.pendingButtons[1] = 0;
                         ++measureFrames;
                         ++executedFrames;
                     } else {
@@ -340,6 +342,7 @@ int main(int argc, char **argv) {
                         int ticks = 0;
                         while (accumulator >= 1 / a.core.fps && ticks++ < 4) {
                             a.core.tick();
+                            a.pendingButtons[0] = a.pendingButtons[1] = 0;
                             ++measureFrames;
                             ++executedFrames;
                             accumulator -= 1 / a.core.fps;

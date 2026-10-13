@@ -137,6 +137,7 @@ void App::refreshControllers() {
 }
 void App::toggleMenu() {
     menu = !menu;
+    pendingButtons[0] = pendingButtons[1] = 0;
     core.clearAudio();
     dirty = true;
 }
@@ -222,6 +223,7 @@ void App::event(const SDL_Event &e) {
             focused = true;
         if (e.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
             focused = false;
+            pendingButtons[0] = pendingButtons[1] = 0;
             core.clearAudio();
         }
         if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
@@ -258,6 +260,32 @@ void App::event(const SDL_Event &e) {
             return;
         }
         if (!menu && core.loaded) {
+            // Keep a short press until the next native tick, even if the display
+            // loop observes its down and up events within one refresh.
+            auto scan = e.key.keysym.scancode;
+            auto tap = [&](int player, SDL_Scancode expected, unsigned bit) {
+                if (scan == expected)
+                    pendingButtons[player] |= uint16_t(1u << bit);
+            };
+            if (!(mod & (KMOD_CTRL | KMOD_ALT))) {
+                tap(0, SDL_SCANCODE_UP, RETRO_DEVICE_ID_JOYPAD_UP);
+                tap(0, SDL_SCANCODE_DOWN, RETRO_DEVICE_ID_JOYPAD_DOWN);
+                tap(0, SDL_SCANCODE_LEFT, RETRO_DEVICE_ID_JOYPAD_LEFT);
+                tap(0, SDL_SCANCODE_RIGHT, RETRO_DEVICE_ID_JOYPAD_RIGHT);
+                tap(0, SDL_SCANCODE_Z, RETRO_DEVICE_ID_JOYPAD_Y);
+                tap(0, SDL_SCANCODE_X, RETRO_DEVICE_ID_JOYPAD_B);
+                tap(0, SDL_SCANCODE_SPACE, RETRO_DEVICE_ID_JOYPAD_B);
+                tap(0, SDL_SCANCODE_C, RETRO_DEVICE_ID_JOYPAD_A);
+                tap(0, SDL_SCANCODE_RETURN, RETRO_DEVICE_ID_JOYPAD_START);
+                tap(1, SDL_SCANCODE_I, RETRO_DEVICE_ID_JOYPAD_UP);
+                tap(1, SDL_SCANCODE_K, RETRO_DEVICE_ID_JOYPAD_DOWN);
+                tap(1, SDL_SCANCODE_J, RETRO_DEVICE_ID_JOYPAD_LEFT);
+                tap(1, SDL_SCANCODE_L, RETRO_DEVICE_ID_JOYPAD_RIGHT);
+                tap(1, SDL_SCANCODE_U, RETRO_DEVICE_ID_JOYPAD_Y);
+                tap(1, SDL_SCANCODE_O, RETRO_DEVICE_ID_JOYPAD_B);
+                tap(1, SDL_SCANCODE_P, RETRO_DEVICE_ID_JOYPAD_A);
+                tap(1, SDL_SCANCODE_RSHIFT, RETRO_DEVICE_ID_JOYPAD_START);
+            }
             if (k >= SDLK_F1 && k <= SDLK_F9) {
                 try {
                     if (mod & KMOD_SHIFT)
@@ -318,6 +346,8 @@ void App::pollInput() {
     core.buttons[0] = core.buttons[1] = 0;
     if (menu)
         return;
+    core.buttons[0] = pendingButtons[0];
+    core.buttons[1] = pendingButtons[1];
     auto set = [&](int p, bool on, int bit) {
         if (on)
             core.buttons[p] |= 1 << bit;
@@ -498,10 +528,11 @@ void App::present(bool capture) {
         ImGui::SetNextWindowBgAlpha(0.8f);
         ImGui::Begin("##hint", nullptr,
                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
-                         ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings);
+                         ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings);
         if (io.DisplaySize.x < 600)
             ImGui::SetWindowFontScale(0.78f);
-        ImGui::TextUnformatted(tr("menuhint", language));
+        if (ImGui::Button(tr("menuhint", language)))
+            toggleMenu();
         if (settings.performance)
             ImGui::Text("%.1f fps · %d × %d", measuredFps, drawableW, drawableH);
         if (!notice.empty())
@@ -881,10 +912,16 @@ void App::optionsUi(int section) {
             }
         }
         if (ImGui::Button(tr("reset", language))) {
-            if(settings.lockon!=core.locked&&core.currentId!="sonic2k"&&core.currentId!="sonic3k"&&core.currentId!="sphere") {
-                std::string id=core.currentId;bool automatic=settings.autosave;
-                settings.autosave=false;play(id);settings.autosave=automatic;menu=true;
-            }else core.reset();
+            if (settings.lockon != core.locked && core.currentId != "sonic2k" &&
+                core.currentId != "sonic3k" && core.currentId != "sphere") {
+                std::string id = core.currentId;
+                bool automatic = settings.autosave;
+                settings.autosave = false;
+                play(id);
+                settings.autosave = automatic;
+                menu = true;
+            } else
+                core.reset();
         }
         ImGui::SameLine();
         if (ImGui::Button(tr("capture", language)))

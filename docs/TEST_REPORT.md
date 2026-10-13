@@ -26,7 +26,9 @@ Physical host: Windows, AMD Ryzen 7 5800X, Nvidia GeForce RTX 5070. The three-sc
 | State files | Corrupt payload and wrong-cartridge states rejected; charged S1 spin dash survives save/load; previous files preserved as `.bak` |
 | Spin dash option | Identical Down/jump inputs: disabled Sonic stays near the start; enabled charge reaches 3, then launches forward and clears on release |
 | App-menu input | Injected SDL Select/View and Esc events toggle the menu; native frame stays unchanged while paused and resumes when closed |
+| Native Windows interface | Mouse library/options/resume/quit exercised; F10, Esc, Ctrl+4 and F1 verified through the desktop tester after adding zero-scan-code virtual-key support |
 | Rewind | Native checkpoint restoration exercised after a save/load |
+| Paused visual restore | State format includes the presentation raster; restoring guest RAM/time also restores the native image and backdrop |
 
 Headless test throughput exceeding hundreds of ticks per second is deliberately not presented as display performance. Real-time measurements above count executed native ticks during the measured loop; neutral startup fast-forward is excluded from that rate.
 
