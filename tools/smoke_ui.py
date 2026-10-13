@@ -1,8 +1,16 @@
 """ROM-free UI smoke test, suitable for every build host."""
 import argparse,json,pathlib,subprocess,os
-p=argparse.ArgumentParser();p.add_argument('--build',type=pathlib.Path,required=True);a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--build',type=pathlib.Path,required=True);p.add_argument('--package',type=pathlib.Path);a=p.parse_args()
 build=a.build.resolve();exe=build/('Release/SonicCompilationUltra.exe' if os.name=='nt' else 'SonicCompilationUltra')
-out=build/'ui-smoke';out.mkdir(exist_ok=True)
+if a.package:
+    package=a.package.resolve()
+    app=package/'Sonic Compilation Ultra.app/Contents'
+    if app.exists():
+        exe=app/'MacOS/SonicCompilationUltra';font=app/'Resources/assets/SCUInterface.ttf'
+    else:
+        exe=package/('SonicCompilationUltra.exe' if os.name=='nt' else 'SonicCompilationUltra.sh');font=package/'assets/SCUInterface.ttf'
+    if not font.exists():raise RuntimeError('Interface font missing from portable package')
+out=build/('package-smoke' if a.package else 'ui-smoke');out.mkdir(exist_ok=True)
 rows=[]
 for language in ['en','fr','es','ja']:
     for size in ['640x360','320x240','1280x720']:

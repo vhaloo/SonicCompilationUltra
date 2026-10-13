@@ -126,6 +126,7 @@ std::vector<RomData> readRoms(const fs::path &path) {
     size_t p = le32(file, end + 16);
     if (count > 256)
         throw std::runtime_error("Too many archive members");
+    size_t expandedTotal = 0;
     for (unsigned e = 0; e < count; e++) {
         if (le32(file, p) != 0x02014B50)
             throw std::runtime_error("Invalid ZIP directory");
@@ -140,6 +141,9 @@ std::vector<RomData> readRoms(const fs::path &path) {
         p = next;
         if (size < 256 * 1024 || size > 10 * 1024 * 1024 || (!name.empty() && name.back() == '/'))
             continue;
+        expandedTotal += size;
+        if (expandedTotal > 32 * 1024 * 1024)
+            throw std::runtime_error("Archive expands beyond the cartridge import limit");
         if (flags & 1)
             throw std::runtime_error("Encrypted ZIP unsupported");
         if (le32(file, local) != 0x04034B50)

@@ -58,6 +58,11 @@ jobs:
         run: python tools/smoke_ui.py --build build
       - name: Package software and corresponding source
         run: python tools/package.py --build build --platform ${{ matrix.platform }} --arch ${{ matrix.arch }} --out dist --source
+      - name: Validate the portable package
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: python tools/smoke_ui.py --build build --package dist/SonicCompilationUltra-0.1.0-${{ matrix.platform }}-${{ matrix.arch }}
       - name: Upload packages and validation
         uses: actions/upload-artifact@v4
         with:
@@ -67,4 +72,5 @@ jobs:
             dist/*.tar.gz
             dist/SHA256SUMS.txt
             build/ui-smoke/report.json
+            build/package-smoke/report.json
           if-no-files-found: error
