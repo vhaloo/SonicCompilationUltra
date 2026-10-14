@@ -2,6 +2,14 @@
 
 This report separates successful checks from coverage that has not been measured. A boot test or source build is not a full-game completion certificate.
 
+## 0.2.2 rewind additions
+
+- Authored 68000/PSG fixtures verify one-frame native restoration, backwards PCM with stereo channels preserved, queue flushing on direction changes, mute/zero volume/silent rewind, exhaustion, branching, load/reset invalidation, option persistence and bounded allocation. Variable-sized compressed delta states round-trip after history eviction. PAL picture/audio timing is also exercised.
+- A real SDL virtual gamepad verifies L2/LT hold/release, analogue hysteresis, alternative LB/RT bindings, safe menu return and separation from trigger scrolling. The same game loop restores the expected number of frames over one second at simulated display rates of 30, 60 and 144 Hz.
+- Eleven locally supplied cartridge entries each restore 360 consecutive frames: **3,960 exact complete snapshots and native rasters**. Concatenated reversed stereo PCM matches the forward audio in reverse frame order, sample for sample. Source save files remain unchanged. These are sampled sessions, not full playthroughs.
+- On this Windows machine, short real-time forward/rewind/resume samples with active expanded rendering reach approximately 59.2 ticks/s at 7680×1440 Balanced, 59.1 at full-resolution Ultra, and 59.5 at 640×360 software/Lightweight. These measurements include rewind recording and restoration; they do not certify every GPU or audio device.
+- The disk save container remains SCU2, with SCU1 loading retained. Rewind differences and audio stay in memory and are excluded from releases. Four-language page captures and portable package validation remain part of CI.
+
 ## 0.2.1 boss/script additions
 
 - Synthetic fixtures cover event bosses, parent-relative and variable scripts, all ten supported Sonic 3-era child-factory formats, boss art before VRAM loading, Nemesis dictionary/inline/XOR decoding, Kosinski short/extended copies and descriptor-boundary prefetch. Truncated art fails closed.
@@ -61,6 +69,8 @@ The screenshots are real renderer output from a locally supplied cartridge, not 
 The repository workflow builds Windows x64, Linux x64, macOS Intel and macOS Apple Silicon, runs synthetic addressing, native-runtime and virtual-controller UI tests, validates the four-language UI without commercial ROM data, and prepares corresponding-source packages. It repeats all 108 page captures against the portable launcher or app bundle itself. The workflow result is the authority for each submitted revision; inspect the [current Actions run](https://github.com/vhaloo/SonicCompilationUltra/actions).
 
 Successful CI means compiler, linkage and the tested software-rendering UI paths passed. It does **not** prove physical Mac/Linux controllers, audio devices, Retina rendering or full gameplay on those hosts. Physical integrated-GPU gameplay is also not certified by a software-renderer test on this Windows CPU.
+
+**Both macOS downloads are experimental.** No physical Mac validation has been performed. Windows, Linux and Mac build results are listed separately in Actions; Mac CI success does not change that experimental status.
 
 ## Limits of the game tests
 

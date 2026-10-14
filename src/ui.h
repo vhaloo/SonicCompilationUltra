@@ -18,6 +18,8 @@ class App {
     bool pathEditor = false, focusMenu = true, focusPage = false, focusBrowser = false;
     bool backRequested = false, selectRequested = false;
     bool padUsed = false, previousFullscreen = false, releaseInput = false;
+    bool rewindTrigger = false;
+    double gameAccumulator = 0;
     bool releaseNavigation = true;
     int actionPopup = 0, actionSlot = 1, activePad = 0;
     std::string actionGame;
@@ -59,6 +61,7 @@ class App {
     uint16_t pendingButtons[2]{};
     bool running = true, menu = true, focused = true, headless = false, dirty = false;
     bool screenshotRequested = false;
+    bool rewindHeld = false;
     int language = 0, drawableW = 1280, drawableH = 720;
     double measuredFps = 0;
     std::string notice, capturePath;
@@ -74,6 +77,7 @@ class App {
     bool play(const std::string &id);
     void event(const SDL_Event &e);
     void pollInput();
+    unsigned advanceGame(double elapsed, bool unpaced = false);
     void pan();
     void present(bool capture = false);
     void screenshot(const fs::path &path);

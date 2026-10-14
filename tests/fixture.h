@@ -4,7 +4,7 @@
 #include <cstring>
 // An original 68000 test program: writes a RAM marker, sets a red VDP backdrop,
 // then increments a counter. No commercial cartridge bytes or artwork are used.
-static std::vector<uint8_t> testProgram() {
+static std::vector<uint8_t> testProgram(bool sound = false) {
     std::vector<uint8_t> rom(256 * 1024);
     auto longword = [&](size_t offset, uint32_t n) {
         for (int i = 0; i < 4; ++i)
@@ -44,6 +44,14 @@ static std::vector<uint8_t> testProgram() {
     address(0xC00A0000);
     address(0xC00004);
     moveWord(0x000E, 0xC00000);
+    if (sound) {
+        // An authored PSG tone for sound-history tests, without game audio.
+        for (auto value : {0x84, 0x08, 0x9B}) {
+            word(0x13FC);
+            word(uint16_t(value));
+            address(0xC00011);
+        }
+    }
     word(0x5239);
     address(0xFF1235); // addq.b #1, absolute-long RAM counter
     word(0x60F8);      // branch back to the counter

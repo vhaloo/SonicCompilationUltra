@@ -1,9 +1,9 @@
 #pragma once
 #include "world.h"
+#include "rewind.h"
 #include <SDL.h>
 #include <libretro.h>
 #include <map>
-#include <deque>
 namespace scu {
 class Core {
     static Core *active;
@@ -17,8 +17,12 @@ class Core {
     std::string systemDir, saveDir, romDir, contentPath, contentName;
     retro_game_info_ext infoExt{};
     std::vector<uint8_t> romBytes;
-    std::deque<std::vector<uint8_t>> history;
-    size_t historySize = 0;
+    RewindHistory history;
+    std::vector<int16_t> frameAudio;
+    bool captureAudio = false, rewinding = false;
+    void queueAudio(const int16_t *data, size_t frames);
+    bool restoreState(const std::vector<uint8_t> &data, bool rewindFrame);
+    size_t rewindLimit() const;
     void saveSram();
     void loadSram();
     void gameplayMods(uint16_t pressed);
@@ -54,6 +58,19 @@ class Core {
     void save(int slot);
     void loadState(int slot);
     bool rewind();
+    void setRewinding(bool on);
+    bool isRewinding() const {
+        return rewinding;
+    }
+    double rewindSeconds() const {
+        return history.size() / fps;
+    }
+    size_t rewindBytes() const {
+        return history.bytes();
+    }
+    const std::vector<int16_t> &audioSamples() const {
+        return frameAudio;
+    }
     void clearAudio();
 };
 } // namespace scu

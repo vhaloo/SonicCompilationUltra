@@ -5,11 +5,13 @@ Download the package for your computer from [Releases](https://github.com/vhaloo
 | Download | Designed for |
 |---|---|
 | Windows x64 | Windows 10/11 on a 64-bit Intel or AMD PC |
-| macOS x64 | Intel Macs; deployment target 10.15 |
-| macOS arm64 | Apple Silicon Macs; deployment target 11.0 |
+| macOS x64 — **experimental** | Intel Macs; deployment target 10.15; no physical Mac testing |
+| macOS arm64 — **experimental** | Apple Silicon Macs; deployment target 11.0; no physical Mac testing |
 | Linux x64 | Ubuntu 22.04 or a compatible newer 64-bit desktop; run `SonicCompilationUltra.sh` |
 
 The macOS app has an ad-hoc signature, not Apple notarization. If Gatekeeper asks, follow Apple's [instructions for opening an app from an identified download](https://support.apple.com/en-us/102445) after checking you downloaded the package from this repository. The Windows app is unsigned; its publisher cannot be verified by a commercial signing certificate. These packages do not change your computer's security settings.
+
+**macOS is experimental.** The two Mac packages receive automated compilation, synthetic runtime/controller tests and portable UI checks. Physical Mac display, audio, Retina and controller behaviour remain untested. Linux packages are validated on Ubuntu 22.04, including execution through their bundled launcher; physical Linux display/audio hardware is a separate check.
 
 The app starts in fullscreen. Choose **Choose ROM…** with a mouse or the bottom gamepad face button. Navigate to your own cartridge dump and select it. ZIP files can stay zipped. **Import folder…** adds recognised collection editions from a folder; other Mega Drive revisions can be chosen individually and played with original framing.
 
@@ -32,7 +34,7 @@ Click **Play**, then press **Enter** or **gamepad Start** on the original title 
 | Zoom | + / − or Ctrl + wheel | Hold RB + Up/Down |
 | Free camera | WASD; Shift moves faster | Right stick |
 | Save / load | Shift + F1…F9 / F1…F9 | Choose in Saves |
-| Rewind, when enabled | Hold Backspace | Hold left shoulder |
+| Rewind at normal speed with reversed sound | Hold Backspace | Hold L2 / Xbox LT (default) |
 | Screenshot | F12 | Hold RB + Start |
 | Fullscreen | Alt + Enter | Choose in Screen |
 
@@ -58,6 +60,10 @@ On separate monitors, turn on **Fullscreen** and **Span all displays**. A unifie
 Save slots belong to a particular cartridge checksum. A damaged state or a different ROM is rejected. Previous files are preserved as `.bak`. Normal cartridge saves and app states are separate. Auto-resume keeps a local checkpoint when you close or switch games.
 
 The Saves page shows all nine slots and their dates. Loads, overwrites, resets, switching games and restoring defaults have gamepad-friendly confirmations; Cancel receives focus first. You can turn these off under Gameplay.
+
+**Rewind** is enabled on new installs. Hold **L2 / LT** or **Backspace** to go backwards at the cartridge’s normal speed, including music and effects; release to continue from that moment. The on-screen reminder shows the available seconds. At the oldest retained moment, holding rewind keeps the game still. **Gameplay** lets you disable rewind or its reverse sound, and choose a 24 / 96 / 192 MB history budget. Lightweight limits history to 24 MB. **Controls** lets you choose LT, LB or RT. Existing preferences are retained, so enable Rewind under Gameplay if you previously disabled it.
+
+History builds as you play, stays in memory, and clears when loading a save, restarting, switching games or closing. Its duration depends on the game and selected memory budget. Releasing rewind discards the undone future; saving then keeps the new point in time. Volume and mute apply to reverse sound too. In options, triggers continue to scroll and never rewind gameplay.
 
 Settings and saves live in your user profile, not inside the downloaded package:
 

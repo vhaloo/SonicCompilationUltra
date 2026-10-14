@@ -169,17 +169,20 @@ static const Text texts[] = {
     T("quickhelp",
       "During gameplay, hold the right shoulder: Up/Down = zoom; top face button = overview; left "
       "face button = freeze/follow; right face button = focus player; Start = screenshot. Release "
-      "the shoulder to play. Select/View always opens options. LB rewinds when enabled.",
+      "the shoulder to play. Select/View always opens options. Hold L2/LT or Backspace to rewind "
+      "at 1x speed with reversed sound (default binding).",
       "En jeu, maintiens le bouton d’épaule droit : haut/bas = zoom; bouton du haut = niveau "
       "entier; bouton gauche = figer/suivre; bouton droit = centrer; Start = capture. Relâche "
-      "l’épaule pour jouer. Select/View ouvre les options. LB rembobine si activé.",
+      "l’épaule pour jouer. Select/View ouvre les options. Maintiens L2/LT ou Backspace pour "
+      "rembobiner à vitesse normale avec le son inversé (bouton par défaut).",
       "En juego, mantén el hombro derecho: arriba/abajo = zoom; botón superior = nivel entero; "
       "izquierdo = fijar/seguir; derecho = centrar; Start = captura. Suelta el hombro para jugar. "
-      "Select/View abre opciones. LB rebobina si está activado.",
+      "Select/View abre opciones. Mantén L2/LT o Backspace para rebobinar a velocidad normal "
+      "con sonido invertido (botón predeterminado).",
       "ゲーム中は右ショルダーを押しながら操作: "
       "上下でズーム、上ボタンで全体表示、左ボタンで固定・追従、右ボタンでプレイヤーへ、Start "
-      "で撮影。ショルダーを離すと通常操作。Select/View で設定。巻き戻しを有効にすると LB "
-      "で戻せます。"),
+      "で撮影。ショルダーを離すと通常操作。Select/View で設定。既定では L2/LT または Backspace "
+      "を押し続けると通常速度で映像と音声を巻き戻します。"),
     T("nopad",
       "No controller connected. Connect one at any time; keyboard controls remain available.",
       "Aucune manette connectée. Branche-la à tout moment; le clavier reste disponible.",
@@ -411,22 +414,22 @@ static const Text texts[] = {
       "Move: arrows · Jump / action: Z, X, C · Start: Enter\nGamepad: D-pad / left stick · A, X, B "
       "· Start\nMenu: Select / View or Esc / F10 · Confirm: A / Enter · Back: B / Esc\nZoom: + / − "
       "or Ctrl + wheel · Freeze: F · Follow: R\nSave: Shift + F1…F9 · Load: F1…F9 · Fullscreen: "
-      "Alt + Enter\nFree camera: WASD / right stick · Rewind: hold Backspace (enable first)",
+      "Alt + Enter\nFree camera: WASD / right stick · Rewind 1x: hold L2/LT or Backspace",
       "Bouger : flèches · Saut / action : Z, X, C · Start : Entrée\nManette : croix / stick gauche "
       "· A, X, B · Start\nMenu : Select / View ou Échap / F10 · Valider : A / Entrée · Retour : B "
       "/ Échap\nZoom : + / − ou Ctrl + molette · Figer : F · Suivre : R\nSauver : Maj + F1…F9 · "
       "Charger : F1…F9 · Plein écran : Alt + Entrée\nCaméra libre : WASD / stick droit · Retour "
-      "arrière : maintenir Retour arrière (à activer)",
+      "arrière 1x : maintenir L2/LT ou Backspace",
       "Mover: flechas · Salto / acción: Z, X, C · Start: Intro\nMando: cruceta / stick izquierdo · "
       "A, X, B · Start\nMenú: Select / View o Esc / F10 · Confirmar: A / Intro · Volver: B / "
       "Esc\nZoom: + / − o Ctrl + rueda · Fijar: F · Seguir: R\nGuardar: Mayús + F1…F9 · Cargar: "
       "F1…F9 · Pantalla completa: Alt + Intro\nCámara libre: WASD / stick derecho · Rebobinar: "
-      "Retroceso (activar antes)",
+      "mantener L2/LT o Retroceso (1x)",
       "移動: 矢印キー ・ ジャンプ / アクション: Z, X, C ・ Start: Enter\nゲームパッド: 十字キー / "
       "左スティック ・ A, X, B ・ Start\nメニュー: Select / View または Esc / F10 ・ 決定: A / "
       "Enter ・ 戻る: B / Esc\nズーム: + / − または Ctrl + ホイール ・ 固定: F ・ 追従: R\n保存: "
       "Shift + F1…F9 ・ 読込: F1…F9 ・ 全画面: Alt + Enter\n自由カメラ: WASD / 右スティック ・ "
-      "巻き戻し: Backspace を押し続ける (要設定)"),
+      "巻き戻し 1x: L2/LT または Backspace を押し続ける"),
     T("deadzone", "Stick dead zone", "Zone morte des sticks", "Zona muerta del stick",
       "スティックのデッドゾーン"),
     T("controllers", "Connected controllers", "Manettes connectées", "Mandos conectados",
@@ -472,6 +475,34 @@ static const Text texts[] = {
       "を読み込んでください。元のゲームとは別にセーブします。"),
     T("rewind", "Enable rewind (uses memory)", "Activer le retour arrière (mémoire)",
       "Activar rebobinado (usa memoria)", "巻き戻しを有効化 (メモリを使用)"),
+    T("rewindbutton", "Rewind gamepad button", "Bouton de rewind", "Botón para rebobinar",
+      "巻き戻しボタン"),
+    T("rewindaudio", "Reverse sound during rewind", "Son inversé pendant le rewind",
+      "Invertir el sonido al rebobinar", "巻き戻し中の音声を逆再生"),
+    T("rewindmemory", "Rewind memory budget", "Mémoire du rewind", "Memoria del rebobinado",
+      "巻き戻しのメモリ上限"),
+    T("rewindhint", "Rewind: %s / Backspace · %.1f s", "Rewind : %s / Backspace · %.1f s",
+      "Rebobinar: %s / Backspace · %.1f s", "巻き戻し: %s / Backspace · %.1f 秒"),
+    T("rewinding", "Rewind 1x · %s · %.1f s", "Rewind 1x · %s · %.1f s",
+      "Rebobinado 1x · %s · %.1f s", "巻き戻し 1x · %s · %.1f 秒"),
+    T("rewindhelp",
+      "Hold L2/LT (default) or Backspace: picture and stereo sound run backwards at normal "
+      "speed. Release to continue from there. History starts when you play and is cleared by "
+      "loading, restarting or switching games. Duration depends on the game and memory budget; "
+      "Lightweight caps it at 24 MB. Nothing is recorded to disk.",
+      "Maintiens L2/LT (par défaut) ou Backspace : l’image et le son stéréo reculent à vitesse "
+      "normale. Relâche pour repartir de là. L’historique se crée en jouant et s’efface au "
+      "chargement, au redémarrage ou au changement de jeu. Sa durée dépend du jeu et de la "
+      "mémoire ; le mode léger limite à 24 Mo. Rien n’est enregistré sur disque.",
+      "Mantén L2/LT (predeterminado) o Backspace: imagen y sonido estéreo retroceden a velocidad "
+      "normal. Suelta para continuar desde ahí. El historial se crea al jugar y se borra al "
+      "cargar, reiniciar o cambiar de juego. La duración depende del juego y de la memoria; "
+      "Ligero limita a 24 MB. No se graba nada en el disco.",
+      "L2/LT (既定) または Backspace を押し続けると映像とステレオ音声を通常速度で逆再生します。"
+      "離すとその時点から再開します。履歴はプレイ中に作成され、ロード、再起動、ゲームの変更で消えま"
+      "す。"
+      "保持時間はゲームとメモリ上限によって変わります。軽量モードは 24 MB までです。"
+      "ディスクには記録しません。"),
     T("assist", "Sonic 1 damage protection", "Protection contre les dégâts dans Sonic 1",
       "Protección de daño en Sonic 1", "Sonic 1 のダメージ保護"),
     T("air", "Sonic 1 unlimited air", "Air illimité dans Sonic 1", "Aire ilimitado en Sonic 1",

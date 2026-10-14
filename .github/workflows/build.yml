@@ -62,7 +62,7 @@ jobs:
         env:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
-        run: python tools/smoke_ui.py --build build --package dist/SonicCompilationUltra-0.2.1-${{ matrix.platform }}-${{ matrix.arch }}
+        run: python tools/smoke_ui.py --build build --package dist/SonicCompilationUltra-0.2.2-${{ matrix.platform }}-${{ matrix.arch }}
       - name: Upload packages and validation
         uses: actions/upload-artifact@v4
         with:

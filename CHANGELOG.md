@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.2 — L2 / LT rewind with reverse sound
+
+- Hold L2 / Xbox LT or Backspace for frame-by-frame rewind at normal cartridge speed; music and effects play backwards with stereo channels preserved. Release resumes from the restored moment.
+- Forward and reverse simulation share the same fixed cadence, independent of display refresh. Direction changes flush stale sound once; exhausted history holds still.
+- Compressed in-memory history with 24 / 96 / 192 MB budgets; Lightweight caps history at 24 MB. Rewind and reverse sound are enabled on new installs; existing settings are retained.
+- Controller-friendly button choice and reverse-sound toggle, four-language help, and an on-screen hint showing remaining history. Trigger scrolling remains available in options.
+- Tests cover exact frame restoration, reverse PCM order, sound queuing/mute, branching after rewind, bounded memory, SDL trigger input and display-rate-independent pacing. Disk save format is unchanged.
+- Intel and Apple Silicon Mac downloads are explicitly marked experimental; physical Mac testing remains outstanding. Linux keeps its runtime and portable-launcher checks.
+
 ## 0.2.1 — Bosses and scripted spawn previews
 
 - Boss placements and supported event spawns are visible before native activation, with larger red markers and optional labels.

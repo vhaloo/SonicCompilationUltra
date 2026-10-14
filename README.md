@@ -9,7 +9,9 @@
 
 **Play your own Mega Drive / Genesis Sonic cartridges with an adaptable PC interface, huge views and backgrounds that look good at any aspect ratio.** No ROMs are included.
 
-Windows, macOS and Linux · English, French, Spanish and Japanese · Keyboard and gamepads
+Windows and Linux · **macOS: experimental** · English, French, Spanish and Japanese · Keyboard and gamepads
+
+**Mac builds are experimental:** Intel and Apple Silicon packages pass automated build/runtime checks, but have not been tried on a physical Mac. Display, audio and real-controller compatibility still need Mac testing. Linux packages are checked on Ubuntu 22.04 in CI, including the portable launcher.
 
 ## Start playing
 
@@ -62,6 +64,8 @@ Six backgrounds include a softly blurred landscape stretched from the game’s o
 **See enemies and bosses before they pop in.** Expanded platform stages preview placed enemies, bosses and supported scripted spawns. Amber marks enemies, red marks bosses and purple marks scripted objects and projectiles. Variable attacks show their **origin**; fixed positions can show transparent cartridge sprites. Adjust the independent toggles, opacity, labels, tint and overview framing under **Camera & HUD**, entirely with a gamepad. [How previews work and their limits](docs/ENEMY_PREVIEWS.md).
 
 **Hold the right shoulder** for quick zoom, overview, freeze/follow, player focus or screenshots. **+ / −** changes zoom, **F** freezes the camera, **R** restores following, **Shift + F1…F9** saves and **F1…F9** loads. The menu’s **Controls** page has the complete guide.
+
+**Hold L2 / Xbox LT, or Backspace, to rewind at normal speed with the sound playing backwards.** Release to continue from that moment. Rewind is enabled on new installs; existing preferences are kept. Gameplay offers reversed sound and 24 / 96 / 192 MB history budgets, while Controls lets you change the gamepad button. History stays in memory and starts building as you play.
 
 ## Before you download
 

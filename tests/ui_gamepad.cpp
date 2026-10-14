@@ -242,9 +242,17 @@ int main() {
             h.tab(5);
             h.choose("padlabels");
             h.choose("jumpbuttons");
+            h.choose("rewindbutton");
+            require(a.settings.rewindButton == 1, "rewind binding choice via gamepad");
+            a.settings.rewindButton = 0;
             h.tab(6);
             h.activate("spindash");
             require(a.settings.spindash, "gameplay toggle");
+            h.activate("rewindaudio");
+            require(!a.settings.rewindAudio, "reverse sound toggle via gamepad");
+            h.activate("rewindaudio");
+            h.choose("rewindmemory");
+            require(a.settings.rewindMemory == 2, "rewind memory choice via gamepad");
             h.tab(7);
             h.activate("slot2");
             require(a.settings.slot == 2, "select save slot");
@@ -280,6 +288,62 @@ int main() {
                     "overview chord must not inject gameplay buttons");
             SDL_JoystickSetVirtualButton(h.joystick, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, 0);
             h.frame();
+            a.settings.rewind = true;
+            a.settings.rewindButton = 0;
+            for (int displayRate : {30, 60, 144}) {
+                for (int n = 0; n < 90; ++n)
+                    a.advanceGame(0, true);
+                const auto before = a.core.frame;
+                SDL_JoystickSetVirtualAxis(h.joystick, SDL_CONTROLLER_AXIS_TRIGGERLEFT, 32767);
+                h.frame();
+                require(a.rewindHeld, "L2/LT did not activate rewind");
+                unsigned ticks = 0;
+                for (int n = 0; n < displayRate; ++n)
+                    ticks += a.advanceGame(1.0 / displayRate);
+                require(ticks == unsigned(a.core.fps) && a.core.frame == before - ticks,
+                        "Rewind speed depends on the display refresh rate");
+                SDL_JoystickSetVirtualAxis(h.joystick, SDL_CONTROLLER_AXIS_TRIGGERLEFT, -32768);
+                h.frame();
+                require(!a.rewindHeld, "L2/LT release did not stop rewind");
+                a.advanceGame(1 / a.core.fps);
+                require(a.core.frame == before - ticks + 1 && !a.core.isRewinding(),
+                        "Trigger release did not resume the restored timeline");
+            }
+            // Hysteresis prevents a lightly jittering analogue trigger from
+            // rapidly switching sound direction. Raw joystick axes map to 0..32767.
+            SDL_JoystickSetVirtualAxis(h.joystick, SDL_CONTROLLER_AXIS_TRIGGERLEFT, -22768);
+            h.frame();
+            require(!a.rewindHeld, "Trigger resting below activation threshold rewound");
+            SDL_JoystickSetVirtualAxis(h.joystick, SDL_CONTROLLER_AXIS_TRIGGERLEFT, -12768);
+            h.frame();
+            require(a.rewindHeld, "Partially squeezed trigger did not activate");
+            SDL_JoystickSetVirtualAxis(h.joystick, SDL_CONTROLLER_AXIS_TRIGGERLEFT, -22768);
+            h.frame();
+            require(a.rewindHeld, "Trigger hysteresis did not retain the hold");
+            h.press(SDL_CONTROLLER_BUTTON_BACK);
+            const auto pausedFrame = a.core.frame;
+            require(a.menu && !a.rewindHeld && a.advanceGame(0.1) == 0 &&
+                        a.core.frame == pausedFrame,
+                    "Menu trigger scrolling rewound gameplay");
+            h.press(SDL_CONTROLLER_BUTTON_START);
+            require(!a.menu && !a.rewindHeld, "Held menu trigger leaked into resumed gameplay");
+            SDL_JoystickSetVirtualAxis(h.joystick, SDL_CONTROLLER_AXIS_TRIGGERLEFT, -32768);
+            h.frame();
+            h.press(SDL_CONTROLLER_BUTTON_LEFTSHOULDER);
+            require(!a.rewindHeld, "LB is still the default rewind binding");
+            a.settings.rewindButton = 1;
+            SDL_JoystickSetVirtualButton(h.joystick, SDL_CONTROLLER_BUTTON_LEFTSHOULDER, 1);
+            h.frame();
+            require(a.rewindHeld, "Optional LB binding did not activate");
+            SDL_JoystickSetVirtualButton(h.joystick, SDL_CONTROLLER_BUTTON_LEFTSHOULDER, 0);
+            a.settings.rewindButton = 2;
+            SDL_JoystickSetVirtualAxis(h.joystick, SDL_CONTROLLER_AXIS_TRIGGERRIGHT, 32767);
+            h.frame();
+            require(a.rewindHeld, "Optional RT binding did not activate");
+            SDL_JoystickSetVirtualAxis(h.joystick, SDL_CONTROLLER_AXIS_TRIGGERRIGHT, -32768);
+            a.settings.rewindButton = 0;
+            h.frame();
+            std::cerr << "L2/LT rewind, 30/60/144 Hz pacing, bindings and menu isolation passed\n";
             h.press(SDL_CONTROLLER_BUTTON_BACK);
             h.tab(1);
             // Visit every enabled option on every page, using directional input.
@@ -294,9 +358,9 @@ int main() {
                  "hudsize",       "locator",     "minimap",      "ghost",        "help"},
                 {"backgroundstyle", "blur", "brightness", "parallax", "motion"},
                 {"volume", "mute", "pausefocus"},
-                {"padlabels", "jumpbuttons", "quickcontrols", "deadzone"},
-                {"lockon", "spindash", "fastboot", "spritelimit", "rewind", "assist", "air",
-                 "region", "confirmactions", "confirmquit"},
+                {"padlabels", "jumpbuttons", "rewindbutton", "quickcontrols", "deadzone"},
+                {"lockon", "spindash", "fastboot", "spritelimit", "rewind", "rewindaudio",
+                 "rewindmemory", "assist", "air", "region", "confirmactions", "confirmquit"},
                 {"autosave", "slot1", "slot2", "slot3", "slot4", "slot5", "slot6", "slot7", "slot8",
                  "slot9", "save", "load", "reset", "capture"},
                 {"sourcehelp"}};

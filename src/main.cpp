@@ -74,18 +74,20 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(minimap)
     SET(locator)
     SET(spindash)
-    SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top)
-        SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen) SET(span) SET(vsync)
-            SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot) SET(menuLayout) SET(display)
-                SET(padLabels) SET(jumpLayout) SET(quickControls) SET(confirmActions)
-                    SET(confirmQuit) SET(highContrast) SET(readyOnly) SET(playerInset) SET(quality)
-                        SET(overviewStyle) SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle)
-                            SET(bossPreview) SET(scriptPreview) SET(spawnTint) SET(spawnLabels)
-                                SET(fitSpawns)
+    SET(invincible)
+    SET(infiniteAir)
+    SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top) SET(volume) SET(language) SET(help)
+        SET(workers) SET(fullscreen) SET(span) SET(vsync) SET(uiScale) SET(scanlines) SET(lockon)
+            SET(fastBoot) SET(menuLayout) SET(display) SET(padLabels) SET(jumpLayout)
+                SET(quickControls) SET(confirmActions) SET(confirmQuit) SET(highContrast)
+                    SET(readyOnly) SET(playerInset) SET(quality) SET(overviewStyle)
+                        SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle) SET(bossPreview)
+                            SET(scriptPreview) SET(spawnTint) SET(spawnLabels) SET(fitSpawns)
+                                SET(rewindAudio) SET(rewindButton) SET(rewindMemory)
 #undef SET
                                     throw std::runtime_error("Unknown option: " + key);
 }
-static void execute(App &a, const Action &cmd, uint16_t &mask) {
+static void execute(App &a, const Action &cmd, uint16_t &mask, bool &rewindMask) {
     std::istringstream in(cmd.args);
     if (cmd.verb == "hold")
         mask = buttonMask(cmd.args);
@@ -106,6 +108,8 @@ static void execute(App &a, const Action &cmd, uint16_t &mask) {
         a.core.save(std::stoi(cmd.args));
     else if (cmd.verb == "load")
         a.core.loadState(std::stoi(cmd.args));
+    else if (cmd.verb == "rewindhold")
+        rewindMask = cmd.args == "on";
     else if (cmd.verb == "rewind") {
         if (!a.core.rewind())
             throw std::runtime_error("No rewind checkpoint available");
@@ -353,9 +357,10 @@ int main(int argc, char **argv) {
                  step = 0;
         size_t next = 0;
         uint16_t mask = 0;
+        bool rewindMask = false;
         bool scripted = args.count("--script");
         double freq = (double)SDL_GetPerformanceFrequency(),
-               previous = SDL_GetPerformanceCounter() / freq, start = previous, accumulator = 0,
+               previous = SDL_GetPerformanceCounter() / freq, start = previous,
                measureStart = previous;
         uint64_t measureFrames = 0, executedFrames = 0;
         while (a.running) {
@@ -366,44 +371,17 @@ int main(int argc, char **argv) {
                    elapsed = std::min(0.25, now - previous);
             previous = now;
             while (next < actions.size() && actions[next].step == step) {
-                execute(a, actions[next], mask);
+                execute(a, actions[next], mask, rewindMask);
                 ++next;
             }
             a.pollInput();
-            if (scripted)
+            if (scripted) {
                 a.core.buttons[0] = mask;
-            bool paused = a.menu || (!a.focused && a.settings.pauseUnfocused && !a.headless);
-            if (!paused && a.core.loaded) {
-                if (a.settings.rewind &&
-                    (SDL_GetKeyboardState(nullptr)[SDL_SCANCODE_BACKSPACE] ||
-                     (a.pads[0] &&
-                      SDL_GameControllerGetButton(a.pads[0], SDL_CONTROLLER_BUTTON_LEFTSHOULDER))))
-                    a.core.rewind();
-                else {
-                    if (limit && !args.count("--realtime")) {
-                        a.core.tick();
-                        a.pendingButtons[0] = a.pendingButtons[1] = 0;
-                        ++measureFrames;
-                        ++executedFrames;
-                    } else {
-                        accumulator += elapsed;
-                        int ticks = 0;
-                        while (accumulator >= 1 / a.core.fps && ticks++ < 4) {
-                            a.core.tick();
-                            a.pendingButtons[0] = a.pendingButtons[1] = 0;
-                            ++measureFrames;
-                            ++executedFrames;
-                            accumulator -= 1 / a.core.fps;
-                        }
-                        if (ticks >= 4)
-                            accumulator = 0;
-                    }
-                    a.pan();
-                }
-            } else {
-                accumulator = 0;
-                a.core.clearAudio();
+                a.rewindHeld = rewindMask;
             }
+            const unsigned ticks = a.advanceGame(elapsed, limit && !args.count("--realtime"));
+            measureFrames += ticks;
+            executedFrames += ticks;
             if (now - measureStart >= 1) {
                 a.measuredFps = measureFrames / (now - measureStart);
                 measureFrames = 0;
@@ -465,7 +443,12 @@ int main(int argc, char **argv) {
                 << ",\n  \"native_vram_crc32\":"
                 << checksum(std::vector<uint8_t>(
                        a.core.snapshot.vram, a.core.snapshot.vram + sizeof a.core.snapshot.vram))
-                << ",\n  \"spindash_charge\":" << a.core.spinCharge << "\n}\n";
+                << ",\n  \"spindash_charge\":" << a.core.spinCharge
+                << ",\n  \"rewind_enabled\":" << (a.settings.rewind ? "true" : "false")
+                << ",\n  \"rewind_audio\":" << (a.settings.rewindAudio ? "true" : "false")
+                << ",\n  \"rewind_button\":" << a.settings.rewindButton
+                << ",\n  \"rewind_history_seconds\":" << a.core.rewindSeconds()
+                << ",\n  \"rewind_history_bytes\":" << a.core.rewindBytes() << "\n}\n";
         }
         a.dirty = true;
         a.flushSettings();

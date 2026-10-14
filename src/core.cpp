@@ -4,6 +4,7 @@
 #include <cstring>
 #include <algorithm>
 #include <stdexcept>
+#include <zlib.h>
 namespace scu {
 Core *Core::active = nullptr;
 void Core::log(enum retro_log_level, const char *fmt, ...) {
@@ -128,15 +129,20 @@ void Core::video(const void *data, unsigned w, unsigned h, size_t pitch) {
 }
 size_t Core::audio(const int16_t *data, size_t frames) {
     auto &c = *active;
-    if (!c.audioDevice || c.headless || c.settings.mute || !c.settings.volume)
-        return frames;
-    if (SDL_GetQueuedAudioSize(c.audioDevice) > c.sampleRate * 4 / 5)
-        return frames;
+    if (c.captureAudio && data)
+        c.frameAudio.insert(c.frameAudio.end(), data, data + frames * 2);
+    c.queueAudio(data, frames);
+    return frames;
+}
+void Core::queueAudio(const int16_t *data, size_t frames) {
+    if (!data || !frames || !audioDevice || headless || settings.mute || !settings.volume)
+        return;
+    if (SDL_GetQueuedAudioSize(audioDevice) > sampleRate * 4 / 5)
+        return;
     std::vector<int16_t> samples(frames * 2);
     for (size_t i = 0; i < samples.size(); i++)
-        samples[i] = (int16_t)(data[i] * c.settings.volume / 100);
-    SDL_QueueAudio(c.audioDevice, samples.data(), (Uint32)(samples.size() * 2));
-    return frames;
+        samples[i] = (int16_t)(data[i] * settings.volume / 100);
+    SDL_QueueAudio(audioDevice, samples.data(), (Uint32)(samples.size() * sizeof(int16_t)));
 }
 int16_t Core::input(unsigned port, unsigned device, unsigned, unsigned id) {
     auto &c = *active;
@@ -274,7 +280,8 @@ bool Core::load(const std::string &id) {
         std::memset(&snapshot, 0, sizeof snapshot);
         world.setRom(completeImage);
         history.clear();
-        historySize = 0;
+        rewinding = false;
+        frameAudio.clear();
         settings.lastGame = id;
         bool resumed = false;
         if (settings.autosave) {
@@ -352,7 +359,9 @@ void Core::unload() {
         audioDevice = 0;
     }
     history.clear();
-    historySize = 0;
+    rewinding = false;
+    captureAudio = false;
+    frameAudio.clear();
     native.clear();
     game = nullptr;
     spinCharge = 0;
@@ -373,7 +382,8 @@ void Core::reset() {
     frame = 0;
     spinCharge = 0;
     history.clear();
-    historySize = 0;
+    rewinding = false;
+    frameAudio.clear();
     clearAudio();
 }
 void Core::gameplayMods(uint16_t pressed) {
@@ -419,21 +429,28 @@ void Core::gameplayMods(uint16_t pressed) {
 void Core::tick() {
     if (!loaded)
         return;
+    setRewinding(false);
+    std::vector<uint8_t> before;
+    if (settings.rewind)
+        before = state();
+    else
+        history.clear();
+    frameAudio.clear();
+    captureAudio = true;
     uint16_t pressed = buttons[0] & ~lastButtons;
     gameplayMods(pressed);
     retro_run();
+    captureAudio = false;
     scu_snapshot(&snapshot);
     ++imageVersion;
     ++frame;
     lastButtons = buttons[0];
-    if (settings.rewind && frame % 10 == 0) {
-        auto data = state();
-        historySize += data.size();
-        history.push_back(std::move(data));
-        size_t cap = settings.quality == 0 ? 24 * 1024 * 1024 : 96 * 1024 * 1024;
-        while (historySize > cap && history.size() > 1) {
-            historySize -= history.front().size();
-            history.pop_front();
+    if (!before.empty()) {
+        try {
+            history.push(before, frameAudio, rewindLimit());
+        } catch (const std::exception &e) {
+            history.clear();
+            status = e.what();
         }
     }
 }
@@ -453,31 +470,37 @@ std::vector<uint8_t> Core::state() const {
     size_t n = retro_serialize_size();
     if (n > 16 * 1024 * 1024)
         throw std::runtime_error("State too large");
-    std::vector<uint8_t> body(n);
-    if (!retro_serialize(body.data(), body.size()))
-        throw std::runtime_error("State save failed");
     // Preserve the completed raster as well as guest state. Otherwise a paused
     // load or rewind can briefly mix the previous scene with restored geometry.
     const auto *image = reinterpret_cast<const uint8_t *>(&snapshot);
-    body.insert(body.end(), image, image + sizeof snapshot);
     unsigned width = native.empty() ? 0 : nativeW, height = native.empty() ? 0 : nativeH;
     const auto *pixels = reinterpret_cast<const uint8_t *>(native.data());
-    if (!native.empty())
-        body.insert(body.end(), pixels, pixels + native.size() * sizeof(uint32_t));
     std::vector<uint8_t> b{'S', 'C', 'U', '2'};
+    b.reserve(40 + n + sizeof snapshot + native.size() * sizeof(uint32_t));
     put32(b, runningCrc);
     put32(b, (uint32_t)n);
-    put32(b, checksum(body));
+    put32(b, 0);
     put32(b, (uint32_t)frame);
     put32(b, spinCharge);
     put32(b, (uint32_t)spinFacing);
     put32(b, lastButtons);
     put32(b, width);
     put32(b, height);
-    b.insert(b.end(), body.begin(), body.end());
+    b.resize(40 + n);
+    if (!retro_serialize(b.data() + 40, n))
+        throw std::runtime_error("State save failed");
+    b.insert(b.end(), image, image + sizeof snapshot);
+    if (!native.empty())
+        b.insert(b.end(), pixels, pixels + native.size() * sizeof(uint32_t));
+    const uint32_t crc = (uint32_t)crc32(0, b.data() + 40, (uInt)(b.size() - 40));
+    for (int i = 0; i < 4; ++i)
+        b[12 + i] = uint8_t(crc >> (i * 8));
     return b;
 }
 bool Core::restore(const std::vector<uint8_t> &b) {
+    return restoreState(b, false);
+}
+bool Core::restoreState(const std::vector<uint8_t> &b, bool rewindFrame) {
     if (!loaded || b.size() < 32 || get32(b, 4) != runningCrc)
         return false;
     bool raster = std::memcmp(b.data(), "SCU2", 4) == 0;
@@ -497,10 +520,10 @@ bool Core::restore(const std::vector<uint8_t> &b) {
     size_t expected = n + (raster ? sizeof snapshot + pixels * sizeof(uint32_t) : 0);
     if (b.size() - header != expected)
         return false;
-    std::vector<uint8_t> body(b.begin() + header, b.end());
-    if (checksum(body) != get32(b, 12))
+    const auto *body = b.data() + header;
+    if (crc32(0, body, (uInt)expected) != get32(b, 12))
         return false;
-    if (!retro_unserialize(body.data(), n))
+    if (!retro_unserialize(body, n))
         return false;
     frame = get32(b, 16);
     spinCharge = std::min(8, (int)get32(b, 20));
@@ -509,17 +532,21 @@ bool Core::restore(const std::vector<uint8_t> &b) {
     scu_snapshot(&snapshot);
     native.clear();
     if (raster) {
-        std::memcpy(&snapshot, body.data() + n, sizeof snapshot);
+        std::memcpy(&snapshot, body + n, sizeof snapshot);
         nativeW = width;
         nativeH = height;
         native.resize(pixels);
         if (pixels)
-            std::memcpy(native.data(), body.data() + n + sizeof snapshot,
-                        pixels * sizeof(uint32_t));
+            std::memcpy(native.data(), body + n + sizeof snapshot, pixels * sizeof(uint32_t));
     }
     ++imageVersion;
-    world.reset();
-    clearAudio();
+    if (!rewindFrame) {
+        history.clear();
+        frameAudio.clear();
+        setRewinding(false);
+        world.reset();
+        clearAudio();
+    }
     return true;
 }
 void Core::save(int slot) {
@@ -531,18 +558,46 @@ void Core::loadState(int slot) {
     auto p = library.dataDir / "saves" / (saveKey + "-" + std::to_string(slot) + ".state");
     if (!restore(readBytes(p)))
         throw std::runtime_error("State is damaged or belongs to another cartridge");
-    history.clear();
-    historySize = 0;
     status = "Loaded";
 }
-bool Core::rewind() {
-    if (history.empty())
-        return false;
-    auto b = std::move(history.back());
-    history.pop_back();
-    historySize -= b.size();
-    bool ok = restore(b);
+void Core::setRewinding(bool on) {
+    if (settings.rewind)
+        history.trim(rewindLimit());
+    else
+        history.clear();
+    on = on && loaded && settings.rewind;
+    if (on == rewinding)
+        return;
+    rewinding = on;
+    // Flush the old direction once. Clearing on every restored frame would
+    // discard reverse sound before the device could play it.
     clearAudio();
-    return ok;
+    if (on)
+        world.reset();
+}
+size_t Core::rewindLimit() const {
+    static const size_t budgets[] = {24, 96, 192};
+    return budgets[settings.quality == 0 ? 0 : std::clamp(settings.rewindMemory, 0, 2)] * 1024 *
+           1024;
+}
+bool Core::rewind() {
+    if (!loaded || !settings.rewind)
+        return false;
+    setRewinding(true);
+    std::vector<uint8_t> before;
+    if (!history.pop(before, frameAudio)) {
+        frameAudio.clear();
+        clearAudio();
+        return false;
+    }
+    if (!restoreState(before, true)) {
+        history.clear();
+        frameAudio.clear();
+        clearAudio();
+        return false;
+    }
+    if (settings.rewindAudio)
+        queueAudio(frameAudio.data(), frameAudio.size() / 2);
+    return true;
 }
 } // namespace scu

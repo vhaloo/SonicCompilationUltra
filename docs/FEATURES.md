@@ -50,7 +50,7 @@ Adjust blur and brightness. Freeze the background independently, reduce its moti
 - Original S&K lock-on, including separate save identities.
 - Optional removal of the hardware sprite-per-line limit.
 - Optional startup-logo skip, nine state slots, automatic resume and cartridge SRAM.
-- Optional bounded rewind history; hold Backspace or the left shoulder.
+- Frame-by-frame 1x rewind with backwards stereo music/effects; hold Backspace or L2 / Xbox LT by default. Enabled on new installs, with gamepad button choice, reverse-sound toggle and compressed 24 / 96 / 192 MB history budgets (Lightweight caps at 24 MB). Duration depends on game data. In-memory history clears on loading, restarting or switching games. Release continues from the restored moment and discards the undone future.
 - Game volume, mute and pause on loss of focus. Opening the app menu pauses simulation and clears queued audio.
 - Two controllers or keyboard players, analogue dead-zone adjustment and hot-plug support.
 - English, French, Spanish and Japanese; automatic machine language with English fallback.
@@ -64,7 +64,7 @@ The ROM browser has parent-folder navigation, a drives/locations chooser, a filt
 
 Controller hints support automatic/Xbox/PlayStation/Nintendo labels. Gameplay offers three face-button layouts; the menu keeps consistent confirm/back positions. The stick dead zone applies to gameplay and menu navigation. Either connected pad can take over menu navigation by pressing a button; the first two pads retain their native player assignments.
 
-Optional gameplay shortcuts use the right shoulder as a modifier: Up/Down zooms, the top button toggles overview, the left button freezes/follows, the right button focuses the player, and Start captures a screenshot. Modified inputs are suppressed from the cartridge. The left shoulder remains rewind when enabled.
+Optional gameplay shortcuts use the right shoulder as a modifier: Up/Down zooms, the top button toggles overview, the left button freezes/follows, the right button focuses the player, and Start captures a screenshot. Modified inputs are suppressed from the cartridge. Rewind uses L2 / LT by default, independently of these shortcuts. Trigger scrolling stays active only in menus.
 
 Save slots show occupied/empty status and dates. Empty-slot loading is disabled. Overwrites, loads, game restarts, game switches and default resets ask for confirmation, with Cancel selected first. Confirmations and quit confirmation are independently configurable. Restoring defaults preserves cartridge paths, saved files, language and mute preference. Updating does not automatically erase earlier preferences or save files.
 

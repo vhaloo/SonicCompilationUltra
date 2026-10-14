@@ -560,8 +560,29 @@ void App::event(const SDL_Event &e) {
 void App::pollInput() {
     const Uint8 *k = SDL_GetKeyboardState(nullptr);
     core.buttons[0] = core.buttons[1] = 0;
-    if (menu || (!focused && !headless))
+    rewindHeld = false;
+    if (menu || (!focused && !headless)) {
+        rewindTrigger = false;
         return;
+    }
+    if (settings.rewind) {
+        bool padRewind = false;
+        if (pads[0]) {
+            if (settings.rewindButton == 1)
+                padRewind =
+                    SDL_GameControllerGetButton(pads[0], SDL_CONTROLLER_BUTTON_LEFTSHOULDER);
+            else {
+                const auto axis = settings.rewindButton == 2 ? SDL_CONTROLLER_AXIS_TRIGGERRIGHT
+                                                             : SDL_CONTROLLER_AXIS_TRIGGERLEFT;
+                const int value = SDL_GameControllerGetAxis(pads[0], axis);
+                rewindTrigger = value > (rewindTrigger ? 4096 : 8192);
+                padRewind = rewindTrigger;
+            }
+        } else
+            rewindTrigger = false;
+        rewindHeld = k[SDL_SCANCODE_BACKSPACE] || padRewind;
+    } else
+        rewindTrigger = false;
     core.buttons[0] = pendingButtons[0];
     core.buttons[1] = pendingButtons[1];
     auto set = [&](int p, bool on, int bit) {
@@ -619,11 +640,43 @@ void App::pollInput() {
                 core.buttons[p] = 0;
         }
     if (releaseInput) {
-        if (!(core.buttons[0] | core.buttons[1]))
+        if (!(core.buttons[0] | core.buttons[1]) && !rewindHeld)
             releaseInput = false;
         core.buttons[0] = core.buttons[1] = 0;
         pendingButtons[0] = pendingButtons[1] = 0;
+        rewindHeld = false;
     }
+}
+unsigned App::advanceGame(double elapsed, bool unpaced) {
+    const bool paused = menu || (!focused && settings.pauseUnfocused && !headless);
+    if (paused || !core.loaded) {
+        gameAccumulator = 0;
+        core.setRewinding(false);
+        core.clearAudio();
+        return 0;
+    }
+    const bool backward = settings.rewind && rewindHeld;
+    core.setRewinding(backward);
+    const double period = 1 / core.fps;
+    gameAccumulator += std::clamp(elapsed, 0.0, 0.25);
+    unsigned ticks = 0, executed = 0;
+    while ((unpaced ? ticks == 0 : gameAccumulator >= period) && ticks < 4) {
+        if (backward)
+            executed += core.rewind() ? 1 : 0;
+        else {
+            core.tick();
+            ++executed;
+        }
+        pendingButtons[0] = pendingButtons[1] = 0;
+        ++ticks;
+        if (!unpaced)
+            gameAccumulator -= period;
+    }
+    if (unpaced || ticks == 4)
+        gameAccumulator = 0;
+    if (!backward)
+        pan();
+    return executed;
 }
 void App::pan() {
     if (menu || settings.camera != 3)
@@ -823,6 +876,13 @@ void App::present(bool capture) {
             ImGui::SetWindowFontScale(0.78f);
         if (button(io.DisplaySize.x < 600 ? "menushort" : "menuhint"))
             toggleMenu();
+        if (settings.help && settings.rewind) {
+            const char *binding = settings.rewindButton == 1   ? "L1 / LB"
+                                  : settings.rewindButton == 2 ? "R2 / RT"
+                                                               : "L2 / LT";
+            ImGui::Text(tr(core.isRewinding() ? "rewinding" : "rewindhint", language), binding,
+                        core.rewindSeconds());
+        }
         if (settings.performance)
             ImGui::Text("%.1f fps · %d × %d", measuredFps, drawableW, drawableH);
         if (!notice.empty())
@@ -1447,6 +1507,7 @@ void App::optionsUi(int section) {
             choice("padlabels", settings.padLabels, {"auto", "Xbox", "PlayStation", "Nintendo"});
         changed |=
             choice("jumpbuttons", settings.jumpLayout, {"jumpclassic", "jumpabc", "jumpbac"});
+        changed |= choice("rewindbutton", settings.rewindButton, {"L2 / LT", "L1 / LB", "R2 / RT"});
         check("quickcontrols", settings.quickControls);
         slide("deadzone", settings.deadzone, 3000, 28000);
         ImGui::TextWrapped("%s", tr("controllers", language));
@@ -1476,6 +1537,9 @@ void App::optionsUi(int section) {
         check("fastboot", settings.fastBoot);
         check("spritelimit", settings.noSpriteLimit);
         check("rewind", settings.rewind);
+        check("rewindaudio", settings.rewindAudio);
+        changed |= choice("rewindmemory", settings.rewindMemory, {"24 MB", "96 MB", "192 MB"});
+        ImGui::TextWrapped("%s", tr("rewindhelp", language));
         check("assist", settings.invincible);
         check("air", settings.infiniteAir);
         changed |= choice("region", settings.region,

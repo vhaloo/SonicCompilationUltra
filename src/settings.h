@@ -6,13 +6,15 @@ struct Settings {
     int hud = 0, hudScale = 0, nativeScale = 0, workers = 0, volume = 70, quality = 1, uiScale = 0;
     int slot = 1, region = 0, renderer = 0, scanlines = 0, panSpeed = 6, deadzone = 12000;
     int menuLayout = 0, display = -1, padLabels = 0, jumpLayout = 0;
+    int rewindButton = 0, rewindMemory = 1;
     int overviewStyle = 0;
     int enemyOpacity = 35, enemyStyle = 0;
     bool fullscreen = true, span = false, vsync = true, parallax = true, locator = true,
          minimap = false;
     bool help = true, spindash = false, noSpriteLimit = false, integerScale = true;
     bool mute = false, pauseUnfocused = true, performance = false, reduceMotion = false;
-    bool autosave = true, rewind = false, ghost = false, invincible = false, infiniteAir = false;
+    bool autosave = true, rewind = true, ghost = false, invincible = false, infiniteAir = false;
+    bool rewindAudio = true;
     bool fastBoot = true;
     bool lockon = false;
     bool safeEffects = true, confirmQuit = true;
