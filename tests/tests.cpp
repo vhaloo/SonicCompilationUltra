@@ -7,6 +7,7 @@
 using namespace scu;
 void testEnemyPreviews();
 void testBossScriptPreviews();
+void testTerrain();
 static void require(bool c, const char *msg) {
     if (!c) {
         std::cerr << msg << "\n";
@@ -14,6 +15,7 @@ static void require(bool c, const char *msg) {
     }
 }
 int main() {
+    testTerrain();
     testEnemyPreviews();
     testBossScriptPreviews();
     require(games().size() >= 12, "collection identities missing");
@@ -44,6 +46,9 @@ int main() {
             c = 0xFF336699;
     auto scene = world->inspect(*s, gameById("sonic1"));
     require(scene.ready && scene.width == 8192 && scene.height == 1024, "stage bounds");
+    auto classics = world->inspect(*s, gameById("compilation"));
+    require(classics.ready && classics.family == 1 && classics.width == 8192,
+            "Classics installed S1 profile");
     require(world->attribute(*s, 1, 0, 0) == 1, "S1 block decode");
     require(world->attribute(*s, 1, -8, 0) == 0, "outside stage guard");
     auto before = s->ram[0xD008];
@@ -61,9 +66,30 @@ int main() {
     require(world->canvas.width == 7680 && world->canvas.height == 1440, "true physical 1:1");
     require(world->canvas.pixels.size() == 7680 * 1440, "expanded storage");
     require(s->ram[0xD008] == before, "compositor changed guest RAM");
+    auto terrainBefore = world->canvas.pixels;
+    auto hits = world->terrainCacheHits;
+    world->compose(*s, gameById("sonic1"), settings, 7680, 1440);
+    require(world->terrainCacheHits == hits + 1 && world->canvas.pixels == terrainBefore,
+            "unchanged terrain must use an exact cached layer");
+    s->vram[32] = 0x22;
+    world->compose(*s, gameById("sonic1"), settings, 7680, 1440);
+    require(world->terrainCacheHits == hits + 1,
+            "used terrain pattern change must invalidate cache");
+    s->vram[32] = 0x11;
     settings.zoom = 2;
     world->compose(*s, gameById("sonic1"), settings, 7680, 1440);
     require(world->canvas.width == 3840 && world->canvas.height == 720, "integer zoom 2");
+    settings.zoom = 1;
+    settings.zoomOut = 3;
+    world->compose(*s, gameById("sonic1"), settings, 1280, 720);
+    require(world->canvas.coverageW == 10240 && world->canvas.coverageH == 5760 &&
+                world->canvas.width == 1280 && world->canvas.height == 720,
+            "zoom-out must preserve coverage without allocating a magnified world buffer");
+    settings.zoomOut = 0;
+    world->compose(*s, gameById("sonic1"), settings, 50000, 240);
+    require(world->canvas.coverageW == 50000 && world->canvas.coverageH == 240 &&
+                world->canvas.width <= 16384,
+            "render cap cropped requested coverage");
     settings.zoom = 1;
     world->compose(*s, gameById("sonic1"), settings, 320, 240);
     require(world->canvas.width == 320 && world->canvas.height == 240, "tiny window");
@@ -93,6 +119,10 @@ int main() {
     require(!world->inspect(*s, gameById("sonic2k")).ready,
             "Knuckles competition must keep native framing");
     put(0xFFD8, 0);
+    s->ram[0xD000] = 0;
+    auto classics2 = world->inspect(*s, gameById("compilation"));
+    require(classics2.ready && classics2.family == 2, "Classics installed S2 profile");
+    s->ram[0xD000] = 1;
     put(2 * 128, 0x400 | 3);
     put(0x9000 + 3 * 8 + 2, 0x55);
     require(world->attribute(*s, 2, 0, 0) == (0x55 ^ 0x800), "S2 block flip decode");

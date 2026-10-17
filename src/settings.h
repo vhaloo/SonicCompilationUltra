@@ -1,5 +1,6 @@
 #pragma once
 #include "rom.h"
+#include <algorithm>
 namespace scu {
 struct Settings {
     int language = -1, view = 2, zoom = 1, camera = 0, background = 0, blur = 7, brightness = 60;
@@ -9,6 +10,25 @@ struct Settings {
     int rewindButton = 0, rewindMemory = 1;
     int overviewStyle = 0;
     int enemyOpacity = 35, enemyStyle = 0;
+    int zoomOut = 0, panoramaHeight = 224;
+    bool mapExtension = true;
+    bool smoothMap = true;
+    double pixelScale() const {
+        return double(std::clamp(zoom, 1, 8)) / (1 << std::clamp(zoomOut, 0, 3));
+    }
+    void stepZoom(int direction) {
+        if (direction > 0) {
+            if (zoomOut)
+                --zoomOut;
+            else if (zoom < 8)
+                ++zoom;
+        } else {
+            if (zoom > 1)
+                --zoom;
+            else if (zoomOut < 3)
+                ++zoomOut;
+        }
+    }
     bool fullscreen = true, span = false, vsync = true, parallax = true, locator = true,
          minimap = false;
     bool help = true, spindash = false, noSpriteLimit = false, integerScale = true;

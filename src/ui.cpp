@@ -9,7 +9,140 @@
 #include <chrono>
 #include <ctime>
 namespace scu {
+void App::settingGuide(bool compact) {
+    const auto *help = settingHelp(guideKey.c_str());
+    if (!help)
+        help = settingHelp("view");
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.35f, 0.9f, 0.94f, 1));
+    ImGui::TextWrapped("%s", tr(help->key, language));
+    ImGui::PopStyleColor();
+    if (compact) {
+        ImGui::TextWrapped("%s", help->text[std::clamp(language, 0, 3)]);
+        ImGui::Spacing();
+    }
+    float width = std::max(40.0f, ImGui::GetContentRegionAvail().x);
+    float height = std::min(compact ? 100.0f : 180.0f * uiFactor, width * 0.60f);
+    auto start = ImGui::GetCursorScreenPos();
+    auto draw = ImGui::GetWindowDrawList();
+    auto point = [&](float x, float y) {
+        return ImVec2(start.x + x * width, start.y + y * height);
+    };
+    const ImU32 cyan = IM_COL32(85, 219, 228, 255), gold = IM_COL32(255, 213, 104, 255),
+                muted = IM_COL32(74, 103, 128, 255), ink = IM_COL32(12, 28, 47, 255);
+    auto rect = [&](float x, float y, float w, float h, ImU32 color, bool filled = true) {
+        if (filled)
+            draw->AddRectFilled(point(x, y), point(x + w, y + h), color, 3);
+        else
+            draw->AddRect(point(x, y), point(x + w, y + h), color, 3, 0, 2);
+    };
+    auto line = [&](float x, float y, float xx, float yy, ImU32 color, float thickness = 2) {
+        draw->AddLine(point(x, y), point(xx, yy), color, thickness);
+    };
+    rect(0, 0, 1, 1, ink);
+    switch (help->picture) {
+    case HelpPicture::View:
+    case HelpPicture::Camera:
+    case HelpPicture::Zoom:
+    case HelpPicture::Hud: {
+        for (int i = 0; i < 12; ++i) {
+            float y = 0.56f + float((i * 7) % 5) * 0.045f;
+            rect(0.035f + i * 0.078f, y, 0.074f, 0.90f - y, IM_COL32(31, 106, 121, 255));
+            line(0.035f + i * 0.078f, y, 0.109f + i * 0.078f, y, cyan);
+        }
+        for (int i = 0; i < 3; ++i)
+            rect(0.16f + i * 0.28f, 0.23f + i * 0.06f, 0.15f, 0.06f, muted);
+        rect(0.06f, 0.10f, 0.88f, 0.81f, muted, false);
+        float focusWidth = help->picture == HelpPicture::Zoom
+                               ? float(std::clamp(0.48 / settings.pixelScale(), 0.16, 0.86))
+                               : 0.40f;
+        rect(0.5f - focusWidth / 2, 0.16f, focusWidth, 0.65f, gold, false);
+        draw->AddCircleFilled(point(0.50f, 0.50f), std::max(3.0f, height * 0.045f), gold);
+        if (help->picture == HelpPicture::Camera) {
+            line(0.54f, 0.50f, 0.77f, 0.50f, cyan);
+            draw->AddTriangleFilled(point(0.80f, 0.50f), point(0.75f, 0.45f), point(0.75f, 0.55f),
+                                    cyan);
+        }
+        if (help->picture == HelpPicture::Hud) {
+            rect(settings.hud == 2   ? 0.07f
+                 : settings.hud == 1 ? 0.54f
+                                     : 0.35f,
+                 0.19f, 0.24f, 0.15f, cyan);
+            rect(0.73f, 0.65f, 0.18f, 0.19f, cyan, false);
+        }
+        break;
+    }
+    case HelpPicture::Background:
+        for (int i = 0; i < 7; ++i) {
+            float x = (i + 0.5f) / 7;
+            draw->AddCircleFilled(point(x, 0.5f), height * (0.30f + (i % 3) * 0.035f),
+                                  IM_COL32(22, 56 + i * 7, 92 + i * 6, 255));
+        }
+        rect(0.30f, 0.19f, 0.40f, 0.62f, ink);
+        line(0.31f, 0.68f, 0.69f, 0.68f, cyan, 5);
+        draw->AddCircleFilled(point(0.5f, 0.57f), height * 0.055f, gold);
+        break;
+    case HelpPicture::Controller:
+        rect(0.19f, 0.27f, 0.62f, 0.47f, muted);
+        rect(0.21f, 0.19f, 0.18f, 0.06f, cyan);
+        rect(0.61f, 0.19f, 0.18f, 0.06f, cyan);
+        line(0.26f, 0.50f, 0.41f, 0.50f, gold, 4);
+        line(0.335f, 0.37f, 0.335f, 0.63f, gold, 4);
+        for (auto p :
+             {ImVec2(0.68f, 0.38f), ImVec2(0.75f, 0.5f), ImVec2(0.68f, 0.62f), ImVec2(0.61f, 0.5f)})
+            draw->AddCircleFilled(point(p.x, p.y), height * 0.035f, cyan);
+        break;
+    case HelpPicture::Audio:
+    case HelpPicture::Rewind:
+        for (int i = 0; i < 40; ++i) {
+            float v = float(0.06 + std::abs(std::sin(i * 0.67)) * 0.15);
+            line(0.10f + i * 0.02f, 0.54f - v, 0.10f + i * 0.02f, 0.54f + v, cyan);
+        }
+        if (help->picture == HelpPicture::Rewind) {
+            for (float x : {0.42f, 0.58f})
+                draw->AddTriangleFilled(point(x - 0.09f, 0.20f), point(x, 0.11f), point(x, 0.29f),
+                                        gold);
+            line(0.12f, 0.84f, 0.88f, 0.84f, muted);
+            draw->AddCircleFilled(point(0.39f, 0.84f), height * 0.035f, gold);
+        }
+        break;
+    case HelpPicture::Performance:
+        for (int i = 0; i < 3; ++i) {
+            rect(0.16f + i * 0.25f, 0.72f - i * 0.19f, 0.16f, 0.15f + i * 0.19f,
+                 i == 1 ? gold : cyan);
+            line(0.18f + i * 0.25f, 0.92f, 0.30f + i * 0.25f, 0.92f, muted);
+        }
+        break;
+    case HelpPicture::Assist:
+        draw->AddCircle(point(0.50f, 0.48f), height * 0.29f, cyan, 40, 3);
+        draw->AddCircleFilled(point(0.50f, 0.48f), height * 0.10f, gold);
+        for (int i = 0; i < 3; ++i)
+            line(0.18f, 0.36f + i * 0.12f, 0.32f, 0.36f + i * 0.12f, gold);
+        break;
+    case HelpPicture::Save:
+    case HelpPicture::Library:
+        for (int i = 0; i < 9; ++i) {
+            float x = 0.19f + (i % 3) * 0.22f, y = 0.14f + (i / 3) * 0.25f;
+            rect(x, y, 0.18f, 0.20f, i == settings.slot - 1 ? gold : muted, false);
+            if (i % 3 != 2)
+                rect(x + 0.04f, y + 0.05f, 0.10f, 0.04f, cyan);
+        }
+        break;
+    }
+    ImGui::Dummy({width, height});
+    ImGui::TextDisabled("%s", tr("guidedrawing", language));
+    ImGui::Spacing();
+    if (!compact)
+        ImGui::TextWrapped("%s", help->text[std::clamp(language, 0, 3)]);
+    if (!compact) {
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::TextWrapped("%s", tr("guidehint", language));
+    }
+}
 void App::control(const char *key) {
+    if (settingHelp(key) && !guideOpen && !guideRequested &&
+        (ImGui::IsItemFocused() || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)))
+        guideKey = key;
 #ifdef SCU_UI_TESTS
     controls.emplace(key, ImGui::GetItemID());
     auto min = ImGui::GetItemRectMin(), max = ImGui::GetItemRectMax();
@@ -196,7 +329,7 @@ void App::updateNavigationController() {
     static const ImGuiKey keys[] = {ImGuiKey_GamepadFaceDown,
                                     ImGuiKey_GamepadFaceRight,
                                     ImGuiKey_GamepadFaceLeft,
-                                    ImGuiKey_GamepadFaceUp,
+                                    ImGuiKey_None, // Y/Triangle belongs to the illustrated guide.
                                     ImGuiKey_None,
                                     ImGuiKey_None,
                                     ImGuiKey_GamepadStart,
@@ -377,7 +510,7 @@ void App::event(const SDL_Event &e) {
         static const ImGuiKey keys[] = {ImGuiKey_GamepadFaceDown,
                                         ImGuiKey_GamepadFaceRight,
                                         ImGuiKey_GamepadFaceLeft,
-                                        ImGuiKey_GamepadFaceUp,
+                                        ImGuiKey_None,
                                         ImGuiKey_None,
                                         ImGuiKey_None,
                                         ImGuiKey_GamepadStart,
@@ -404,6 +537,8 @@ void App::event(const SDL_Event &e) {
         }
         if (menu && b == SDL_CONTROLLER_BUTTON_B)
             backRequested = true;
+        if (menu && b == SDL_CONTROLLER_BUTTON_Y && !browserOpen && !pathEditor && !actionPopup)
+            guideRequested = true;
         if (!menu && core.loaded && settings.quickControls && pads[activePad] &&
             SDL_GameControllerGetButton(pads[activePad], SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) {
             auto scene = core.world.inspect(core.snapshot, core.game);
@@ -411,16 +546,15 @@ void App::event(const SDL_Event &e) {
                 settings.view = settings.view == 2 ? 0 : 2;
             else if (b == SDL_CONTROLLER_BUTTON_DPAD_UP || b == SDL_CONTROLLER_BUTTON_DPAD_DOWN) {
                 settings.view = 0;
-                settings.zoom =
-                    std::clamp(settings.zoom + (b == SDL_CONTROLLER_BUTTON_DPAD_UP ? 1 : -1), 1, 8);
+                settings.stepZoom(b == SDL_CONTROLLER_BUTTON_DPAD_UP ? 1 : -1);
             } else if (b == SDL_CONTROLLER_BUTTON_X) {
                 if (settings.camera == 2)
                     settings.camera = 0;
                 else {
                     if (settings.view == 2) {
                         settings.view = 0;
-                        settings.left = scene.playerX - drawableW / settings.zoom / 2;
-                        settings.top = scene.playerY - drawableH / settings.zoom / 2;
+                        settings.left = int(scene.playerX - drawableW / settings.pixelScale() / 2);
+                        settings.top = int(scene.playerY - drawableH / settings.pixelScale() / 2);
                         settings.camera = 2;
                     } else
                         core.world.freeze(scene, settings);
@@ -458,6 +592,10 @@ void App::event(const SDL_Event &e) {
     if (e.type == SDL_KEYDOWN && !e.key.repeat) {
         auto k = e.key.keysym.sym;
         auto mod = e.key.keysym.mod;
+        if (menu && k == SDLK_F1 && !browserOpen && !pathEditor && !actionPopup) {
+            guideRequested = true;
+            return;
+        }
         if (k == SDLK_ESCAPE || k == SDLK_F10) {
             if (menu) {
                 if (k == SDLK_F10)
@@ -519,12 +657,12 @@ void App::event(const SDL_Event &e) {
             }
             if (k == SDLK_EQUALS || k == SDLK_PLUS || k == SDLK_KP_PLUS) {
                 settings.view = 0;
-                settings.zoom = std::min(8, settings.zoom + 1);
+                settings.stepZoom(1);
                 dirty = true;
             }
             if (k == SDLK_MINUS || k == SDLK_KP_MINUS) {
                 settings.view = 0;
-                settings.zoom = std::max(1, settings.zoom - 1);
+                settings.stepZoom(-1);
                 dirty = true;
             }
             if (k == SDLK_f) {
@@ -547,13 +685,15 @@ void App::event(const SDL_Event &e) {
                 int n = k - SDLK_1;
                 settings.view = n == 3 ? 1 : n == 4 ? 2 : 0;
                 settings.zoom = n < 3 ? n + 1 : settings.zoom;
+                if (n < 3)
+                    settings.zoomOut = 0;
                 dirty = true;
             }
         }
     }
     if (e.type == SDL_MOUSEWHEEL && !menu && (SDL_GetModState() & KMOD_CTRL)) {
         settings.view = 0;
-        settings.zoom = std::clamp(settings.zoom + (e.wheel.y > 0 ? 1 : -1), 1, 8);
+        settings.stepZoom(e.wheel.y > 0 ? 1 : -1);
         dirty = true;
     }
 }
@@ -660,7 +800,8 @@ unsigned App::advanceGame(double elapsed, bool unpaced) {
     const double period = 1 / core.fps;
     gameAccumulator += std::clamp(elapsed, 0.0, 0.25);
     unsigned ticks = 0, executed = 0;
-    while ((unpaced ? ticks == 0 : gameAccumulator >= period) && ticks < 4) {
+    constexpr unsigned maxCatchup = 16;
+    while ((unpaced ? ticks == 0 : gameAccumulator >= period) && ticks < maxCatchup) {
         if (backward)
             executed += core.rewind() ? 1 : 0;
         else {
@@ -672,7 +813,7 @@ unsigned App::advanceGame(double elapsed, bool unpaced) {
         if (!unpaced)
             gameAccumulator -= period;
     }
-    if (unpaced || ticks == 4)
+    if (unpaced || ticks == maxCatchup)
         gameAccumulator = 0;
     if (!backward)
         pan();
@@ -698,6 +839,8 @@ void App::pan() {
 }
 void App::present(bool capture) {
     SDL_GetRendererOutputSize(renderer, &drawableW, &drawableH);
+    if (drawableW <= 0 || drawableH <= 0)
+        return;
     SDL_SetRenderDrawColor(renderer, 6, 12, 24, 255);
     SDL_RenderClear(renderer);
     Scene scene = core.world.inspect(core.snapshot, core.game);
@@ -706,6 +849,10 @@ void App::present(bool capture) {
                   drawableH,
                   settings.view,
                   settings.zoom,
+                  settings.zoomOut,
+                  settings.panoramaHeight,
+                  int(settings.mapExtension),
+                  int(settings.smoothMap),
                   settings.camera,
                   settings.left,
                   settings.top,
@@ -713,6 +860,9 @@ void App::present(bool capture) {
                   settings.blur,
                   settings.brightness,
                   settings.overviewStyle,
+                  settings.quality,
+                  settings.hud,
+                  int(settings.playerInset),
                   (int)settings.parallax,
                   (int)settings.reduceMotion,
                   (int)settings.enemyPreview,
@@ -725,7 +875,8 @@ void App::present(bool capture) {
         hash ^= (uint32_t)v;
         hash *= 1099511628211ull;
     }
-    bool refresh = core.imageVersion != lastImageVersion || hash != lastPresentationHash;
+    bool presentationChanged = hash != lastPresentationHash;
+    bool refresh = core.imageVersion != lastImageVersion || presentationChanged;
     if (refresh) {
         cachedExpanded =
             core.loaded && core.world.compose(core.snapshot, core.game, settings, drawableW,
@@ -738,10 +889,12 @@ void App::present(bool capture) {
         bool fixed =
             !settings.parallax || settings.reduceMotion ||
             (scene.ready && (settings.camera == 2 || settings.camera == 4 || settings.view == 2));
-        if (refresh)
+        bool retainBackground =
+            fixed && backgroundFrozen && backgroundStage == scene.stage && !presentationChanged;
+        if (refresh && !retainBackground)
             core.world.makeBackdrop(core.snapshot, scene, settings, core.native, core.nativeW,
                                     core.nativeH);
-        if (fixed && backgroundFrozen && backgroundStage == scene.stage)
+        if (retainBackground)
             core.world.backdrop = frozenBackground;
         else {
             frozenBackground = core.world.backdrop;
@@ -753,7 +906,8 @@ void App::present(bool capture) {
                                           SDL_TEXTUREACCESS_STREAMING, 320, 224);
             SDL_SetTextureScaleMode(bgTexture, SDL_ScaleModeLinear);
         }
-        SDL_UpdateTexture(bgTexture, nullptr, core.world.backdrop.data(), 320 * 4);
+        if (refresh && !retainBackground)
+            SDL_UpdateTexture(bgTexture, nullptr, core.world.backdrop.data(), 320 * 4);
         if (settings.background == 2 && expanded) {
             int scale = std::max(1, (int)core.world.canvas.scale), tw = 320 * scale,
                 th = 224 * scale;
@@ -778,10 +932,15 @@ void App::present(bool capture) {
             }
             if (!worldTexture)
                 throw std::runtime_error(SDL_GetError());
+            SDL_SetTextureScaleMode(worldTexture, settings.smoothMap && c.coverageW > c.width * 1.01
+                                                      ? SDL_ScaleModeLinear
+                                                      : SDL_ScaleModeNearest);
             if (refresh)
                 SDL_UpdateTexture(worldTexture, nullptr, c.pixels.data(), c.width * 4);
             SDL_RenderCopy(renderer, worldTexture, nullptr, nullptr);
-            if (settings.view == 2 && settings.playerInset && !core.native.empty()) {
+            if (((settings.view == 2 && settings.playerInset) ||
+                 (scene.family == 4 && settings.hud != 3)) &&
+                !core.native.empty()) {
                 if (!nativeTexture || nativeTW != core.nativeW || nativeTH != core.nativeH) {
                     if (nativeTexture)
                         SDL_DestroyTexture(nativeTexture);
@@ -792,16 +951,19 @@ void App::present(bool capture) {
                     nativeTH = core.nativeH;
                 }
                 SDL_SetTextureScaleMode(nativeTexture, SDL_ScaleModeNearest);
-                SDL_UpdateTexture(nativeTexture, nullptr, core.native.data(), core.nativeW * 4);
+                if (refresh)
+                    SDL_UpdateTexture(nativeTexture, nullptr, core.native.data(), core.nativeW * 4);
                 int safeW = std::min(drawableW, int(drawableH * 16.0 / 9)),
                     w = int(std::min(safeW * 0.28, drawableH * 0.26 * core.nativeW / core.nativeH)),
                     h = w * core.nativeH / core.nativeW, x = (drawableW + safeW) / 2 - w - 16,
                     y = drawableH - h - (settings.help ? std::max(48, int(drawableH * 0.065)) : 0) -
                         16;
                 SDL_Rect border{x - 3, y - 3, w + 6, h + 6}, d{x, y, w, h};
-                SDL_SetRenderDrawColor(renderer, 85, 206, 217, 255);
-                SDL_RenderFillRect(renderer, &border);
-                SDL_RenderCopy(renderer, nativeTexture, nullptr, &d);
+                if (settings.view == 2 && settings.playerInset) {
+                    SDL_SetRenderDrawColor(renderer, 85, 206, 217, 255);
+                    SDL_RenderFillRect(renderer, &border);
+                    SDL_RenderCopy(renderer, nativeTexture, nullptr, &d);
+                }
             }
         } else if (!core.native.empty()) {
             if (!nativeTexture || nativeTW != core.nativeW || nativeTH != core.nativeH) {
@@ -815,12 +977,14 @@ void App::present(bool capture) {
             }
             SDL_SetTextureScaleMode(nativeTexture, settings.integerScale ? SDL_ScaleModeNearest
                                                                          : SDL_ScaleModeLinear);
-            SDL_UpdateTexture(nativeTexture, nullptr, core.native.data(), core.nativeW * 4);
+            if (refresh)
+                SDL_UpdateTexture(nativeTexture, nullptr, core.native.data(), core.nativeW * 4);
             int availableH = drawableH - (settings.help ? std::max(48, int(drawableH * 0.065)) : 0),
                 safeW = std::min(drawableW, (int)(drawableH * 16.0 / 9));
-            float scale = settings.nativeScale ? settings.nativeScale
-                                               : std::min(float(safeW) / core.nativeW,
-                                                          float(availableH) / core.nativeH);
+            float scale = settings.view == 0     ? float(settings.pixelScale())
+                          : settings.nativeScale ? settings.nativeScale
+                                                 : std::min(float(safeW) / core.nativeW,
+                                                            float(availableH) / core.nativeH);
             if (settings.integerScale && scale >= 1)
                 scale = std::floor(scale);
             scale = std::min(
@@ -884,7 +1048,8 @@ void App::present(bool capture) {
                         core.rewindSeconds());
         }
         if (settings.performance)
-            ImGui::Text("%.1f fps · %d × %d", measuredFps, drawableW, drawableH);
+            ImGui::Text("%.1f ticks/s · %.1f fps · %d × %d", measuredFps, presentationFps,
+                        drawableW, drawableH);
         if (!notice.empty())
             ImGui::TextWrapped("%s", notice.c_str());
         ImGui::End();
@@ -902,6 +1067,15 @@ void App::present(bool capture) {
         screenshotRequested = false;
     }
     SDL_RenderPresent(renderer);
+    ++presentationFrames;
+    uint64_t now = SDL_GetTicks64();
+    if (!presentationClock)
+        presentationClock = now;
+    if (now - presentationClock >= 1000) {
+        presentationFps = presentationFrames * 1000.0 / (now - presentationClock);
+        presentationFrames = 0;
+        presentationClock = now;
+    }
 }
 void App::screenshot(const fs::path &path) {
     fs::create_directories(path.parent_path());
@@ -1009,11 +1183,21 @@ void App::hud() {
                                        : std::clamp(io.DisplaySize.y / 720.0f, 0.85f, 3.0f);
         ImGui::SetWindowFontScale(std::min(3.0f, size) / uiFactor);
         auto &r = core.snapshot.ram;
-        unsigned score = (uint32_t(be16(r, 0xFE26)) << 16) | be16(r, 0xFE28);
-        ImGui::TextColored({0.95f, 0.85f, 0.35f, 1}, "%s  %06u", tr("score", language), score * 10);
-        ImGui::Text("%s  %02u:%02u", tr("time", language), r[0xFE23], r[0xFE24]);
-        ImGui::Text("%s  %u", tr("rings", language), be16(r, 0xFE20));
-        ImGui::Text("%s  %u", tr("lives", language), r[0xFE12]);
+        if (v.family == 4 && nativeTexture) {
+            float w = std::min(320.0f * size, io.DisplaySize.x - 60);
+            ImGui::Image((ImTextureID)(intptr_t)nativeTexture, {w, w * 16 / 320}, {0, 0},
+                         {1, 16.0f / 224});
+        } else if (v.family == 5) {
+            ImGui::Text("%s  %u", tr("rings", language), be16(r, 0x0A5A));
+            ImGui::Text("%s  %u", tr("lives", language), be16(r, 0x0680));
+        } else {
+            unsigned score = (uint32_t(be16(r, 0xFE26)) << 16) | be16(r, 0xFE28);
+            ImGui::TextColored({0.95f, 0.85f, 0.35f, 1}, "%s  %06u", tr("score", language),
+                               score * 10);
+            ImGui::Text("%s  %02u:%02u", tr("time", language), r[0xFE23], r[0xFE24]);
+            ImGui::Text("%s  %u", tr("rings", language), be16(r, 0xFE20));
+            ImGui::Text("%s  %u", tr("lives", language), r[0xFE12]);
+        }
         ImGui::End();
     }
     if (settings.minimap) {
@@ -1054,6 +1238,11 @@ std::string App::navigationHint() const {
     return tr(labels == 2 ? "navps" : labels == 3 ? "navnintendo" : "navxbox", language);
 }
 void App::menuInput(bool editing) {
+    if (guideOpen && (backRequested || selectRequested)) {
+        guideOpen = false;
+        backRequested = selectRequested = false;
+        return;
+    }
     if (!menu) {
         backRequested = selectRequested = false;
         return;
@@ -1076,7 +1265,7 @@ void App::menuInput(bool editing) {
         }
         backRequested = selectRequested = false;
     }
-    if (!menu || editing || browserOpen || pathEditor || actionPopup)
+    if (!menu || editing || browserOpen || pathEditor || actionPopup || guideOpen)
         return;
     int direction = 0;
     if (ImGui::IsKeyPressed(ImGuiKey_GamepadL1, false))
@@ -1217,6 +1406,7 @@ void App::ui() {
         }
     }
     float footer =
+        ImGui::GetFrameHeightWithSpacing() +
         ImGui::CalcTextSize(navigationHint().c_str(), nullptr, false, safe).y +
         ImGui::GetStyle().ItemSpacing.y * 3 +
         (!tiny ? ImGui::CalcTextSize(tr("autosettings", language), nullptr, false, safe).y : 0);
@@ -1234,7 +1424,11 @@ void App::ui() {
         ImGui::EndChild();
         ImGui::SameLine();
     }
-    ImGui::BeginChild("##page", {0, contentH}, ImGuiChildFlags_NavFlattened);
+    bool sideGuide = tab > 0 && tab < 8 && safe >= 1000 * uiFactor && !tiny;
+    float guideW = sideGuide ? 310 * uiFactor : 0;
+    float pageW =
+        sideGuide ? ImGui::GetContentRegionAvail().x - guideW - ImGui::GetStyle().ItemSpacing.x : 0;
+    ImGui::BeginChild("##page", {pageW, contentH}, ImGuiChildFlags_NavFlattened);
     scrollPage();
     if (focusPage) {
         ImGui::SetScrollY(0);
@@ -1252,13 +1446,44 @@ void App::ui() {
         optionsUi(tab);
     focusPage = false;
     ImGui::EndChild();
+    if (sideGuide) {
+        ImGui::SameLine();
+        ImGui::BeginChild("##setting-guide", {guideW, contentH});
+        settingGuide();
+        ImGui::EndChild();
+    }
     ImGui::Separator();
+    if (button("settingguide"))
+        guideRequested = true;
     ImGui::TextWrapped("%s", navigationHint().c_str());
     if (!tiny)
         ImGui::TextDisabled("%s", tr("autosettings", language));
     ImGui::EndChild();
     ImGui::End();
     ImGui::PopStyleVar();
+    if (guideRequested) {
+        guideRequested = false;
+        guideOpen = true;
+        ImGui::OpenPopup("##setting-detail");
+    }
+    ImGui::SetNextWindowPos({io.DisplaySize.x / 2, io.DisplaySize.y / 2}, {}, {0.5f, 0.5f});
+    ImGui::SetNextWindowSize({std::min(620 * uiFactor, io.DisplaySize.x - 12),
+                              std::max(100.0f, io.DisplaySize.y * 0.88f)});
+    if (ImGui::BeginPopupModal("##setting-detail", nullptr,
+                               ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings)) {
+        if (!guideOpen)
+            ImGui::CloseCurrentPopup();
+        if (button("guideclose")) {
+            guideOpen = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SetItemDefaultFocus();
+        ImGui::BeginChild("##guide-scroll", {0, 0});
+        scrollPage();
+        settingGuide(io.DisplaySize.y < 450);
+        ImGui::EndChild();
+        ImGui::EndPopup();
+    }
     if (browserOpen || ImGui::IsPopupOpen("##browse"))
         browserUi();
     if (actionPopup)
@@ -1391,6 +1616,30 @@ void App::optionsUi(int section) {
         if (slider("zoom", settings.zoom, 1, 8, "%d×")) {
             settings.view = 0;
             changed = true;
+        }
+        if (choice("zoomout", settings.zoomOut, {"1×", "2×", "4×", "8×"})) {
+            settings.view = 0;
+            changed = true;
+        }
+        ImGui::Text("%s: %.3g×", tr("effectivescale", language), settings.pixelScale());
+        if (button("pixelreset")) {
+            settings.view = 0;
+            settings.zoom = 1;
+            settings.zoomOut = 0;
+            changed = true;
+        }
+        if (slider("panoramaheight", settings.panoramaHeight, 224, 4096, "%d px")) {
+            settings.view = 1;
+            changed = true;
+        }
+        check("mapextension", settings.mapExtension);
+        check("smoothmap", settings.smoothMap);
+        if (core.loaded) {
+            auto scene = core.world.inspect(core.snapshot, core.game);
+            ImGui::TextWrapped("%s", tr(scene.ready ? (scene.family >= 4 ? "atlascapability"
+                                                                         : "platformcapability")
+                                                    : "nativecapability",
+                                        language));
         }
         ImGui::TextWrapped("%s", tr("pixelhelp", language));
         bool full = settings.fullscreen, span = settings.span;

@@ -9,13 +9,94 @@ namespace scu {
 static int clampi(int v, int a, int b) {
     return std::max(a, std::min(b, v));
 }
+static uint64_t hashTerrain(uint64_t hash, const void *data, size_t bytes) {
+    auto p = static_cast<const uint8_t *>(data);
+    for (; bytes >= 8; bytes -= 8, p += 8) {
+        uint64_t word;
+        std::memcpy(&word, p, 8);
+        hash = (hash ^ word) * 1099511628211ull;
+    }
+    while (bytes--)
+        hash = (hash ^ *p++) * 1099511628211ull;
+    return hash;
+}
+template <typename Sample>
+static uint32_t filteredPixel(double wx, double wy, double dx, double dy, bool smooth,
+                              const Sample &sample) {
+    if (!smooth)
+        return sample(int(std::floor(wx)), int(std::floor(wy)));
+    unsigned r = 0, g = 0, b = 0, alpha = 0, count = 0;
+    for (double oy : {0.25, 0.75})
+        for (double ox : {0.25, 0.75}) {
+            uint32_t color = sample(int(std::floor(wx + ox * dx)), int(std::floor(wy + oy * dy)));
+            if (color >> 24) {
+                r += (color >> 16) & 255;
+                g += (color >> 8) & 255;
+                b += color & 255;
+                alpha += color >> 24;
+                ++count;
+            }
+        }
+    return count ? ((alpha / 4) << 24) | ((r / count) << 16) | ((g / count) << 8) | (b / count) : 0;
+}
 Scene World::inspect(const SCUSnapshot &s, const Game *g) const {
     Scene v;
-    if (!g || !g->family)
+    if (!g)
         return v;
+    auto rw = [&](size_t a) -> unsigned {
+        return a + 1 < rom.size() ? (unsigned(rom[a]) << 8) | rom[a + 1] : 0;
+    };
+    auto rl = [&](size_t a) { return (rw(a) << 16) | rw(a + 2); };
+    auto ramLong = [&](unsigned a) {
+        return (unsigned(be16(s.ram, a)) << 16) | be16(s.ram, a + 2);
+    };
+    if (g->crc == 0x677206CB) {
+        v.family = 4;
+        unsigned player = be16(s.ram, 0x5736);
+        if (player >= 4)
+            return v;
+        v.stage = be16(s.ram, 0x5788 + player * 76);
+        if (v.stage > 3 || rom.size() != 1048576)
+            return v;
+        v.width = rw(0xBFC70 + v.stage * 4);
+        v.height = rw(0xBFC72 + v.stage * 4);
+        v.cameraX = be16(s.ram, 8);
+        v.cameraY = be16(s.ram, 10);
+        v.playerX = be16(s.ram, 0x5766);
+        v.playerY = be16(s.ram, 0x576A);
+        unsigned layout = ramLong(0x3CAC);
+        v.ready = (s.regs[1] & 64) && v.width >= 320 && v.width <= 2048 && v.height == 2048 &&
+                  be16(s.ram, 0x5748) == v.width - 320 && be16(s.ram, 0x55A2) == v.height - 224 &&
+                  (layout == rl(0xBFC00 + v.stage * 4) || layout == rl(0xBFC10 + v.stage * 4));
+        return v;
+    }
+    if (g->crc == 0x44A2CA44) {
+        v.family = 5;
+        v.stage = be16(s.ram, 0x0678);
+        if (v.stage < 1 || v.stage > 22 || rom.size() != 4194304)
+            return v;
+        unsigned h = 0x1AB62 + (v.stage - 1) * 42;
+        v.width = 8192;
+        v.height = 4096;
+        v.cameraX = be16(s.ram, 0x084E);
+        v.cameraY = be16(s.ram, 0x0850);
+        int x = (int16_t)be16(s.ram, 0xC1EC), z = (int16_t)be16(s.ram, 0xC1F4);
+        v.playerX = x - z + 4096;
+        v.playerY = (x + z) / 2 - (int16_t)be16(s.ram, 0xC1F0);
+        v.ready = (s.regs[1] & 64) && ramLong(0x09EC) == rl(h + 12) &&
+                  ramLong(0x09F4) == rl(h + 20) && ramLong(0x09F8) == rl(h + 24);
+        return v;
+    }
     v.family = g->family;
     auto &r = s.ram;
     int mode = r[0xF600] & 127;
+    // Sonic Classics banks the original S1/S2 programs into the cartridge
+    // window. Their installed RAM layouts can be observed independently of
+    // the menu and Mean Bean engine. Sprite art comes from the hardware SAT.
+    if (g->crc == 0x95B5E8D7 && (mode == 8 || mode == 12))
+        v.family = r[0xD000] == 1 ? 1 : (r[0xB000] == 1 || r[0xB000] == 2) ? 2 : 0;
+    if (!v.family)
+        return v;
     v.stage = be16(r, 0xFE10);
     if (mode != 8 && mode != 12)
         return v;
@@ -79,6 +160,8 @@ Scene World::inspect(const SCUSnapshot &s, const Game *g) const {
     return v;
 }
 uint16_t World::attribute(const SCUSnapshot &s, int family, int x, int y, bool bg) const {
+    if (family >= 4)
+        return atlas.sample(x, y) & 63;
     auto r = s.ram;
     if (x < 0 || x >= 32768 || y < 0 || y >= (family == 3 ? 4096 : 2048))
         return 0;
@@ -175,8 +258,10 @@ void World::captureActors(const Scene &v, const Game *g) {
         uint16_t shape = be16(snap->vram, p + 2), a = be16(snap->vram, p + 4);
         int x = (be16(snap->vram, p + 6) & 511) - 128;
         unsigned tile = a & 2047;
-        bool hud = (tile >= 0x6CA && tile < 0x704) ||
-                   (x < 100 && y >= 192 && tile >= 0x7D4 && tile < 0x7E8);
+        bool hud = v.family == 4   ? y < 16
+                   : v.family == 5 ? y < 32 || y >= 196
+                                   : (tile >= 0x6CA && tile < 0x704) ||
+                                         (x < 100 && y >= 192 && tile >= 0x7D4 && tile < 0x7E8);
         if (!hud)
             satSprites.push_back({x + v.cameraX, y + v.cameraY, a, (uint8_t)((shape >> 8) & 15)});
         index = shape & 127;
@@ -185,6 +270,8 @@ void World::captureActors(const Scene &v, const Game *g) {
     }
     for (auto it = satSprites.rbegin(); it != satSprites.rend(); ++it)
         sprites.push_back(*it);
+    if (v.family >= 4 || !g->family)
+        return;
     // Read the game's priority queues. The hardware/CPU keeps native spawning and collision.
     for (int pri = 7; pri >= 0 && satSprites.empty(); pri--) {
         unsigned q = 0xAC00 + pri * 128, n = be16(r, q);
@@ -299,21 +386,26 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
                     const std::vector<uint32_t> *native, int nw, int nh) {
     enemySpriteCount = enemyMarkerCount = 0;
     Scene v = inspect(s, g);
-    if (!v.ready || cfg.view == 4) {
+    if (!v.ready || cfg.view == 4 || (v.family >= 4 && !cfg.mapExtension)) {
+        if (v.family >= 4 && !cfg.mapExtension)
+            atlas.clear();
         enemies.visible.clear();
         return false;
     }
     snap = &s;
-    lastFamily = v.family;
-    if (lastStage != v.stage) {
+    if (v.family >= 4 && !atlas.prepare(rom, s, v.family, v.stage))
+        return false;
+    if (lastStage != v.stage || lastFamily != v.family) {
         lastStage = v.stage;
+        lastFamily = v.family;
         cameraValid = false;
     }
     int w, h;
     double coverW = 0, coverH = 0;
     bool overview = cfg.view == 2;
-    if (cfg.enemyPreview) {
-        enemies.update(s, g, rom, v.stage, v.cameraX, v.cameraY, cfg.bossPreview, cfg.scriptPreview);
+    if (cfg.enemyPreview && g->family && v.family <= 3) {
+        enemies.update(s, g, rom, v.stage, v.cameraX, v.cameraY, cfg.bossPreview,
+                       cfg.scriptPreview);
         if (overview && cfg.fitSpawns)
             for (const auto &p : enemies.visible) {
                 v.width = std::min(32768, std::max(v.width, p.x + 96));
@@ -322,8 +414,10 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
     } else
         enemies.visible.clear();
     if (cfg.view == 1) {
-        h = 224;
-        w = std::max(320, (int)std::lround(double(dw) * h / std::max(1, dh)));
+        coverH = clampi(cfg.panoramaHeight, 224, 4096);
+        coverW = double(dw) * coverH / std::max(1, dh);
+        w = std::max(1, std::min(dw, int(std::ceil(coverW))));
+        h = std::max(1, std::min(dh, int(coverH)));
     } else if (overview) {
         double scale = std::min(double(dw) / v.width, double(dh) / v.height);
         coverW = dw / scale;
@@ -332,25 +426,24 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
         w = std::max(1, dw / sample);
         h = std::max(1, dh / sample);
     } else {
-        w = std::max(1, dw / cfg.zoom);
-        h = std::max(1, dh / cfg.zoom);
+        double scale = cfg.pixelScale();
+        coverW = dw / scale;
+        coverH = dh / scale;
+        w = std::max(1, std::min(dw, int(std::ceil(coverW))));
+        h = std::max(1, std::min(dh, int(std::ceil(coverH))));
     }
     // Memory/texture bounds are limits on output dimensions, not aspect ratio.
     double cap = std::min({1.0, 16384.0 / w, 8192.0 / h, std::sqrt(33554432.0 / (double(w) * h))});
     w = std::max(1, int(w * cap));
     h = std::max(1, int(h * cap));
-    if (!overview) {
-        coverW = w;
-        coverH = h;
-    }
     canvas.coverageW = coverW;
     canvas.coverageH = coverH;
     canvas.width = w;
     canvas.height = h;
     canvas.scale = std::min(float(dw) / w, float(dh) / h);
     if (!cameraValid) {
-        cfg.left = v.playerX - w / 2;
-        cfg.top = v.playerY - h / 2;
+        cfg.left = int(v.playerX - coverW / 2);
+        cfg.top = int(v.playerY - coverH / 2);
         cameraValid = true;
     }
     if (overview || cfg.camera == 4) {
@@ -360,90 +453,175 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
         canvas.left = cfg.left;
         canvas.top = cfg.top;
     } else {
-        canvas.left = v.playerX - w / 2;
-        canvas.top = v.playerY - h / 2;
+        canvas.left = int(v.playerX - coverW / 2);
+        canvas.top = int(v.playerY - coverH / 2);
         if (cfg.camera == 0) {
-            canvas.left = v.width < w ? (v.width - w) / 2 : clampi(canvas.left, 0, v.width - w);
-            canvas.top = v.height < h ? (v.height - h) / 2 : clampi(canvas.top, 0, v.height - h);
+            canvas.left = v.width < coverW ? int((v.width - coverW) / 2)
+                                           : clampi(canvas.left, 0, int(v.width - coverW));
+            canvas.top = v.height < coverH ? int((v.height - coverH) / 2)
+                                           : clampi(canvas.top, 0, int(v.height - coverH));
         }
     }
-    canvas.pixels.assign((size_t)w * h, 0);
-    priority.assign((size_t)w * h, 0);
-    std::array<bool, 2048> visibleTile{};
-    for (unsigned t = 0; t < 2048; t++)
+    for (unsigned t = 0; t < 2048; t++) {
+        if (patternsValid && !std::memcmp(patternSource.data() + t * 32, s.vram + t * 32, 32))
+            continue;
+        std::memcpy(patternSource.data() + t * 32, s.vram + t * 32, 32);
+        visibleTile[t] = false;
         for (int y = 0; y < 8; y++)
             for (int x = 0; x < 8; x++) {
                 int b = s.vram[t * 32 + y * 4 + x / 2];
                 patterns[t][y * 8 + x] = (uint8_t)((x & 1) ? b & 15 : b >> 4);
                 visibleTile[t] = visibleTile[t] || patterns[t][y * 8 + x] != 0;
             }
+    }
+    patternsValid = true;
+    uint64_t shape = 1469598103934665603ull;
+    for (int value : {v.family, v.stage, v.width, v.height, w, h, canvas.left, canvas.top,
+                      v.cameraY, cfg.view, cfg.overviewStyle, int(cfg.smoothMap)})
+        shape = hashTerrain(shape, &value, sizeof value);
+    shape = hashTerrain(shape, &coverW, sizeof coverW);
+    shape = hashTerrain(shape, &coverH, sizeof coverH);
+    if (v.family <= 3) {
+        shape = hashTerrain(shape, s.ram, 0xA800);
+        if (v.family == 1)
+            shape = hashTerrain(shape, s.ram + 0xB000, 0x1800);
+        if (shape != shapeSignature) {
+            terrainUsed.fill(false);
+            // Enumerate tile references once per geometry/camera change, rather
+            // than hashing animated character graphics or SAT positions.
+            int x0 = std::max(0, canvas.left & ~7), y0 = std::max(0, canvas.top & ~7);
+            int x1 = std::min(v.width, int(std::ceil(canvas.left + coverW))),
+                y1 = std::min(v.height, int(std::ceil(canvas.top + coverH)));
+            for (int y = y0; y < y1; y += 8)
+                for (int x = x0; x < x1; x += 8)
+                    terrainUsed[attribute(s, v.family, x, y) & 2047] = true;
+        }
+    } else {
+        auto version = atlas.version();
+        shape = hashTerrain(shape, &version, sizeof version);
+    }
+    shapeSignature = shape;
+    bool schematic =
+        overview && (cfg.overviewStyle == 2 || (cfg.overviewStyle == 0 && v.family == 3));
+    uint64_t signature = schematic ? shape : hashTerrain(shape, s.palettes, sizeof s.palettes);
+    if (v.family <= 3)
+        for (unsigned tile = 0; tile < 2048; ++tile)
+            if (terrainUsed[tile])
+                signature = schematic ? hashTerrain(signature, &visibleTile[tile], sizeof(bool))
+                                      : hashTerrain(signature, s.vram + tile * 32, 32);
+    bool terrainCached = signature == terrainSignature && terrainPixels.size() == size_t(w) * h;
+    if (terrainCached) {
+        canvas.pixels = terrainPixels;
+        priority = terrainPriority;
+        ++terrainCacheHits;
+    } else {
+        canvas.pixels.assign(size_t(w) * h, 0);
+        priority.assign(size_t(w) * h, 0);
+        ++terrainCacheMisses;
+    }
     int workers = cfg.workers;
 #ifdef _OPENMP
     if (!workers)
         workers = std::max(1, std::min(8, omp_get_num_procs() - 1));
     omp_set_num_threads(workers);
 #endif
-    if (overview) {
-        bool map = cfg.overviewStyle == 2 || (cfg.overviewStyle == 0 && v.family == 3);
-        int row;
+    if (!terrainCached) {
+        int xBegin = clampi(int(std::floor(-canvas.left * w / coverW)) - 1, 0, w),
+            xEnd = clampi(int(std::ceil((v.width - canvas.left) * w / coverW)) + 1, 0, w),
+            yBegin = clampi(int(std::floor(-canvas.top * h / coverH)) - 1, 0, h),
+            yEnd = clampi(int(std::ceil((v.height - canvas.top) * h / coverH)) + 1, 0, h);
+        if (v.family >= 4) {
+            bool smooth = !schematic && cfg.smoothMap && (coverW > w * 1.01 || coverH > h * 1.01);
+            int row;
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static) if (w * h > 500000)
 #endif
-        for (row = 0; row < h; row++) {
-            int wy = canvas.top + (int)(row * coverH / h),
-                nativeLine = clampi(wy - v.cameraY, 0, 223);
-            auto pal = s.palettes[nativeLine];
-            for (int x = 0; x < w; x++) {
-                int wx = canvas.left + (int)(x * coverW / w);
-                uint16_t a = attribute(s, v.family, wx, wy);
-                if (!a)
-                    continue;
-                if (map) {
-                    // This is an explicitly schematic loaded-layout map. Solid
-                    // tile silhouettes avoid borrowing unrelated streamed art.
-                    if ((a & 2047) && visibleTile[a & 2047])
-                        canvas.pixels[(size_t)row * w + x] = 0xD03F8C9D;
-                    continue;
+            for (row = yBegin; row < yEnd; ++row) {
+                int wy = canvas.top + int(row * coverH / h);
+                auto pal = s.palettes[clampi(wy - v.cameraY, 0, 223)];
+                for (int x = xBegin; x < xEnd; ++x) {
+                    int wx = canvas.left + int(x * coverW / w);
+                    uint8_t p = atlas.sample(wx, wy);
+                    size_t at = size_t(row) * w + x;
+                    auto sample = [&](int xx, int yy) -> uint32_t {
+                        unsigned index = atlas.sample(xx, yy) & 63;
+                        return index ? (schematic ? 0xD03F8C9D : pal[index]) : 0;
+                    };
+                    canvas.pixels[at] =
+                        filteredPixel(canvas.left + x * coverW / w, canvas.top + row * coverH / h,
+                                      coverW / w, coverH / h, smooth, sample);
+                    priority[at] = p >> 7;
                 }
-                int ix = (wx & 7) ^ ((a & 0x800) ? 7 : 0), iy = (wy & 7) ^ ((a & 0x1000) ? 7 : 0);
-                int p = patterns[a & 2047][iy * 8 + ix];
-                if (p) {
+            }
+        } else if (overview || std::abs(coverW - w) > 0.01 || std::abs(coverH - h) > 0.01) {
+            bool map = schematic;
+            bool smooth = !map && cfg.smoothMap && (coverW > w * 1.01 || coverH > h * 1.01);
+            int row;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static) if (w * h > 500000)
+#endif
+            for (row = yBegin; row < yEnd; row++) {
+                int wy = canvas.top + (int)(row * coverH / h),
+                    nativeLine = clampi(wy - v.cameraY, 0, 223);
+                auto pal = s.palettes[nativeLine];
+                for (int x = xBegin; x < xEnd; x++) {
+                    int wx = canvas.left + (int)(x * coverW / w);
+                    uint16_t a = attribute(s, v.family, wx, wy);
+                    auto sample = [&](int xx, int yy) -> uint32_t {
+                        unsigned attr = attribute(s, v.family, xx, yy);
+                        if (!attr)
+                            return 0;
+                        if (map)
+                            return (attr & 2047) && visibleTile[attr & 2047] ? 0xD03F8C9D : 0;
+                        int ix = (xx & 7) ^ ((attr & 0x800) ? 7 : 0),
+                            iy = (yy & 7) ^ ((attr & 0x1000) ? 7 : 0);
+                        unsigned p = patterns[attr & 2047][iy * 8 + ix];
+                        return p ? pal[((attr >> 9) & 48) | p] : 0;
+                    };
                     size_t at = (size_t)row * w + x;
-                    canvas.pixels[at] = pal[((a >> 9) & 48) | p];
+                    canvas.pixels[at] =
+                        filteredPixel(canvas.left + x * coverW / w, canvas.top + row * coverH / h,
+                                      coverW / w, coverH / h, smooth, sample);
                     priority[at] = (a & 0x8000) ? 1 : 0;
                 }
             }
-        }
-    } else {
-        int firstY = (canvas.top & ~7) - canvas.top, firstX = (canvas.left & ~7) - canvas.left;
-        int rows = (h - firstY + 7) / 8, row;
+        } else {
+            int firstY = std::max(0, canvas.top & ~7) - canvas.top,
+                firstX = std::max(0, canvas.left & ~7) - canvas.left;
+            int lastY = std::min(h, v.height - canvas.top),
+                lastX = std::min(w, v.width - canvas.left);
+            int rows = std::max(0, (lastY - firstY + 7) / 8), row;
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static) if (w * h > 1000000)
 #endif
-        for (row = 0; row < rows; row++) {
-            int oy = firstY + row * 8, wy = canvas.top + oy;
-            for (int ox = firstX; ox < w; ox += 8) {
-                int wx = canvas.left + ox;
-                uint16_t a = attribute(s, v.family, wx, wy);
-                if (!a)
-                    continue;
-                auto &tile = patterns[a & 2047];
-                int fx = (a & 0x800) ? 7 : 0, fy = (a & 0x1000) ? 7 : 0, pi = (a >> 9) & 48;
-                for (int py = std::max(0, -oy); py < 8 && oy + py < h; py++) {
-                    int ny = clampi(wy + py - v.cameraY, 0, 223);
-                    auto pal = s.palettes[ny];
-                    size_t offset = (size_t)(oy + py) * w;
-                    for (int px = std::max(0, -ox); px < 8 && ox + px < w; px++) {
-                        int p = tile[(py ^ fy) * 8 + (px ^ fx)];
-                        if (p) {
-                            auto i = offset + ox + px;
-                            canvas.pixels[i] = pal[pi | p];
-                            priority[i] = (a & 0x8000) ? 1 : 0;
+            for (row = 0; row < rows; row++) {
+                int oy = firstY + row * 8, wy = canvas.top + oy;
+                for (int ox = firstX; ox < lastX; ox += 8) {
+                    int wx = canvas.left + ox;
+                    uint16_t a = attribute(s, v.family, wx, wy);
+                    if (!a)
+                        continue;
+                    auto &tile = patterns[a & 2047];
+                    int fx = (a & 0x800) ? 7 : 0, fy = (a & 0x1000) ? 7 : 0, pi = (a >> 9) & 48;
+                    for (int py = std::max(0, -oy); py < 8 && oy + py < h; py++) {
+                        int ny = clampi(wy + py - v.cameraY, 0, 223);
+                        auto pal = s.palettes[ny];
+                        size_t offset = (size_t)(oy + py) * w;
+                        for (int px = std::max(0, -ox); px < 8 && ox + px < w; px++) {
+                            int p = tile[(py ^ fy) * 8 + (px ^ fx)];
+                            if (p) {
+                                auto i = offset + ox + px;
+                                canvas.pixels[i] = pal[pi | p];
+                                priority[i] = (a & 0x8000) ? 1 : 0;
+                            }
                         }
                     }
                 }
             }
         }
+        terrainPixels = canvas.pixels;
+        terrainPriority = priority;
+        terrainSignature = signature;
     }
     captureActors(v, g);
     for (auto &q : sprites) {
@@ -475,6 +653,12 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
     // Plane B stays separately styled. Distant terrain uses the stage decoder.
     if (native && nw == 320 && nh == 224 && native->size() == 320 * 224) {
         std::array<uint8_t, 320 * 224> hudMask{};
+        if (v.family >= 4) {
+            int top = v.family == 4 ? 16 : 32, bottom = v.family == 5 ? 196 : 224;
+            for (int y = 0; y < 224; ++y)
+                if (y < top || y >= bottom)
+                    std::fill(hudMask.begin() + y * 320, hudMask.begin() + (y + 1) * 320, 1);
+        }
         unsigned satBase = (s.regs[5] & ((s.regs[12] & 1) ? 0x7E : 0x7F)) * 512, index = 0;
         for (unsigned n = 0; n < 80; n++) {
             unsigned a = (satBase + index * 8) & 65535;
@@ -482,8 +666,8 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
             uint16_t shape = be16(s.vram, a + 2), attr = be16(s.vram, a + 4);
             int tile = attr & 2047, sw = (((shape >> 10) & 3) + 1) * 8,
                 sh = (((shape >> 8) & 3) + 1) * 8;
-            if ((tile >= 0x6C0 && tile < 0x704) ||
-                (x < 100 && y >= 192 && tile >= 0x7D4 && tile < 0x7E8)) {
+            if (v.family <= 3 && ((tile >= 0x6C0 && tile < 0x704) ||
+                                  (x < 100 && y >= 192 && tile >= 0x7D4 && tile < 0x7E8))) {
                 for (int yy = std::max(0, -y); yy < sh && y + yy < 224; yy++)
                     for (int xx = std::max(0, -x); xx < sw && x + xx < 320; xx++) {
                         int ix = (attr & 0x800) ? sw - 1 - xx : xx,
@@ -506,7 +690,7 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
             for (int x = std::max(0, x0); x < std::min(w, x1); x++) {
                 int nx = clampi((int)(canvas.left + x * coverW / w - v.cameraX), 0, 319);
                 auto original = (*native)[ny * 320 + nx];
-                if (!hudMask[ny * 320 + nx] && original != s.background[ny][nx])
+                if (!hudMask[ny * 320 + nx] && (v.family >= 4 || original != s.background[ny][nx]))
                     canvas.pixels[(size_t)y * w + x] = original;
             }
         }
@@ -529,8 +713,9 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
             destination = out;
         };
         for (auto &p : enemies.visible) {
-            uint32_t tint = p.kind == SpawnKind::Boss ? 0xFFFF8194
-                            : p.kind == SpawnKind::Scripted ? 0xFFC18CFF : 0xFFFFCA75;
+            uint32_t tint = p.kind == SpawnKind::Boss       ? 0xFFFF8194
+                            : p.kind == SpawnKind::Scripted ? 0xFFC18CFF
+                                                            : 0xFFFFCA75;
             bool drawn = false;
             if (p.image && cfg.enemyStyle != 2) {
                 auto &image = *p.image;
@@ -555,8 +740,10 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
                             if (cfg.spawnTint && p.kind != SpawnKind::Enemy) {
                                 uint32_t tinted = 0xFF000000;
                                 for (unsigned shift : {0u, 8u, 16u})
-                                    tinted |= ((((pixel >> shift) & 255) * 2 +
-                                                ((tint >> shift) & 255)) / 3) << shift;
+                                    tinted |=
+                                        ((((pixel >> shift) & 255) * 2 + ((tint >> shift) & 255)) /
+                                         3)
+                                        << shift;
                                 pixel = tinted;
                             }
                             blend(x, y, pixel);
@@ -571,7 +758,8 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
             if (cfg.enemyStyle != 1 || !p.image || !drawn) {
                 int x = int(std::lround((p.x - canvas.left) * w / coverW)),
                     y = int(std::lround((p.y - canvas.top) * h / coverH)),
-                    radius = std::max(2, int(std::lround((p.kind == SpawnKind::Boss ? 9 : 5) / canvas.scale)));
+                    radius = std::max(
+                        2, int(std::lround((p.kind == SpawnKind::Boss ? 9 : 5) / canvas.scale)));
                 if (x + radius < 0 || x - radius >= w || y + radius < 0 || y - radius >= h)
                     continue;
                 for (int k = -radius; k <= radius; ++k) {

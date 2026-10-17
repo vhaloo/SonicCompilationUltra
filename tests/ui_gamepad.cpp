@@ -290,7 +290,7 @@ int main() {
             h.frame();
             a.settings.rewind = true;
             a.settings.rewindButton = 0;
-            for (int displayRate : {30, 60, 144}) {
+            for (int displayRate : {10, 30, 60, 144}) {
                 for (int n = 0; n < 90; ++n)
                     a.advanceGame(0, true);
                 const auto before = a.core.frame;
@@ -349,9 +349,11 @@ int main() {
             // Visit every enabled option on every page, using directional input.
             std::vector<std::vector<std::string>> expected = {
                 {"folder", "readyonly", "continue"},
-                {"language", "preset", "view", "overviewstyle", "zoom", "fullscreen", "span",
-                 "display", "menulayout", "uiscale", "contrast", "vsync", "nearest", "nativescale",
-                 "workers", "soft", "scanlines", "performance", "defaults"},
+                {"language",   "preset",     "view",           "overviewstyle", "zoom",
+                 "zoomout",    "pixelreset", "panoramaheight", "mapextension",  "smoothmap",
+                 "fullscreen", "span",       "display",        "menulayout",    "uiscale",
+                 "contrast",   "vsync",      "nearest",        "nativescale",   "workers",
+                 "soft",       "scanlines",  "performance",    "defaults"},
                 {"showstage",     "focusplayer", "playerinset",  "enemypreview", "bosspreview",
                  "scriptpreview", "enemystyle",  "enemyopacity", "spawntint",    "spawnlabels",
                  "fitspawns",     "cameramode",  "follow",       "panspeed",     "hud",
@@ -368,10 +370,38 @@ int main() {
             expected[0].pop_back();
             for (int n = 0; n < 9; ++n) {
                 h.tab(n);
-                for (auto &key : expected[n])
+                for (auto &key : expected[n]) {
                     h.find(key);
+                    if (n >= 1 && n <= 7) {
+                        h.frame(1);
+                        require(settingHelp(key.c_str()),
+                                "setting lacks illustrated guide: " + key);
+                        require(a.guideTopic() == key,
+                                "guide did not follow controller focus: " + key);
+                    }
+                }
+                if (n >= 1 && n <= 7) {
+                    h.press(SDL_CONTROLLER_BUTTON_Y);
+                    require(a.guideVisible(), "top face button must open setting explanation");
+                    h.press(SDL_CONTROLLER_BUTTON_B);
+                    require(!a.guideVisible() && a.menu, "B must close guide without leaving menu");
+                }
             }
             std::cerr << "All settings reached\n";
+            h.tab(1);
+            h.find("zoomout");
+            SDL_Event helpKey{};
+            helpKey.type = SDL_KEYDOWN;
+            helpKey.key.keysym.sym = SDLK_F1;
+            helpKey.key.keysym.scancode = SDL_SCANCODE_F1;
+            a.event(helpKey);
+            h.frame();
+            require(a.guideVisible() && a.guideTopic() == "zoomout",
+                    "F1 must explain the focused setting");
+            helpKey.type = SDL_KEYUP;
+            a.event(helpKey);
+            h.press(SDL_CONTROLLER_BUTTON_B);
+            require(!a.guideVisible() && a.menu, "guide keyboard/controller close");
             a.core
                 .unload(); // Resize checks exercise the menu without expensive backdrop upscaling.
             for (auto size : {std::pair<int, int>{320, 240},
@@ -385,6 +415,12 @@ int main() {
                     h.tab(n);
                     require(GImGui->NavId != 0, "no gamepad focus at resized menu");
                 }
+                h.tab(1);
+                h.find("zoomout");
+                h.press(SDL_CONTROLLER_BUTTON_Y);
+                require(a.guideVisible(), "illustrated detail unavailable at resized menu");
+                h.press(SDL_CONTROLLER_BUTTON_BACK);
+                require(!a.guideVisible() && a.menu, "Select must close guide at resized menu");
             }
             require(a.play(a.library.entries.front().id), "reload for quit test");
             h.press(SDL_CONTROLLER_BUTTON_BACK);

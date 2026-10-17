@@ -30,6 +30,7 @@ Click **Play**, then press **Enter** or **gamepad Start** on the original title 
 | Change options section | Ctrl + Tab; Shift reverses | LB / RB |
 | Scroll options / files | Mouse wheel; Page Up/Down | LT / RT |
 | Adjust a value | Enter, then arrows; Esc finishes | A, then D-pad / left stick; B finishes |
+| Explain the selected setting | F1 in options | Y / Triangle / top face button |
 | Resume from options | Resume button | Start |
 | Zoom | + / − or Ctrl + wheel | Hold RB + Up/Down |
 | Free camera | WASD; Shift moves faster | Right stick |
@@ -44,16 +45,19 @@ You can also click the menu reminder at the bottom of the game. Short keyboard p
 
 ## Pick a comfortable view
 
-- **Whole-level overview (default):** the current platform stage fits, with a player marker and live player inset. Other game projections keep their native frame.
+- **Whole-level overview (default):** the supported current map fits, with a player marker and live inset. Spinball’s four boards and 3D Blast’s 22 terrain maps are supported. Puzzle boards and special stages keep their complete native screen.
 - **Balanced:** the default quality; lower overview sampling reduces work without cropping the stage.
 - **Lightweight:** less rendering work; try this if motion or sound struggles.
-- **Ultra:** render the overview at full output resolution with a soft landscape; suited to large displays. For pixel 1:1 choose **Pixel world** and **1×**.
-- **Panorama:** familiar original-height play with extra width.
+- **Ultra:** render the overview at full output resolution with a soft landscape; suited to large displays. For pixel 1:1 choose **Exact pixel 1:1** in Screen.
+- **Panorama:** choose its world height in Screen. Try 1024 or 2048 for Spinball; horizontal coverage follows your monitor’s shape.
+- **Zoom-out divisor:** see farther at 1/2, 1/4 or 1/8 scale. The effective pixel scale is shown below the control.
 - **Original framing:** preserve the original display, including special stages and puzzle boards.
 
 On separate monitors, turn on **Fullscreen** and **Span all displays**. A unified Nvidia Surround / AMD Eyefinity desktop is treated as one wide display. Different monitor heights create a rectangular desktop canvas; the app cannot correct physical bezels or unequal screen densities.
 
 **Camera & HUD** offers follow, fixed and free views. Choose **Focus on player** to move closer, or **Show whole stage** to return to the overview. Hold **RB + top face button** to switch between those views. The **Live player view in overview** option keeps the native scene readable while zoomed out. The locator points toward a player outside the view.
+
+Focus any setting for an illustrated explanation. Large menus show it alongside the controls; **Y / Triangle or F1** opens a scrollable guide even on a tiny screen. **B / Esc** closes the guide first. This also explains whether an option affects the view, native gameplay or performance.
 
 ## Keep your progress
 

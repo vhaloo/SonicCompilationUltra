@@ -1,6 +1,29 @@
-# Validation report — 13 October 2026
+# Validation report — 17 October 2026
 
 This report separates successful checks from coverage that has not been measured. A boot test or source build is not a full-game completion certificate.
+
+## 0.3.0 terrain and setting-guide additions
+
+- A local, read-only cartridge audit decodes **all four Spinball boards and all 22 Sonic 3D Blast terrain layouts**. All 2,816 compressed 3D Blast rows pass both packed and unpacked CRC checks. These are static terrain-decoder checks; they are not 26 completed stages. Secondary 3D graphics use the currently loaded native VRAM bank, so all-act visual certification is separate from structural decoding.
+- Actual opening gameplay samples in Spinball and 3D Blast verify camera/player coordinates, complete terrain, isometric geometry, native HUD/inset and multiple views. The last Spinball board’s shorter background is covered by a synthetic poisoned-tail regression.
+- Eleven supplied cartridge entries produce **byte-identical complete native snapshots** after equal inputs/ticks in original and expanded presentation. New views do not change RAM, VRAM, palettes, scroll observations or the native raster state. All source saves remain outside public fixtures.
+- Four cartridge cases (Spinball, 3D Blast, Sonic Classics and Mean Bean) render overview, physical Pixel world, 1/8 zoom and tall Panorama at **320×240, 1920×1080 and 7680×1440**, plus illustrated detail windows. Native-only boards keep their original complete image rather than inventing a larger level.
+- Synthetic tests cover SSC overlap/dictionary origin, short and overflowing streams, RNC2 literals/interleaved control bytes, short/long overlapping matches, CRC failures, second-bank addressing, the shorter final pinball background and distant animated-tile updates. Terrain caching is invalidated by used-pattern changes; zoom-out and allocation caps preserve coverage.
+- The SDL virtual gamepad reaches every setting, follows focus with the correct explanation, opens/closes guides with the top face button and B/Select, and repeats the guide at five menu sizes. F1 opens the focused option’s guide. English/French/Spanish/Japanese explanations and titles are checked independently. Forward/reverse pacing is exercised at simulated display rates down to **10 Hz**, as well as 30/60/144 Hz.
+- ROM-free smoke captures now cover all nine pages plus four representative illustrated guides, in four languages at three sizes: **156 captures per build and portable package**. Windows/Linux and both experimental macOS packages use the same checks in CI.
+
+Eight-second samples on the Windows host below, with rewind enabled, audio muted, VSync disabled and Direct3D 11 unless noted, measure **native ticks and presentation calls separately**. Samples include initial map work and are not full-route benchmarks. Presentation calls can repeat an unchanged native image when faster than the cartridge clock.
+
+| Sample | Native ticks/s | Presented frames/s |
+|---|---:|---:|
+| Spinball overview, 7680×1440 Balanced | 59.8 | 97.4 |
+| 3D Blast overview, 7680×1440 Balanced | 59.0 | 53.6 |
+| Sonic 1 physical pixel 1:1, 7680×1440 | 59.6 | 30.9 |
+| Sonic 3 schematic overview, 7680×1440 Balanced | 59.8 | 96.9 |
+| 3D Blast overview, 7680×1440 Ultra | 58.3 | 11.6 |
+| 3D Blast overview, 640×360 Lightweight/software | 59.2 | 93.0 |
+
+Balanced is preferable to Ultra for 3D Blast across three monitors. Ultra prioritizes sampling resolution and can visibly reduce presentation smoothness even when the cartridge clock keeps up. Physical integrated graphics, Mac and Linux gameplay remain unverified. See [terrain architecture and limits](TERRAIN_ATLASES.md).
 
 ## 0.2.2 rewind additions
 

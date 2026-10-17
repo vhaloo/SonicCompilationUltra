@@ -1,6 +1,7 @@
 #pragma once
 #include "core.h"
 #include "localization.h"
+#include "setting_help.h"
 #include <imgui.h>
 #ifdef SCU_UI_TESTS
 #include <map>
@@ -19,6 +20,11 @@ class App {
     bool backRequested = false, selectRequested = false;
     bool padUsed = false, previousFullscreen = false, releaseInput = false;
     bool rewindTrigger = false;
+    bool guideRequested = false, guideOpen = false;
+    std::string guideKey = "view";
+    uint64_t presentationClock = 0;
+    unsigned presentationFrames = 0;
+    double presentationFps = 0;
     double gameAccumulator = 0;
     bool releaseNavigation = true;
     int actionPopup = 0, actionSlot = 1, activePad = 0;
@@ -49,6 +55,7 @@ class App {
     bool choice(const char *key, int &value, std::initializer_list<const char *> keys);
     bool slider(const char *key, int &value, int lo, int hi, const char *format = "%d");
     void control(const char *key);
+    void settingGuide(bool compact = false);
     std::string navigationHint() const;
 
   public:
@@ -98,6 +105,19 @@ class App {
     }
     int confirmation() const {
         return actionPopup;
+    }
+    bool guideVisible() const {
+        return guideOpen;
+    }
+    const std::string &guideTopic() const {
+        return guideKey;
+    }
+    void showGuide(const std::string &key) {
+        if (settingHelp(key.c_str())) {
+            guideKey = key;
+            guideRequested = true;
+            menu = true;
+        }
     }
 #ifdef SCU_UI_TESTS
     std::map<std::string, ImGuiID> controls;

@@ -64,28 +64,20 @@ static void option(Settings &s, const std::string &key, const std::string &value
         return;                                                                                    \
     }
     SET(zoom)
-    SET(camera)
-    SET(hud)
-    SET(hudScale)
-    SET(background)
-    SET(blur)
-    SET(brightness)
-    SET(parallax)
-    SET(minimap)
-    SET(locator)
-    SET(spindash)
-    SET(invincible)
-    SET(infiniteAir)
-    SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top) SET(volume) SET(language) SET(help)
-        SET(workers) SET(fullscreen) SET(span) SET(vsync) SET(uiScale) SET(scanlines) SET(lockon)
-            SET(fastBoot) SET(menuLayout) SET(display) SET(padLabels) SET(jumpLayout)
-                SET(quickControls) SET(confirmActions) SET(confirmQuit) SET(highContrast)
-                    SET(readyOnly) SET(playerInset) SET(quality) SET(overviewStyle)
-                        SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle) SET(bossPreview)
-                            SET(scriptPreview) SET(spawnTint) SET(spawnLabels) SET(fitSpawns)
-                                SET(rewindAudio) SET(rewindButton) SET(rewindMemory)
+    SET(zoomOut)
+    SET(panoramaHeight) SET(mapExtension) SET(smoothMap) SET(camera) SET(hud) SET(hudScale) SET(
+        background) SET(blur) SET(brightness) SET(parallax) SET(minimap) SET(locator) SET(spindash)
+        SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top)
+            SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen) SET(span) SET(vsync)
+                SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot) SET(menuLayout) SET(display)
+                    SET(padLabels) SET(jumpLayout) SET(quickControls) SET(confirmActions)
+                        SET(confirmQuit) SET(highContrast) SET(readyOnly) SET(playerInset)
+                            SET(quality) SET(overviewStyle) SET(enemyPreview) SET(enemyOpacity)
+                                SET(enemyStyle) SET(bossPreview) SET(scriptPreview) SET(spawnTint)
+                                    SET(spawnLabels) SET(fitSpawns) SET(rewindAudio)
+                                        SET(rewindButton) SET(rewindMemory)
 #undef SET
-                                    throw std::runtime_error("Unknown option: " + key);
+                                            throw std::runtime_error("Unknown option: " + key);
 }
 static void execute(App &a, const Action &cmd, uint16_t &mask, bool &rewindMask) {
     std::istringstream in(cmd.args);
@@ -95,6 +87,8 @@ static void execute(App &a, const Action &cmd, uint16_t &mask, bool &rewindMask)
         a.menu = cmd.args == "on";
     else if (cmd.verb == "tab")
         a.showSection(std::stoi(cmd.args));
+    else if (cmd.verb == "guide")
+        a.showGuide(cmd.args);
     else if (cmd.verb == "option") {
         std::string key, val;
         in >> key >> val;
@@ -362,7 +356,7 @@ int main(int argc, char **argv) {
         double freq = (double)SDL_GetPerformanceFrequency(),
                previous = SDL_GetPerformanceCounter() / freq, start = previous,
                measureStart = previous;
-        uint64_t measureFrames = 0, executedFrames = 0;
+        uint64_t measureFrames = 0, executedFrames = 0, presentedFrames = 0;
         while (a.running) {
             SDL_Event e;
             while (SDL_PollEvent(&e))
@@ -387,8 +381,10 @@ int main(int argc, char **argv) {
                 measureFrames = 0;
                 measureStart = now;
             }
-            if (step % renderEvery == 0 || a.menu)
+            if (step % renderEvery == 0 || a.menu) {
                 a.present();
+                ++presentedFrames;
+            }
             if (a.dirty && step % 60 == 0)
                 a.flushSettings();
             ++step;
@@ -418,6 +414,11 @@ int main(int argc, char **argv) {
             out << "{\n  \"version\":\"" << SCU_VERSION << "\",\n  \"game\":\"" << a.core.currentId
                 << "\",\n  \"frames\":" << a.core.frame << ",\n  \"elapsed_seconds\":" << duration
                 << ",\n  \"average_frames_per_second\":" << executedFrames / duration
+                << ",\n  \"presented_frames\":" << presentedFrames
+                << ",\n  \"average_presented_frames_per_second\":" << presentedFrames / duration
+                << ",\n  \"terrain_cache_bytes\":" << a.core.world.atlas.bytes()
+                << ",\n  \"terrain_cache_hits\":" << a.core.world.terrainCacheHits
+                << ",\n  \"terrain_cache_misses\":" << a.core.world.terrainCacheMisses
                 << ",\n  \"renderer\":\"" << ri.name << "\",\n  \"drawable\":[" << a.drawableW
                 << "," << a.drawableH << "],\n  \"canvas\":[" << a.core.world.canvas.width << ","
                 << a.core.world.canvas.height << "],\n  \"camera\":[" << a.core.world.canvas.left

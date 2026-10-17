@@ -2,6 +2,7 @@
 #include "observer.h"
 #include "settings.h"
 #include "enemies.h"
+#include "terrain_atlas.h"
 #include <array>
 namespace scu {
 inline uint16_t be16(const uint8_t *p, unsigned a) {
@@ -26,6 +27,13 @@ struct Sprite {
 };
 class World {
     std::array<std::array<uint8_t, 64>, 2048> patterns{};
+    std::array<uint8_t, 65536> patternSource{};
+    std::array<bool, 2048> visibleTile{};
+    bool patternsValid = false;
+    std::array<bool, 2048> terrainUsed{};
+    std::vector<uint32_t> terrainPixels;
+    std::vector<uint8_t> terrainPriority;
+    uint64_t shapeSignature = 0, terrainSignature = 0;
     std::vector<uint8_t> priority;
     std::vector<Sprite> sprites;
     std::vector<uint8_t> rom;
@@ -40,13 +48,20 @@ class World {
     void captureActors(const Scene &scene, const Game *game);
 
   public:
+    TerrainAtlas atlas;
     EnemyPreviews enemies;
     int enemySpriteCount = 0, enemyMarkerCount = 0;
     Canvas canvas;
+    uint64_t terrainCacheHits = 0, terrainCacheMisses = 0;
     std::array<uint32_t, 320 * 224> backdrop{};
     Scene inspect(const SCUSnapshot &s, const Game *game) const;
     void setRom(const std::vector<uint8_t> &r) {
         rom = r;
+        atlas.clear();
+        patternsValid = false;
+        shapeSignature = terrainSignature = 0;
+        terrainPixels.clear();
+        terrainPriority.clear();
         reset();
     }
     void reset() {

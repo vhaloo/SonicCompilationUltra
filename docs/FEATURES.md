@@ -6,11 +6,14 @@ The app separates cartridge simulation from presentation. Resizing, panning, blu
 
 | Option | Behaviour |
 |---|---|
-| Pixel world | One game pixel per physical display pixel at 1×; integer zoom 1–8 |
-| Panorama | Original 224-pixel world height, adapted to the window's aspect |
+| Pixel world | Exact physical 1:1 with magnification 1× / divisor 1×; magnification 1–8 and divisor 1/2/4/8 |
+| Exact pixel 1:1 | One action restores Pixel world, magnification 1× and divisor 1× |
+| Panorama | Adjustable 224–4096 world-pixel height; horizontal coverage follows the window aspect |
 | Whole-level overview (default) | Fit the entire installed current-stage foreground into a bounded image, with a live native player inset |
 | Overview terrain | Automatic clean map for Sonic 3-era streamed layouts; original artwork or schematic map can be selected for any supported platform stage |
 | Original framing | Preserve the cartridge's native framebuffer and projection |
+| Full Spinball / 3D Blast terrain | Decode complete cartridge maps beyond the native camera; disable to use native framing |
+| Smooth reduced maps | Average terrain samples and interpolate reduced views to limit shimmer; exact 1:1 and magnified pixels stay sharp |
 | Fullscreen / span | Borderless window over one display or the combined display rectangle |
 | Native-screen scale | Independent scale for title screens, special stages and puzzle games |
 | Options layout / text | Fullscreen by default; compact overlay, automatic/small/large/extra-large text and high contrast |
@@ -20,9 +23,30 @@ The app separates cartridge simulation from presentation. Resizing, panning, blu
 | Software rendering | CPU renderer fallback; restart the application to change backend |
 | Vertical sync | Presentation synchronisation; simulation retains native cartridge timing |
 | Scanlines | Adjustable strength; foreground remains nearest-sampled |
-| Performance overlay | Live simulation frame rate and drawable dimensions |
+| Performance overlay | Separate cartridge ticks/s, presented frames/s and drawable dimensions |
 
 Pixel 1:1 uses physical framebuffer dimensions, including on Retina displays. Extremely large output requests are bounded by texture and memory limits; there is no fixed aspect-ratio ceiling. Overview samples a large world instead of allocating a stage-sized, aspect-padded framebuffer.
+
+The render-size cap preserves the requested world coverage and aspect ratio. Native-only games also respect Pixel world magnification rather than silently filling a larger screen. A native image that cannot fit a tiny window is reduced to fit.
+
+## Illustrated settings
+
+Every option has an explanation and an original geometric illustration, localized into English, French, Spanish and Japanese. On larger screens, focus or hover an option to update the side panel. Press **Y / Triangle / top face button** or **F1 in the menu** to open a scrollable detail guide at any size. **B / Esc / Select** closes that guide first. The help button is also reachable with directional navigation. The guide’s illustrations are diagrams, not fabricated gameplay captures.
+
+## Map coverage
+
+| Cartridge / scene | Extended view |
+|---|---|
+| Sonic 1/2/3, S&K and standard platform lock-ons | Current installed act layout, native actors and supported spawn previews; Sonic 3 can use the schematic terrain style |
+| Sonic Spinball | Four complete 2048-pixel-tall boards, 1280/1536/1472/1792 pixels wide; both tile banks, native camera/player tracking and authentic score strip |
+| Sonic 3D Blast | All 22 cartridge terrain maps, each 8192×4096, in the original isometric projection; native rings/lives and live player tracking |
+| Sonic Classics / Compilation | Installed Sonic 1/2 RAM layouts and hardware sprites; menus and Mean Bean retain native framing; separate-cartridge spawn prediction is not applied to this banked edition |
+| Mean Bean Machine | Complete native puzzle screen, adaptive fitting and physical Pixel world scaling |
+| Blue Sphere, special stages, bonus scenes, competition and titles | Original projection and complete native screen; no invented planar terrain |
+
+Spinball and 3D Blast cache palette indices for the entire current terrain and update affected cells when native VRAM animation changes. Palettes remain live. One atlas is retained at a time: about 3–5 MB for Spinball and 37 MB for 3D Blast, plus the output canvas and normal emulation/history memory. Turning off their map extension releases its cache. The final Spinball board’s shorter background follows an anchored version of the cartridge’s vertical parallax curve; the native window preserves its exact local composition.
+
+These maps expose the **terrain**, not an expanded enemy simulation or every moving object in the whole world. The exact native camera patch and optional inset preserve local moving terrain, depth effects, score and animations. Distant scripted changes or native moving objects can remain absent outside the active area. Spinball/3D Blast enemy and boss forecasting is not implemented.
 
 ## Camera and HUD
 
@@ -74,7 +98,7 @@ The expanded compositor is experimental. It reconstructs **terrain, static rings
 
 Only the current act's installed layout is shown. Connected acts, interiors or art banks that have not been loaded are not an atlas of the whole campaign. Sonic 3's streamed edits, burning scenery, palette changes and unusual scrolling can make distant scenery imperfect. The native visible region is retained where possible; Original framing is always available.
 
-Special-stage projections and native split-screen are not flattened into a world map. Mean Bean, Spinball, 3D Blast, Blue Sphere and the original Compilation cartridge use the native view. The original UI inside those scenes is retained.
+Special-stage projections and native split-screen are not flattened into a world map. Mean Bean, Blue Sphere and unsupported scenes use their native view. Spinball and 3D Blast support the terrain atlases described above; native framing remains available for all games.
 
 Displays with different densities/heights and physical bezels cannot form a mathematically perfect single physical surface. The rectangular desktop canvas adapts, but no bezel correction is performed. Low-end performance depends on CPU, drivers, display size and settings; Lightweight and software rendering provide alternatives, not a guarantee for every machine ever made.
 

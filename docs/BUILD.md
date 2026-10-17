@@ -48,7 +48,7 @@ The downloadable corresponding-source archive includes the complete, unmodified 
 
 ## Development and validation
 
-`scu_tests` uses synthetic tile/layout data, never copyrighted game fixtures. `scu_runtime_tests` generates an original minimal 68000 program and PSG tone at runtime to verify CPU execution, VDP output, saves, integrity checks, exact-frame rewind, reverse stereo sound, audio queue direction/mute, PAL timing and bounded delta history. It contains no commercial cartridge code, art or audio. `scu_ui_tests` feeds a real SDL virtual gamepad through the importer, path keyboard, every options page, save slots, dialogs, shortcuts and resizing; it also verifies reconnect and L2/LT rewind pacing at 30/60/144 Hz display intervals. The software-rendered ultrawide menu cases can take a few minutes. A ROM-free UI smoke test can run with `SDL_VIDEODRIVER=dummy` and `SDL_AUDIODRIVER=dummy` plus `--software --headless --frames 10 --menu`.
+`scu_tests` uses synthetic tile/layout data, never copyrighted game fixtures. `scu_runtime_tests` generates an original minimal 68000 program and PSG tone at runtime to verify CPU execution, VDP output, saves, integrity checks, exact-frame rewind, reverse stereo sound, audio queue direction/mute, PAL timing and bounded delta history. It contains no commercial cartridge code, art or audio. `scu_ui_tests` feeds a real SDL virtual gamepad through the importer, path keyboard, every options page, save slots, dialogs, shortcuts and resizing; it also verifies reconnect and L2/LT rewind pacing at 10/30/60/144 Hz display intervals. The software-rendered ultrawide menu cases can take a few minutes. A ROM-free UI smoke test can run with `SDL_VIDEODRIVER=dummy` and `SDL_AUDIODRIVER=dummy` plus `--software --headless --frames 10 --menu`.
 
 ```sh
 SonicCompilationUltra --help
@@ -61,6 +61,8 @@ SonicCompilationUltra --data-dir /private/test-data --headless --game sonic1 \
 Timeline commands support `tab 0..8`, held controller buttons, presentation settings, save/load, captures and assertions. `rewindhold on` / `rewindhold off` exercises the same held-rewind cadence as gameplay; `rewind` restores one frame. A timeline step is a host-loop iteration; use non-real-time test runs for repeatable input. `--no-fast-boot` retains the original boot timing. Headless throughput is not a display-frame-rate measurement. ROMs, snapshots, logs and captures used for game tests belong outside the public source tree.
 
 Original project sources follow `.clang-format`. Vendored sources preserve upstream licensing and are not reformatted. The Genesis core patches are identified in [VENDOR.md](VENDOR.md).
+
+For reproducible menu captures, the timeline command `guide zoomout` opens the localized illustrated explanation for that setting. `tools/smoke_ui.py` captures every page and representative guide in four languages at three window sizes. Cartridge terrain formats and cache boundaries are described in [TERRAIN_ATLASES.md](TERRAIN_ATLASES.md).
 
 To audit a locally owned, supported raw cartridge without initializing video, audio or a window:
 

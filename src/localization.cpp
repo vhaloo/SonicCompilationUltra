@@ -13,6 +13,57 @@ struct Text {
         }                                                                                          \
     }
 static const Text texts[] = {
+    T("smoothmap", "Smooth reduced maps", "Lisser les cartes réduites", "Suavizar mapas reducidos",
+      "縮小マップを滑らかに表示"),
+    T("settingguide", "Setting guide · Y / F1", "Guide du réglage · Y / F1",
+      "Guía del ajuste · Y / F1", "設定ガイド・Y / F1"),
+    T("guideclose", "Close guide · B / Esc", "Fermer le guide · B / Échap", "Cerrar guía · B / Esc",
+      "ガイドを閉じる・B / Esc"),
+    T("guidedrawing", "Illustration · not game footage", "Schéma · pas une capture du jeu",
+      "Ilustración · no es una captura", "模式図・ゲーム画面ではありません"),
+    T("guidehint",
+      "Focus any setting for its explanation. Press the top face button (Y / Triangle) or F1 to "
+      "open this guide; B / Esc closes it.",
+      "Sélectionne un réglage pour son explication. Le bouton du haut (Y / Triangle) ou F1 ouvre "
+      "le guide ; B / Échap le ferme.",
+      "Selecciona un ajuste para ver su explicación. El botón superior (Y / Triángulo) o F1 abre "
+      "la guía; B / Esc la cierra.",
+      "項目を選ぶと説明が変わります。上ボタン（Y / △）かF1でガイドを開き、B / Escで閉じます。"),
+    T("zoomout", "Zoom-out divisor", "Diviseur de dézoom", "Divisor de reducción", "縮小除数"),
+    T("pixelreset", "Exact pixel 1:1", "Pixels exacts 1:1", "Píxel exacto 1:1", "等倍ピクセル表示"),
+    T("effectivescale", "Effective pixel scale", "Échelle réelle des pixels",
+      "Escala real de píxeles", "実際のピクセル倍率"),
+    T("panoramaheight", "Panorama world height", "Hauteur du monde en panorama",
+      "Altura del mundo en panorama", "パノラマの表示高さ"),
+    T("mapextension", "Full Spinball / 3D Blast terrain", "Terrain complet Spinball / 3D Blast",
+      "Terreno completo de Spinball / 3D Blast", "Spinball / 3D Blastの全地形"),
+    T("atlascapability",
+      "Full cartridge terrain is available. Distant scenery is cached; live actors and moving "
+      "terrain follow the original active area.",
+      "Le terrain complet de la cartouche est disponible. Le décor éloigné est en cache ; les "
+      "acteurs et éléments mobiles suivent la zone active native.",
+      "El terreno completo del cartucho está disponible. El paisaje lejano se almacena en caché; "
+      "actores y terreno móvil siguen el área activa original.",
+      "全地形を表示できます。遠景はキャッシュし、動くキャラクターと地形は本来の活動範囲に従います"
+      "。"),
+    T("platformcapability",
+      "Expanded platform terrain is available. Streamed art may need the terrain diagram, "
+      "especially in Sonic 3.",
+      "Le terrain de plateforme étendu est disponible. Les graphismes progressifs peuvent "
+      "nécessiter le schéma de terrain, surtout dans Sonic 3.",
+      "El terreno ampliado está disponible. Los gráficos por zonas pueden necesitar el esquema, "
+      "sobre todo en Sonic 3.",
+      "広域地形表示に対応しています。特にソニック3の逐次読込画像では地形図が必要な場合があります"
+      "。"),
+    T("nativecapability",
+      "This scene uses its original complete screen. Puzzle boards, special stages and unsupported "
+      "scenes do not expose an extended terrain map.",
+      "Cette scène utilise son écran original complet. Les puzzles, stages spéciaux et scènes non "
+      "compatibles n’exposent pas de terrain étendu.",
+      "Esta escena usa su pantalla original completa. Puzles, fases especiales y escenas no "
+      "compatibles no exponen un mapa ampliado.",
+      "この場面は本来の画面を表示します。パズル・特別ステージ・非対応場面には広域地形図がありません"
+      "。"),
     T("bosspreview", "Preview bosses", "Aperçu des boss", "Vista previa de jefes",
       "ボスの出現位置を表示"),
     T("scriptpreview", "Preview scripted spawns", "Aperçu des apparitions scriptées",
@@ -134,17 +185,17 @@ static const Text texts[] = {
       "全画面に使うディスプレイ"),
     T("currentdisplay", "Current display", "Écran actuel", "Pantalla actual", "現在のディスプレイ"),
     T("overviewhelp",
-      "Default: the whole current stage fits on screen, with a player marker. Puzzle, 3D, "
-      "special-stage and title screens fit their native image. Expanded stage art depends on the "
-      "game’s loaded tiles.",
-      "Par défaut : le niveau actuel tient à l’écran, avec un repère du joueur. Puzzles, 3D, "
-      "étapes spéciales et titres gardent leur image native. Le décor étendu dépend des tuiles "
-      "chargées par le jeu.",
-      "Por defecto: el nivel actual cabe en pantalla, con un marcador del jugador. Puzles, 3D, "
-      "fases especiales y títulos ajustan su imagen original. Los gráficos ampliados dependen de "
-      "las piezas cargadas por el juego.",
-      "既定では現在のステージ全体とプレイヤーマーカーを表示します。パズル、3D、特殊ステージ、タイト"
-      "ル画面は元の映像を全体表示します。拡張描画は読み込まれたタイルに依存します。"),
+      "The supported current map fits on screen with a player marker and optional live close-up. "
+      "Spinball and 3D Blast include complete cartridge terrain. Puzzle boards and special stages "
+      "keep their native screen.",
+      "La carte actuelle compatible tient à l’écran avec un repère du joueur et une vue native "
+      "optionnelle. Spinball et 3D Blast incluent leur terrain complet. Puzzles et stages spéciaux "
+      "gardent leur écran natif.",
+      "El mapa actual compatible cabe en pantalla con marcador y vista nativa opcional. Spinball y "
+      "3D Blast incluyen su terreno completo. Puzles y fases especiales conservan su pantalla "
+      "original.",
+      "対応マップ全体とプレイヤーマーカー、任意の拡大画面を表示します。Spinballと3D "
+      "Blastは全地形に対応し、パズルと特別ステージは本来の画面を使います。"),
     T("showstage", "Show whole stage", "Voir le niveau entier", "Ver todo el nivel",
       "ステージ全体を表示"),
     T("focusplayer", "Focus on player", "Centrer sur le joueur", "Centrar en el jugador",
@@ -304,22 +355,22 @@ static const Text texts[] = {
     T("view", "View", "Vue", "Vista", "表示モード"),
     T("pixel", "Pixel world / integer zoom", "Monde en pixels / zoom entier",
       "Mundo en píxeles / zoom entero", "ピクセルワールド・整数ズーム"),
-    T("panorama", "Panorama / original height", "Panorama / hauteur d’origine",
-      "Panorámica / altura original", "パノラマ・元の高さ"),
+    T("panorama", "Panorama / adjustable height", "Panorama / hauteur réglable",
+      "Panorámica / altura ajustable", "パノラマ・高さ調整"),
     T("overview", "Whole-level overview", "Vue du niveau entier", "Vista de todo el nivel",
       "ステージ全体"),
     T("classic", "Original game framing", "Cadre original du jeu", "Encuadre original del juego",
       "元のゲーム画面"),
     T("zoom", "Integer zoom", "Zoom entier", "Zoom entero", "整数ズーム"),
     T("pixelhelp",
-      "At 1×, one game pixel is one physical screen pixel. On smaller screens, zoom out with "
-      "Panorama or Overview.",
-      "À 1×, un pixel du jeu correspond à un pixel physique de l’écran. Sur un petit écran, "
-      "utilise Panorama ou Niveau entier pour dézoomer.",
-      "A 1×, un píxel del juego equivale a un píxel físico de pantalla. En pantallas pequeñas, usa "
-      "Panorámica o Vista completa.",
-      "1× はゲームの 1 ピクセルを画面の物理的な 1 "
-      "ピクセルで表示します。小さい画面ではパノラマや全体表示を使えます。"),
+      "Magnification 1× and divisor 1× give exact physical 1:1. Increase the divisor to zoom out "
+      "below 1:1; + / − also crosses that boundary.",
+      "Agrandissement 1× et diviseur 1× donnent le 1:1 physique exact. Augmente le diviseur pour "
+      "dézoomer davantage ; + / − franchit aussi cette limite.",
+      "Aumento 1× y divisor 1× dan 1:1 físico exacto. Aumenta el divisor para alejarte más; + / − "
+      "también cruza ese límite.",
+      "拡大率1倍・除数1倍で物理画素の等倍表示です。除数を増やすとさらに広く表示できます。+ / "
+      "−でも等倍を越えて縮小できます。"),
     T("fullscreen", "Borderless fullscreen", "Plein écran sans bordure",
       "Pantalla completa sin bordes", "ボーダーレス全画面"),
     T("span", "Span all displays", "Étendre à tous les écrans", "Usar todas las pantallas",

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 — Full terrain atlases and illustrated settings
+
+- Complete cartridge terrain for all four Spinball boards and all 22 Sonic 3D Blast maps, including the original isometric projection and the final Spinball board’s shorter parallax layer. Native actors, counters and camera tracking stay live.
+- Sonic 1/2 installed layouts inside Sonic Classics / Compilation also use the extended renderer. Puzzle boards and special projections retain their native screen with correct Pixel world scaling.
+- Every setting has a four-language illustrated explanation that follows mouse or controller focus. Y/Triangle or F1 opens a scrollable detail guide at every screen size; B/Esc closes it safely.
+- Zoom-out divisors down to 1/8, one-action exact 1:1, adjustable 224–4096-pixel Panorama height, and optional smoothing for reduced terrain. Output limits preserve world coverage.
+- Cached full terrain with affected-cell animation updates, dirty VRAM pattern decoding, less background/upload work, and separate displayed FPS/native tick counters. Lightweight disables map smoothing; existing view choices are kept.
+- New bounded codec, map, animation, localization, coverage and controller-guide checks. Disk save format, cartridge activation rules and local-only game-data boundaries are preserved. macOS remains experimental.
+
 ## 0.2.2 — L2 / LT rewind with reverse sound
 
 - Hold L2 / Xbox LT or Backspace for frame-by-frame rewind at normal cartridge speed; music and effects play backwards with stereo channels preserved. Release resumes from the restored moment.

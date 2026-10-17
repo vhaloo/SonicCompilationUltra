@@ -24,9 +24,9 @@ No installer, administrator access or game-data upload is required. English is t
 
 ## A small screen or three huge ones
 
-**New installations start in borderless fullscreen with a Whole-level overview.** The current platform stage fits on screen, with a player marker and live close-up. Sonic 3-era scenes can use a clean terrain map; other game projections retain their native image. Fullscreen menus keep their content readable in the centre, even across three monitors.
+**New installations start in borderless fullscreen with a Whole-level overview.** The current supported map fits on screen, with a player marker and live close-up. This includes **all four Spinball boards and all 22 Sonic 3D Blast terrain maps**, keeping 3D Blast’s isometric perspective. Sonic 3-era scenes can use a clean terrain diagram. Fullscreen menus keep their content readable in the centre, even across three monitors.
 
-**Pixel world at 1×** shows one game pixel per physical display pixel. **Balanced** and **Lightweight** lower overview sampling to reduce rendering work; quality presets preserve your chosen view. Resize freely, choose a fullscreen display or span all displays.
+**Pixel world at 1× with divisor 1×** shows one game pixel per physical display pixel. Zoom farther out to **1/8**, restore exact 1:1 with one button, or choose a Panorama height from **224 to 4096 world pixels**. Reduced-map smoothing limits shimmer; magnified pixels stay crisp. **Balanced** and **Lightweight** reduce overview work while preserving your chosen view. Resize freely, choose a fullscreen display or span all displays.
 
 Choose a familiar **Panorama**, a very wide **Pixel world**, a **Whole-level overview**, or the **Original game framing**. Follow the player, freeze the view or explore with a free camera. Keep the HUD on the centre monitor, attach it to the player, move it to an edge or hide it.
 
@@ -45,6 +45,18 @@ Choose a familiar **Panorama**, a very wide **Pixel world**, a **Whole-level ove
 
 <img src="docs/screenshots/fullscreen-options.png" alt="Fullscreen options with controller hints and clear stage-view choices">
 
+**Every setting has an illustrated explanation in English, French, Spanish and Japanese.** Focus an option with the gamepad or mouse: the guide appears beside it on larger screens. **Y / Triangle (top face button), or F1**, opens the scrollable explanation on any screen; **B / Esc** closes it.
+
+<table><tr>
+<td width="50%"><img src="docs/screenshots/spinball-overview.png" alt="Spinball full-board terrain in the running application"><br><em>Spinball · full board with authentic live close-up</em></td>
+<td width="50%"><img src="docs/screenshots/3d-blast-overview.png" alt="Sonic 3D Blast full isometric terrain in the running application"><br><em>3D Blast · full isometric terrain</em></td>
+</tr></table>
+
+<details><summary>3D Blast in 48:9 and the setting guide on a tiny screen</summary>
+<img src="docs/screenshots/3d-blast-pixel-48x9.png" alt="Sonic 3D Blast at 7680 × 1440 with physical pixel 1:1">
+<img src="docs/screenshots/tiny-guide.png" width="320" alt="Scrollable illustrated setting guide at 320 × 240">
+</details>
+
 ## The collection
 
 | Platform games and lock-ons | More cartridge games |
@@ -55,7 +67,7 @@ Choose a familiar **Panorama**, a very wide **Pixel world**, a **Whole-level ove
 
 Import separate cartridges and the app can assemble the standard lock-ons locally. **Attach Sonic & Knuckles** also exposes its original lock-on behaviour with other imported cartridges. Knuckles in Sonic 2 requires the cartridge’s UPMEM chip or the supported combined dump. [Details](docs/ROMS.md#lock-on).
 
-The main platform games have an experimental world renderer. Puzzle games, special stages and native competition retain their original framing. The cartridge engine is **Genesis Plus GX**; this project is an enhanced collection, not a new decompilation of every game.
+The main platform games, Spinball, 3D Blast and the Sonic 1/2 stages inside Sonic Classics have an experimental world renderer. Puzzle games, special stages and native competition retain their original complete screen, with correct pixel scaling. Distant terrain is visible; **moving actors still follow the cartridge’s native activation range**. The cartridge engine is **Genesis Plus GX**; this project is an enhanced collection, not a new decompilation of every game.
 
 ## Make it yours
 
