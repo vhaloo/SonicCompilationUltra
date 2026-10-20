@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-project(SonicCompilationUltra VERSION 0.3.0 LANGUAGES C CXX)
+project(SonicCompilationUltra VERSION 0.3.1 LANGUAGES C CXX)
 if(POLICY CMP0135)
   cmake_policy(SET CMP0135 NEW)
 endif()

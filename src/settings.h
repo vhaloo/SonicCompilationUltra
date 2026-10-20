@@ -11,6 +11,9 @@ struct Settings {
     int overviewStyle = 0;
     int enemyOpacity = 35, enemyStyle = 0;
     int zoomOut = 0, panoramaHeight = 224;
+    int hintCorner = 0, hintScale = 100, hintOpacity = 80, hintMargin = 8;
+    int hintDetail = 0, hintSeconds = 0, noticeSeconds = 6;
+    bool rewindIndicator = true;
     bool mapExtension = true;
     bool smoothMap = true;
     double pixelScale() const {

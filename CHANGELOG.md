@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 — Compact corner controls
+
+- Replace the large bottom menu bar with a small, clickable bottom-right options badge. Its default 14-pixel text stays small independently of menu scaling, including 48:9 displays.
+- Add eight controller-accessible preferences: corner, compact/device/detailed content, size, backing opacity, edge spacing, reminder timeout, notification duration and a separate active-rewind indicator. All have illustrated explanations in four languages.
+- Remove the old gameplay footer reservation. Original framing uses the full available height; the player close-up moves out of the corner cards’ way.
+- Keep performance counters, rewind status and notifications independent of the menu reminder. Repeated notifications restart their timer; expired messages remain readable in the menu. Select/View, Esc and F10 work with the badge hidden.
+- Add bounded corner, timer, input, persistence, crowded tiny-window and native-framing checks, plus a fifth illustrated-guide topic in the cross-platform UI smoke tests.
+
 ## 0.3.0 — Full terrain atlases and illustrated settings
 
 - Complete cartridge terrain for all four Spinball boards and all 22 Sonic 3D Blast maps, including the original isometric projection and the final Spinball board’s shorter parallax layer. Native actors, counters and camera tracking stay live.

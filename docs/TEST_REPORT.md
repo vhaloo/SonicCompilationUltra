@@ -1,6 +1,15 @@
-# Validation report — 17 October 2026
+# Validation report — 20 October 2026
 
 This report separates successful checks from coverage that has not been measured. A boot test or source build is not a full-game completion certificate.
+
+## 0.3.1 compact corner controls
+
+- The default English badge measures **110×26 window pixels**, 8 pixels from the bottom-right edge, at 7680×1440. Its text and padding are independent of menu scaling.
+- The SDL virtual-controller suite checks **80 default corner/language/size combinations** (all four corners, four languages and five sizes from 320×240 through portrait and 7680×1440), plus **16 crowded tiny-window combinations** at maximum overlay size/margin. It compares the actual ImGui window bounds with the layout and verifies native framing does not shrink when hints are visible.
+- Every new control is reached and changed with directional gamepad input. Persistence and invalid-value bounds, timer expiry/rearming, repeated notifications, independent rewind/performance visibility and menu shortcuts with the badge hidden are checked with an original cartridge fixture. SDL mouse events verify clicking the badge opens options; keyboard/controller use and all three controller-label styles update the active-input badge.
+- **Eleven locally supplied cartridge entries** produce byte-identical complete native snapshots before/after this update at equal inputs/ticks. All eleven render the new badge at 320×240, 1920×1080 and 7680×1440; active player insets do not overlap the default badge. These are sampled states, not complete playthroughs.
+- ROM-free rendering covers all nine menu pages and five guide topics in four languages at three sizes: **168 captures per build/package**. The new corner guide uses an original diagram and includes English, French, Spanish and Japanese text.
+- User data is backed up separately from the repository and all validation uses private copies. Windows is tested locally; Linux and both experimental macOS targets use automated CI. Physical Mac/controller and every GPU combination remain unverified.
 
 ## 0.3.0 terrain and setting-guide additions
 

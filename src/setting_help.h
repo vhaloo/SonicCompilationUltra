@@ -6,6 +6,7 @@ enum class HelpPicture {
     Zoom,
     Camera,
     Hud,
+    Reminder,
     Background,
     Performance,
     Audio,

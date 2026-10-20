@@ -33,6 +33,26 @@ The render-size cap preserves the requested world coverage and aspect ratio. Nat
 
 Every option has an explanation and an original geometric illustration, localized into English, French, Spanish and Japanese. On larger screens, focus or hover an option to update the side panel. Press **Y / Triangle / top face button** or **F1 in the menu** to open a scrollable detail guide at any size. **B / Esc / Select** closes that guide first. The help button is also reachable with directional navigation. The guide’s illustrations are diagrams, not fabricated gameplay captures.
 
+## Corner reminder and status
+
+The default options reminder is a single compact line in the bottom-right corner, with 14-pixel text and an 8-pixel margin. It uses the outside screen edge on ultrawide displays. It is clickable and does not reserve a footer or shrink native gameplay. The native player close-up moves clear of overlapping cards.
+
+Find these controls under **Camera & HUD**. Every control supports directional gamepad navigation and its illustrated guide.
+
+| Control | Choices |
+|---|---|
+| Show compact options reminder | Show or hide; Select/View, Esc and F10 always open options |
+| Reminder corner | Bottom right (default), bottom left, top right or top left |
+| Reminder content | Both menu shortcuts (default), current input device, or details with rewind bindings/history |
+| Reminder size | 60–180%, independent of menu text and game HUD size |
+| Overlay background opacity | 20–100%; text remains opaque, high contrast uses a nearly solid backing |
+| Overlay edge spacing | 0–64 window pixels, bounded on tiny windows |
+| Hide reminder after | Always visible (0, default), or 1–30 seconds; returning from the menu restarts the timer |
+| Notification duration | 6 seconds by default, 1–30 seconds, or until dismissed (0) |
+| Show status while rewinding | Independent active rewind status with remaining history |
+
+Performance counters and notifications work when the reminder is hidden. An expired notification remains readable and dismissible in the menu; clicking a visible notification opens the menu. Very long notification overlays are bounded to the screen, with full text on mouse hover or in the menu. Larger text and crowded tiny layouts wrap or clip inside their allotted cards instead of extending off-screen. The input-device content follows keyboard/controller use and the selected controller label style.
+
 ## Map coverage
 
 | Cartridge / scene | Extended view |

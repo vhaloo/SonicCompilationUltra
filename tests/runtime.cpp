@@ -34,12 +34,35 @@ int main() {
         defaults.rewindAudio = false;
         defaults.rewindButton = 2;
         defaults.rewindMemory = 0;
+        defaults.hintCorner = 3;
+        defaults.hintScale = 60;
+        defaults.hintOpacity = 35;
+        defaults.hintMargin = 24;
+        defaults.hintDetail = 2;
+        defaults.hintSeconds = 7;
+        defaults.noticeSeconds = 12;
+        defaults.rewindIndicator = false;
         defaults.save(dir);
         Settings persisted;
         persisted.load(dir);
         require(!persisted.rewind && !persisted.rewindAudio && persisted.rewindButton == 2 &&
                     persisted.rewindMemory == 0,
                 "Rewind options or existing opt-out preference did not persist");
+        require(persisted.hintCorner == 3 && persisted.hintScale == 60 &&
+                    persisted.hintOpacity == 35 && persisted.hintMargin == 24 &&
+                    persisted.hintDetail == 2 && persisted.hintSeconds == 7 &&
+                    persisted.noticeSeconds == 12 && !persisted.rewindIndicator,
+                "Corner overlay preferences did not persist");
+        const std::string invalidHints = "hintCorner=99\nhintScale=-100\nhintOpacity=101\n"
+                                         "hintMargin=999\nhintDetail=-1\nhintSeconds=999\n"
+                                         "noticeSeconds=-5\n";
+        writeBytesAtomic(dir / "settings.ini", {invalidHints.begin(), invalidHints.end()});
+        persisted.load(dir);
+        require(persisted.hintCorner == 3 && persisted.hintScale == 60 &&
+                    persisted.hintOpacity == 100 && persisted.hintMargin == 64 &&
+                    persisted.hintDetail == 0 && persisted.hintSeconds == 30 &&
+                    persisted.noticeSeconds == 0,
+                "Out-of-range corner options were not bounded");
         Settings settings;
         settings.autosave = false;
         settings.fastBoot = false;

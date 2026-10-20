@@ -8,6 +8,7 @@
 #include <cstring>
 #include <chrono>
 #include <ctime>
+#include <cfloat>
 namespace scu {
 void App::settingGuide(bool compact) {
     const auto *help = settingHelp(guideKey.c_str());
@@ -69,6 +70,18 @@ void App::settingGuide(bool compact) {
                  0.19f, 0.24f, 0.15f, cyan);
             rect(0.73f, 0.65f, 0.18f, 0.19f, cyan, false);
         }
+        break;
+    }
+    case HelpPicture::Reminder: {
+        rect(0.05f, 0.08f, 0.90f, 0.84f, muted, false);
+        for (int i = 0; i < 9; ++i)
+            rect(0.08f + i * 0.10f, 0.65f + (i % 3) * 0.04f, 0.08f, 0.18f, muted);
+        bool right = settings.hintCorner % 2 == 0, bottom = settings.hintCorner < 2;
+        float x = right ? 0.63f : 0.08f, y = bottom ? 0.78f : 0.12f;
+        rect(x, y, 0.29f, 0.10f, ink);
+        rect(x, y, 0.29f, 0.10f, cyan, false);
+        line(x + 0.025f, y + 0.05f, x + 0.26f, y + 0.05f, gold);
+        draw->AddCircleFilled(point(0.5f, 0.52f), height * 0.04f, gold);
         break;
     }
     case HelpPicture::Background:
@@ -377,6 +390,9 @@ void App::toggleMenu() {
         return;
     }
     menu = !menu;
+    if (!menu) {
+        hintShownAt = noticeShownAt = overlayNow();
+    }
     focusMenu = menu;
     releaseNavigation = menu;
     releaseInput = !menu;
@@ -418,14 +434,18 @@ void App::applyDisplay() {
     dirty = true;
 }
 void App::error(const std::exception &e) {
-    notice = std::string(tr("error", language)) + ": " + e.what();
+    notify(std::string(tr("error", language)) + ": " + e.what());
+}
+void App::notify(std::string text) {
+    notice = std::move(text);
+    lastOverlayNotice = notice;
+    noticeShownAt = overlayNow();
 }
 void App::import(const fs::path &path, bool folder) {
     try {
         int n = folder ? library.importFolder(path) : library.importFile(path);
-        notice = tr(n ? "imported" : "noimport", language);
-        if (n)
-            notice += " (" + std::to_string(n) + ")";
+        notify(std::string(tr(n ? "imported" : "noimport", language)) +
+               (n ? " (" + std::to_string(n) + ")" : ""));
         settings.lastDirectory = (folder ? path : path.parent_path()).u8string();
         dirty = true;
     } catch (const std::exception &e) {
@@ -434,13 +454,14 @@ void App::import(const fs::path &path, bool folder) {
 }
 bool App::play(const std::string &id) {
     if (!core.load(id)) {
-        notice = std::string(tr("error", language)) + ": " + core.status;
+        notify(std::string(tr("error", language)) + ": " + core.status);
         return false;
     }
     menu = false;
     releaseInput = true;
     dirty = true;
     notice.clear();
+    hintShownAt = overlayNow();
     backgroundStage = -1;
     backgroundFrozen = false;
     return true;
@@ -837,10 +858,177 @@ void App::pan() {
     settings.left = std::clamp(settings.left, -32768, 32768);
     settings.top = std::clamp(settings.top, -16384, 16384);
 }
+uint64_t App::overlayNow() const {
+#ifdef SCU_UI_TESTS
+    if (overlayTestClock)
+        return overlayTestClock;
+#endif
+    return SDL_GetTicks64();
+}
+void App::prepareOverlays() {
+    overlays.clear();
+    const auto now = overlayNow();
+    if (lastOverlayNotice != notice) {
+        lastOverlayNotice = notice;
+        noticeShownAt = now;
+    }
+    if (menu) {
+        hintShownAt = noticeShownAt = now;
+        return;
+    }
+    int width = 0, height = 0;
+    SDL_GetWindowSize(window, &width, &height);
+    if (width <= 0 || height <= 0)
+        return;
+    const float margin =
+        std::min(float(std::clamp(settings.hintMargin, 0, 64)), std::min(width, height) / 8.0f);
+    const float fontSize = 14.0f * std::clamp(settings.hintScale, 60, 180) / 100;
+    const float maxWidth = std::max(1.0f, std::min(420.0f, width - margin * 2));
+    auto font = ImGui::GetIO().Fonts->Fonts[0];
+    auto add = [&](const char *id, std::string text, bool clickable, bool accent, float maxHeight) {
+        const float padding = 6;
+        auto size = font->CalcTextSizeA(fontSize, FLT_MAX, std::max(1.0f, maxWidth - padding * 2),
+                                        text.c_str());
+        overlays.push_back({id,
+                            std::move(text),
+                            {0, 0, std::min(maxWidth, std::ceil(size.x) + padding * 2),
+                             std::min(maxHeight, std::ceil(size.y) + padding * 2)},
+                            fontSize,
+                            clickable,
+                            accent});
+    };
+    const bool hintVisible =
+        settings.help &&
+        (!settings.hintSeconds ||
+         now - hintShownAt < uint64_t(std::clamp(settings.hintSeconds, 0, 30)) * 1000);
+    const bool detailed = std::clamp(settings.hintDetail, 0, 2) == 2;
+    const char *binding = settings.rewindButton == 1   ? "L1 / LB"
+                          : settings.rewindButton == 2 ? "R2 / RT"
+                                                       : "L2 / LT";
+    auto rewindText = [&](bool active) {
+        char text[256];
+        std::snprintf(text, sizeof text, tr(active ? "rewinding" : "rewindhint", language), binding,
+                      core.rewindSeconds());
+        return std::string(text);
+    };
+    if (hintVisible) {
+        const char *key = "hintshortcuts";
+        if (settings.hintDetail == 1) {
+            int labels = controllerLabels();
+            key = !padUsed || !pads[activePad] ? "hintkeyboard"
+                  : labels == 2                ? "hintps"
+                  : labels == 3                ? "hintnintendo"
+                                               : "hintxbox";
+        }
+        std::string text = tr(key, language);
+        if (detailed && settings.rewind)
+            text += "\n" + rewindText(core.isRewinding());
+        add("hint", std::move(text), true, false, height * 0.30f);
+    }
+    if (settings.rewindIndicator && core.isRewinding() && !(hintVisible && detailed))
+        add("rewind", rewindText(true), false, true, height * 0.20f);
+    if (settings.performance) {
+        char text[160];
+        std::snprintf(text, sizeof text, "%.1f ticks/s · %.1f fps · %d × %d", measuredFps,
+                      presentationFps, drawableW, drawableH);
+        add("performance", text, false, false, height * 0.20f);
+    }
+    if (!notice.empty() &&
+        (!settings.noticeSeconds ||
+         now - noticeShownAt < uint64_t(std::clamp(settings.noticeSeconds, 0, 30)) * 1000))
+        add("notice", notice, true, true, height * 0.25f);
+    float totalHeight = 0;
+    for (const auto &card : overlays)
+        totalHeight += card.bounds.w;
+    const float available =
+        std::max(1.0f, height - margin * 2 - std::max(0, int(overlays.size()) - 1) * 4);
+    if (totalHeight > available)
+        for (auto &card : overlays)
+            card.bounds.w *= available / totalHeight;
+    const int corner = std::clamp(settings.hintCorner, 0, 3);
+    const bool right = corner % 2 == 0, bottom = corner < 2;
+    float cursor = bottom ? height - margin : margin;
+    for (auto &card : overlays) {
+        const float w = card.bounds.z, h = card.bounds.w;
+        card.bounds.x = right ? width - margin - w : margin;
+        card.bounds.y = bottom ? cursor - h : cursor;
+        card.bounds.z += card.bounds.x;
+        card.bounds.w += card.bounds.y;
+        cursor += (bottom ? -1 : 1) * (h + 4);
+    }
+}
+SDL_Rect App::avoidOverlays(SDL_Rect rect) const {
+    int width = 1, height = 1;
+    SDL_GetWindowSize(window, &width, &height);
+    const float sx = float(drawableW) / std::max(1, width);
+    const float sy = float(drawableH) / std::max(1, height);
+    for (size_t pass = 0; pass < overlays.size(); ++pass)
+        for (const auto &card : overlays) {
+            SDL_Rect obstacle{int(card.bounds.x * sx) - 4, int(card.bounds.y * sy) - 4,
+                              int((card.bounds.z - card.bounds.x) * sx) + 8,
+                              int((card.bounds.w - card.bounds.y) * sy) + 8};
+            if (SDL_HasIntersection(&rect, &obstacle)) {
+                int up = obstacle.y - rect.h - 4, down = obstacle.y + obstacle.h + 4;
+                if (up >= 4)
+                    rect.y = up;
+                else if (down + rect.h <= drawableH - 4)
+                    rect.y = down;
+            }
+        }
+    return rect;
+}
+void App::gameOverlays() {
+    const float opacity = std::clamp(settings.hintOpacity, 20, 100) / 100.0f;
+    auto font = ImGui::GetIO().Fonts->Fonts[0];
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0, 0});
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, {0, 0});
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 6);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1);
+    for (const auto &card : overlays) {
+        ImVec2 pos{card.bounds.x, card.bounds.y};
+        ImVec2 size{card.bounds.z - card.bounds.x, card.bounds.w - card.bounds.y};
+        ImGui::SetNextWindowPos(pos);
+        ImGui::SetNextWindowSize(size);
+        ImGui::SetNextWindowBgAlpha(settings.highContrast ? 0.96f : opacity);
+        ImGui::PushStyleColor(ImGuiCol_Border, card.accent ? ImVec4{0.9f, 0.75f, 0.3f, 0.8f}
+                                                           : ImVec4{0.2f, 0.6f, 0.7f, 0.55f});
+        ImGui::Begin(("##overlay-" + card.id).c_str(), nullptr,
+                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoNav |
+                         ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove |
+                         ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar |
+                         (card.clickable ? ImGuiWindowFlags_None : ImGuiWindowFlags_NoInputs));
+        if (card.clickable) {
+            ImGui::SetCursorScreenPos(pos);
+            if (ImGui::InvisibleButton("open-options", size))
+                toggleMenu();
+            if (ImGui::IsItemHovered()) {
+                ImGui::GetWindowDrawList()->AddRectFilled(pos, {pos.x + size.x, pos.y + size.y},
+                                                          IM_COL32(40, 126, 147, 80), 6);
+                ImGui::BeginTooltip();
+                ImGui::PushTextWrapPos(360);
+                ImGui::TextUnformatted(card.id == "notice" ? card.text.c_str()
+                                                           : tr("hinttooltip", language));
+                ImGui::PopTextWrapPos();
+                ImGui::EndTooltip();
+            }
+        }
+        auto draw = ImGui::GetWindowDrawList();
+        draw->PushClipRect({pos.x + 5, pos.y + 3}, {pos.x + size.x - 5, pos.y + size.y - 3}, true);
+        draw->AddText(font, card.fontSize, {pos.x + 6, pos.y + 6},
+                      settings.highContrast ? IM_COL32_WHITE : IM_COL32(224, 242, 249, 255),
+                      card.text.c_str(), nullptr, std::max(1.0f, size.x - 12));
+        draw->PopClipRect();
+        ImGui::End();
+        ImGui::PopStyleColor();
+    }
+    ImGui::PopStyleVar(4);
+}
 void App::present(bool capture) {
     SDL_GetRendererOutputSize(renderer, &drawableW, &drawableH);
     if (drawableW <= 0 || drawableH <= 0)
         return;
+    prepareOverlays();
+    nativeBounds = insetBounds = {};
     SDL_SetRenderDrawColor(renderer, 6, 12, 24, 255);
     SDL_RenderClear(renderer);
     Scene scene = core.world.inspect(core.snapshot, core.game);
@@ -956,10 +1144,11 @@ void App::present(bool capture) {
                 int safeW = std::min(drawableW, int(drawableH * 16.0 / 9)),
                     w = int(std::min(safeW * 0.28, drawableH * 0.26 * core.nativeW / core.nativeH)),
                     h = w * core.nativeH / core.nativeW, x = (drawableW + safeW) / 2 - w - 16,
-                    y = drawableH - h - (settings.help ? std::max(48, int(drawableH * 0.065)) : 0) -
-                        16;
-                SDL_Rect border{x - 3, y - 3, w + 6, h + 6}, d{x, y, w, h};
+                    y = drawableH - h - 16;
+                SDL_Rect d = avoidOverlays({x, y, w, h});
+                SDL_Rect border{d.x - 3, d.y - 3, w + 6, h + 6};
                 if (settings.view == 2 && settings.playerInset) {
+                    insetBounds = {float(d.x), float(d.y), float(d.x + d.w), float(d.y + d.h)};
                     SDL_SetRenderDrawColor(renderer, 85, 206, 217, 255);
                     SDL_RenderFillRect(renderer, &border);
                     SDL_RenderCopy(renderer, nativeTexture, nullptr, &d);
@@ -979,8 +1168,7 @@ void App::present(bool capture) {
                                                                          : SDL_ScaleModeLinear);
             if (refresh)
                 SDL_UpdateTexture(nativeTexture, nullptr, core.native.data(), core.nativeW * 4);
-            int availableH = drawableH - (settings.help ? std::max(48, int(drawableH * 0.065)) : 0),
-                safeW = std::min(drawableW, (int)(drawableH * 16.0 / 9));
+            int availableH = drawableH, safeW = std::min(drawableW, (int)(drawableH * 16.0 / 9));
             float scale = settings.view == 0     ? float(settings.pixelScale())
                           : settings.nativeScale ? settings.nativeScale
                                                  : std::min(float(safeW) / core.nativeW,
@@ -992,6 +1180,7 @@ void App::present(bool capture) {
             SDL_Rect d{(drawableW - (int)(core.nativeW * scale)) / 2,
                        (availableH - (int)(core.nativeH * scale)) / 2, (int)(core.nativeW * scale),
                        (int)(core.nativeH * scale)};
+            nativeBounds = {float(d.x), float(d.y), float(d.x + d.w), float(d.y + d.h)};
             SDL_RenderCopy(renderer, nativeTexture, nullptr, &d);
         }
         if (settings.scanlines) {
@@ -1029,31 +1218,8 @@ void App::present(bool capture) {
 #endif
     if (expanded)
         hud();
-    if (!menu && (settings.help || !notice.empty())) {
-        auto &io = ImGui::GetIO();
-        ImGui::SetNextWindowPos({io.DisplaySize.x / 2, io.DisplaySize.y - 6}, {}, {0.5f, 1});
-        ImGui::SetNextWindowBgAlpha(0.8f);
-        ImGui::Begin("##hint", nullptr,
-                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
-                         ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoSavedSettings);
-        if (io.DisplaySize.x < 600)
-            ImGui::SetWindowFontScale(0.78f);
-        if (button(io.DisplaySize.x < 600 ? "menushort" : "menuhint"))
-            toggleMenu();
-        if (settings.help && settings.rewind) {
-            const char *binding = settings.rewindButton == 1   ? "L1 / LB"
-                                  : settings.rewindButton == 2 ? "R2 / RT"
-                                                               : "L2 / LT";
-            ImGui::Text(tr(core.isRewinding() ? "rewinding" : "rewindhint", language), binding,
-                        core.rewindSeconds());
-        }
-        if (settings.performance)
-            ImGui::Text("%.1f ticks/s · %.1f fps · %d × %d", measuredFps, presentationFps,
-                        drawableW, drawableH);
-        if (!notice.empty())
-            ImGui::TextWrapped("%s", notice.c_str());
-        ImGui::End();
-    }
+    if (!menu)
+        gameOverlays();
     if (menu)
         ui();
     ImGui::Render();
@@ -1223,7 +1389,7 @@ void App::hud() {
                               IM_COL32(255, 224, 88, 255));
     }
 }
-std::string App::navigationHint() const {
+int App::controllerLabels() const {
     int labels = settings.padLabels;
     if (!labels && pads[activePad]) {
         auto type = SDL_GameControllerGetType(pads[activePad]);
@@ -1235,6 +1401,10 @@ std::string App::navigationHint() const {
                      ? 3
                      : 1;
     }
+    return labels;
+}
+std::string App::navigationHint() const {
+    int labels = controllerLabels();
     return tr(labels == 2 ? "navps" : labels == 3 ? "navnintendo" : "navxbox", language);
 }
 void App::menuInput(bool editing) {
@@ -1317,7 +1487,7 @@ void App::commitAction() {
                 menu = true;
             } else
                 core.reset();
-            notice = tr("resetdone", language);
+            notify(tr("resetdone", language));
         } else if (action == 3) {
             auto previous = settings;
             settings = Settings{};
@@ -1330,13 +1500,13 @@ void App::commitAction() {
             backgroundStage = -1;
             applyDisplay();
             dirty = true;
-            notice = tr("defaultsdone", language);
+            notify(tr("defaultsdone", language));
         } else if (action == 4) {
             core.loadState(actionSlot);
-            notice = tr("loaded", language);
+            notify(tr("loaded", language));
         } else if (action == 5) {
             core.save(actionSlot);
-            notice = tr("saved", language);
+            notify(tr("saved", language));
         } else if (action == 6)
             play(actionGame);
     } catch (const std::exception &e) {
@@ -1732,7 +1902,18 @@ void App::optionsUi(int section) {
         check("locator", settings.locator);
         check("minimap", settings.minimap);
         check("ghost", settings.ghost);
+        ImGui::Separator();
         check("help", settings.help);
+        changed |= choice("hintcorner", settings.hintCorner,
+                          {"bottomright", "bottomleft", "topright", "topleft"});
+        changed |= choice("hintdetail", settings.hintDetail,
+                          {"hintcompact", "hintdevice", "hintdetailed"});
+        slide("hintscale", settings.hintScale, 60, 180, "%d%%");
+        slide("hintopacity", settings.hintOpacity, 20, 100, "%d%%");
+        slide("hintmargin", settings.hintMargin, 0, 64, "%d px");
+        slide("hintseconds", settings.hintSeconds, 0, 30, "%d s");
+        slide("noticeseconds", settings.noticeSeconds, 0, 30, "%d s");
+        check("rewindindicator", settings.rewindIndicator);
         break;
     case 3:
         changed |= choice("backgroundstyle", settings.background,
@@ -1837,7 +2018,7 @@ void App::optionsUi(int section) {
             else {
                 try {
                     core.save(settings.slot);
-                    notice = tr("saved", language);
+                    notify(tr("saved", language));
                 } catch (const std::exception &e) {
                     error(e);
                 }
@@ -1861,7 +2042,7 @@ void App::optionsUi(int section) {
     case 8:
         ImGui::Text("Sonic Compilation Ultra %s", SCU_VERSION);
         if (button("sourcehelp"))
-            notice = tr("romguide", language);
+            notify(tr("romguide", language));
         ImGui::TextWrapped("%s", tr("romguide", language));
         ImGui::Separator();
         ImGui::TextWrapped("%s", tr("romformats", language));
@@ -1899,7 +2080,7 @@ void App::optionsUi(int section) {
 void App::changeDirectory(const fs::path &path) {
     std::error_code ec;
     if (!fs::is_directory(path, ec)) {
-        notice = tr("pathmissing", language);
+        notify(tr("pathmissing", language));
         return;
     }
     browsePath = path.u8string();
@@ -2042,7 +2223,7 @@ void App::pathEditorUi() {
                 pathEditor = false;
                 ImGui::CloseCurrentPopup();
             } else
-                notice = tr("pathmissing", language);
+                notify(tr("pathmissing", language));
         }
         nextButton("backspace");
         if (button("backspace")) {

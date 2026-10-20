@@ -21,6 +21,20 @@ class App {
     bool padUsed = false, previousFullscreen = false, releaseInput = false;
     bool rewindTrigger = false;
     bool guideRequested = false, guideOpen = false;
+    struct OverlayCard {
+        std::string id, text;
+        ImVec4 bounds{};
+        float fontSize = 14;
+        bool clickable = false, accent = false;
+    };
+    std::vector<OverlayCard> overlays;
+    uint64_t hintShownAt = 0, noticeShownAt = 0;
+    std::string lastOverlayNotice;
+    ImVec4 nativeBounds{}, insetBounds{};
+    uint64_t overlayNow() const;
+    void prepareOverlays();
+    void gameOverlays();
+    SDL_Rect avoidOverlays(SDL_Rect rect) const;
     std::string guideKey = "view";
     uint64_t presentationClock = 0;
     unsigned presentationFrames = 0;
@@ -57,6 +71,7 @@ class App {
     void control(const char *key);
     void settingGuide(bool compact = false);
     std::string navigationHint() const;
+    int controllerLabels() const;
 
   public:
     Settings settings;
@@ -89,6 +104,7 @@ class App {
     void present(bool capture = false);
     void screenshot(const fs::path &path);
     void flushSettings();
+    void notify(std::string text);
     int menuTab() const {
         return tab;
     }
@@ -119,7 +135,26 @@ class App {
             menu = true;
         }
     }
+    ImVec4 overlayBounds(const char *id) const {
+        for (const auto &card : overlays)
+            if (card.id == id)
+                return card.bounds;
+        return {};
+    }
+    ImVec4 nativeFrameBounds() const {
+        return nativeBounds;
+    }
+    ImVec4 playerInsetBounds() const {
+        return insetBounds;
+    }
 #ifdef SCU_UI_TESTS
+    uint64_t overlayTestClock = 0;
+    std::string overlayText(const char *id) const {
+        for (const auto &card : overlays)
+            if (card.id == id)
+                return card.text;
+        return {};
+    }
     std::map<std::string, ImGuiID> controls;
     std::map<std::string, ImVec4> controlRects;
 #endif

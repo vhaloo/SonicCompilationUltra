@@ -65,19 +65,22 @@ static void option(Settings &s, const std::string &key, const std::string &value
     }
     SET(zoom)
     SET(zoomOut)
-    SET(panoramaHeight) SET(mapExtension) SET(smoothMap) SET(camera) SET(hud) SET(hudScale) SET(
-        background) SET(blur) SET(brightness) SET(parallax) SET(minimap) SET(locator) SET(spindash)
-        SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top)
-            SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen) SET(span) SET(vsync)
-                SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot) SET(menuLayout) SET(display)
-                    SET(padLabels) SET(jumpLayout) SET(quickControls) SET(confirmActions)
-                        SET(confirmQuit) SET(highContrast) SET(readyOnly) SET(playerInset)
-                            SET(quality) SET(overviewStyle) SET(enemyPreview) SET(enemyOpacity)
-                                SET(enemyStyle) SET(bossPreview) SET(scriptPreview) SET(spawnTint)
-                                    SET(spawnLabels) SET(fitSpawns) SET(rewindAudio)
-                                        SET(rewindButton) SET(rewindMemory)
+    SET(panoramaHeight)
+    SET(mapExtension) SET(smoothMap) SET(camera) SET(hud) SET(hudScale) SET(background) SET(blur)
+        SET(brightness) SET(parallax) SET(minimap) SET(locator) SET(spindash) SET(invincible) SET(
+            infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top) SET(volume)
+            SET(language) SET(help) SET(workers) SET(fullscreen) SET(span) SET(vsync) SET(uiScale)
+                SET(scanlines) SET(lockon) SET(fastBoot) SET(menuLayout) SET(display) SET(padLabels)
+                    SET(jumpLayout) SET(quickControls) SET(confirmActions) SET(confirmQuit)
+                        SET(highContrast) SET(readyOnly) SET(playerInset) SET(quality) SET(
+                            overviewStyle) SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle)
+                            SET(bossPreview) SET(scriptPreview) SET(spawnTint) SET(spawnLabels)
+                                SET(fitSpawns) SET(rewindAudio) SET(rewindButton) SET(rewindMemory)
+                                    SET(hintCorner) SET(hintScale) SET(hintOpacity) SET(hintMargin)
+                                        SET(hintDetail) SET(hintSeconds) SET(noticeSeconds)
+                                            SET(rewindIndicator) SET(performance)
 #undef SET
-                                            throw std::runtime_error("Unknown option: " + key);
+                                                throw std::runtime_error("Unknown option: " + key);
 }
 static void execute(App &a, const Action &cmd, uint16_t &mask, bool &rewindMask) {
     std::istringstream in(cmd.args);
@@ -409,6 +412,9 @@ int main(int argc, char **argv) {
             auto v = a.core.world.inspect(a.core.snapshot, a.core.game);
             SDL_RendererInfo ri{};
             SDL_GetRendererInfo(a.renderer, &ri);
+            auto hintBounds = a.overlayBounds("hint");
+            auto nativeBounds = a.nativeFrameBounds();
+            auto insetBounds = a.playerInsetBounds();
             double duration = SDL_GetPerformanceCounter() / freq - start;
             std::ofstream out(fs::u8path(args["--report"]));
             out << "{\n  \"version\":\"" << SCU_VERSION << "\",\n  \"game\":\"" << a.core.currentId
@@ -429,7 +435,13 @@ int main(int argc, char **argv) {
                 << ",\n  \"language\":" << a.language << ",\n  \"view\":" << a.settings.view
                 << ",\n  \"stage_coverage\":[" << a.core.world.canvas.coverageW << ","
                 << a.core.world.canvas.coverageH << "]"
-                << ",\n  \"menu_layout\":" << a.settings.menuLayout
+                << ",\n  \"menu_layout\":" << a.settings.menuLayout << ",\n  \"hint_bounds\":["
+                << hintBounds.x << "," << hintBounds.y << "," << hintBounds.z << "," << hintBounds.w
+                << "]"
+                << ",\n  \"native_bounds\":[" << nativeBounds.x << "," << nativeBounds.y << ","
+                << nativeBounds.z << "," << nativeBounds.w << "]"
+                << ",\n  \"inset_bounds\":[" << insetBounds.x << "," << insetBounds.y << ","
+                << insetBounds.z << "," << insetBounds.w << "]"
                 << ",\n  \"player_inset\":" << (a.settings.playerInset ? "true" : "false")
                 << ",\n  \"enemy_preview\":" << (a.settings.enemyPreview ? "true" : "false")
                 << ",\n  \"enemy_placements\":" << a.core.world.enemies.placementCount

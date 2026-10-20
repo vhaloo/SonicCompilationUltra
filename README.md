@@ -71,6 +71,8 @@ The main platform games, Spinball, 3D Blast and the Sonic 1/2 stages inside Soni
 
 ## Make it yours
 
+**A small corner badge keeps the menu shortcuts handy.** Open **Camera & HUD** to choose its corner, content, size, opacity, spacing or auto-hide timer. Notifications and active rewind have their own controls; performance counters stay available even with the badge hidden. Click the badge, or use **Select / View, Esc or F10**, to open options at any time. The native game screen uses the full available height.
+
 Six backgrounds include a softly blurred landscape stretched from the game’s own scenery. Blur and brightness are adjustable; characters and terrain stay sharp. You also get a locator, minimap, scanlines, a camera-frame guide, optional **Sonic 1 spin dash**, damage/air assistance, rewind, nine save slots per game, automatic resume, controller dead zones, three gameplay button layouts, button-label hints, large text, high contrast, safe confirmations and rendering presets. The ROM browser includes an on-screen path keyboard.
 
 **See enemies and bosses before they pop in.** Expanded platform stages preview placed enemies, bosses and supported scripted spawns. Amber marks enemies, red marks bosses and purple marks scripted objects and projectiles. Variable attacks show their **origin**; fixed positions can show transparent cartridge sprites. Adjust the independent toggles, opacity, labels, tint and overview framing under **Camera & HUD**, entirely with a gamepad. [How previews work and their limits](docs/ENEMY_PREVIEWS.md).

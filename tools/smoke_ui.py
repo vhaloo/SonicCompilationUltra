@@ -16,7 +16,7 @@ for language in ['en','fr','es','ja']:
     for size in ['640x360','320x240','1280x720']:
         case=out/(language+'-'+size);case.mkdir(exist_ok=True)
         timeline=case/'pages.txt'
-        topics=['mapextension','zoomout','rewind','backgroundstyle']
+        topics=['mapextension','zoomout','rewind','backgroundstyle','hintcorner']
         steps=[f'{page*3} tab {page}\n{page*3+2} capture {case/f"page-{page}.bmp"}' for page in range(9)]
         steps += [f'{27+i*3} guide {topic}\n{29+i*3} capture {case/f"guide-{topic}.bmp"}' for i,topic in enumerate(topics)]
         timeline.write_text('\n'.join(steps))

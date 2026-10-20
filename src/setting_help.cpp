@@ -8,6 +8,90 @@ namespace scu {
         }                                                                                          \
     }
 static const SettingHelp entries[] = {
+    H("hintcorner", Reminder,
+      "Put the compact reminder and status cards in any screen corner. The default is bottom "
+      "right, at the outside edge even on ultrawide displays. The player close-up moves clear of "
+      "these cards.",
+      "Place l’indication compacte et les états dans le coin voulu. Par défaut : en bas à droite, "
+      "au bord extérieur même en ultra-large. La vue rapprochée évite ces indications.",
+      "Coloca el aviso y los estados en cualquier esquina. Por defecto: abajo a la derecha, en el "
+      "borde exterior incluso en pantallas ultraanchas. La vista cercana evita los avisos.",
+      "操作案内と状態表示を画面の四隅から選びます。初期位置は超横長画面でも外側の右下です。プレイヤ"
+      "ーの小画面は重ならない位置へ移動します。"),
+    H("hintdetail", Reminder,
+      "Compact shows the menu shortcuts on one line. Active input shows only the keyboard or "
+      "controller currently in use, with your chosen button labels. Detailed adds rewind bindings "
+      "and available history.",
+      "Compact affiche les deux commandes du menu sur une ligne. Commande utilisée affiche le "
+      "clavier ou la manette en cours avec les boutons choisis. Détaillé ajoute le rewind et "
+      "l’historique disponible.",
+      "Compacto muestra ambos controles del menú. Control activo muestra solo el teclado o mando "
+      "usado, con las etiquetas elegidas. Detallado añade el rebobinado y su historial disponible.",
+      "コンパクトは両方のメニュー操作、使用中のみはキーボードかコントローラーの操作を表示します。詳"
+      "細は巻き戻しの操作と残り時間も表示します。"),
+    H("hintscale", Reminder,
+      "Resize the corner overlays from 60% to 180%. Their small default text is independent of "
+      "menu and game HUD size. Long text wraps inside the screen, including tiny and portrait "
+      "windows.",
+      "Règle les indications de 60 à 180 %. Leur petite taille par défaut est indépendante du menu "
+      "et du HUD. Les textes longs restent dans l’écran, même petit ou vertical.",
+      "Ajusta los avisos del 60 al 180 %. Su texto pequeño es independiente del menú y del HUD. "
+      "Los textos largos se adaptan al ancho de la ventana, incluso pequeña o vertical.",
+      "案内表示を60～180%"
+      "に調整します。初期文字サイズはメニューやHUDとは独立しています。長い文は小画面や縦画面でも画"
+      "面内で折り返します。"),
+    H("hintopacity", Reminder,
+      "Adjust the dark backing of the reminder, notifications and status cards. Text stays opaque "
+      "for readability. High contrast uses a nearly solid backing regardless of this setting.",
+      "Règle le fond sombre des indications, notifications et états. Le texte reste opaque. Le "
+      "contraste élevé utilise un fond presque uni, quel que soit ce réglage.",
+      "Ajusta el fondo oscuro de avisos, notificaciones y estados. El texto sigue opaco. Alto "
+      "contraste usa un fondo casi sólido independientemente de este ajuste.",
+      "操作案内・通知・状態表示の背景を調整します。文字は読みやすい不透明のままです。高コントラスト"
+      "ではこの値に関わらず背景を濃くします。"),
+    H("hintmargin", Reminder,
+      "Leave 0–64 window pixels between the overlay cards and the screen edges. This also helps "
+      "with display overscan. Margins are bounded automatically on tiny windows.",
+      "Laisse de 0 à 64 pixels entre les indications et le bord. Utile aussi si l’écran coupe ses "
+      "bords. La marge s’adapte aux toutes petites fenêtres.",
+      "Deja de 0 a 64 píxeles entre los avisos y el borde. También sirve si la pantalla recorta "
+      "los bordes. El margen se limita en ventanas pequeñas.",
+      "表示と画面端の間に0～64ピクセルの余白を設けます。画面端が切れる場合にも便利です。小画面では"
+      "余白を自動的に制限します。"),
+    H("hintseconds", Reminder,
+      "Zero keeps the reminder visible. Otherwise it hides after the chosen number of seconds of "
+      "play and reappears when you resume from the menu. Select/View, Esc and F10 always open "
+      "options, even when hidden.",
+      "Zéro garde l’indication visible. Sinon elle se masque après le délai choisi et revient à la "
+      "reprise depuis le menu. Select/View, Échap et F10 fonctionnent toujours.",
+      "Cero mantiene el aviso visible. Otro valor lo oculta tras ese tiempo y vuelve al salir del "
+      "menú. Select/View, Esc y F10 siempre abren opciones aunque esté oculto.",
+      "0では常に表示します。それ以外は指定秒数で隠れ、メニューから再開すると再表示します。非表示で"
+      "もSelect/View・Esc・F10で設定を開けます。"),
+    H("noticeseconds", Reminder,
+      "Choose how long status notifications remain during play. Zero keeps them until you dismiss "
+      "them in the menu. Messages remain available in the menu after their overlay expires; click "
+      "a notification to open it. Long overlays are clipped, with full text on hover or in the "
+      "menu.",
+      "Choisis la durée des notifications en jeu. Zéro les garde jusqu’à leur fermeture dans le "
+      "menu. Après le délai, le texte reste dans le menu. Clique pour l’ouvrir. Les longs textes "
+      "sont limités en jeu, complets au survol ou dans le menu.",
+      "Elige la duración de las notificaciones. Cero las mantiene hasta cerrarlas en el menú. El "
+      "mensaje sigue en el menú tras desaparecer; púlsalo para abrirlo. Los textos largos se "
+      "limitan en juego y se leen completos al apuntarlos o en el menú.",
+      "通知の表示秒数を選びます。0ではメニューで閉じるまで表示します。消えた通知もメニューで確認で"
+      "きます。クリックでメニューを開きます。長文の全文はマウスを重ねるかメニューで読めます。"),
+    H("rewindindicator", Rewind,
+      "Show a small status card only while rewinding, including remaining history. It works even "
+      "if the menu reminder is hidden or timed out. Detailed reminders already contain this "
+      "information.",
+      "Affiche un petit état uniquement pendant le rewind, avec l’historique restant. Il "
+      "fonctionne même si l’indication du menu est masquée. L’indication détaillée le contient "
+      "déjà.",
+      "Muestra un estado pequeño solo al rebobinar, con el historial restante. Funciona aunque el "
+      "aviso esté oculto. Los avisos detallados ya incluyen esa información.",
+      "巻き戻し中だけ残り時間を小さく表示します。操作案内が非表示でも使えます。詳細案内に同じ情報が"
+      "ある場合は重複しません。"),
     H("smoothmap", View,
       "Average several terrain samples and smooth reduced maps to reduce shimmer. Exact 1:1 and "
       "magnified pixel views stay sharp. Disable for faster nearest-pixel maps.",
@@ -383,15 +467,18 @@ static const SettingHelp entries[] = {
       "Dessine le cadre natif 320×224 de la caméra dans le terrain étendu.",
       "Dibuja el encuadre nativo de 320×224 dentro del terreno ampliado.",
       "広域地形の中に本来の320×224カメラ枠を表示します。"),
-    H("help", Controller,
-      "Keep the menu and rewind bindings visible during play. The menu is always available through "
-      "Select/View, Esc or F10.",
-      "Garde les commandes du menu et du retour arrière visibles en jeu. Select/View, Échap et F10 "
-      "ouvrent toujours le menu.",
-      "Mantiene visibles las teclas de menú y rebobinado. Select/View, Esc y F10 siempre abren el "
-      "menú.",
-      "プレイ中にメニューと巻き戻しの操作を表示します。Select/"
-      "View・Esc・F10でいつでもメニューを開けます。"),
+    H("help", Reminder,
+      "Show a small clickable options reminder in the selected screen corner. Set its content, "
+      "size and optional hide timer below. Select/View, Esc and F10 always open options. Rewind "
+      "status, notifications and performance counters have independent visibility.",
+      "Affiche une petite indication cliquable dans le coin choisi. Règle son contenu, sa taille "
+      "et son délai ci-dessous. Select/View, Échap et F10 ouvrent toujours le menu. Les états du "
+      "rewind, notifications et performances restent indépendants.",
+      "Muestra un aviso pequeño en la esquina elegida. Ajusta contenido, tamaño y temporizador "
+      "debajo. Select/View, Esc y F10 siempre abren opciones. Rebobinado, notificaciones y "
+      "rendimiento tienen visibilidad independiente.",
+      "選んだ隅にクリック可能な小さい操作案内を表示します。内容・大きさ・表示時間を調整できます。Se"
+      "lect/View・Esc・F10は常に使えます。巻き戻し・通知・性能表示は独立しています。"),
     H("backgroundstyle", Background,
       "Choose stretched blurred scenery, sharp scenery, tiled scenery, a gradient, a dark wash or "
       "black. The terrain and characters stay sharp.",

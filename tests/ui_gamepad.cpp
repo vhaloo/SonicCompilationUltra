@@ -168,6 +168,169 @@ struct Harness {
         require(GImGui->OpenPopupStack.empty(), "choice popup not confirmed: " + key);
     }
 };
+static void testCompactOverlays(Harness &h) {
+    auto &a = *h.app;
+    const auto previous = a.settings;
+    const auto previousNotice = a.notice;
+    a.menu = false;
+    a.notice.clear();
+    a.settings.view = 4;
+    a.settings.help = true;
+    a.settings.hintDetail = 0;
+    a.settings.hintScale = 100;
+    a.settings.hintMargin = 8;
+    a.settings.hintSeconds = 0;
+    a.settings.performance = false;
+    auto visible = [&](const char *id) { return a.overlayBounds(id).z > 0; };
+    auto inside = [&](const char *id, int w, int height) {
+        auto r = a.overlayBounds(id);
+        require(r.z > r.x && r.w > r.y && r.x >= 0 && r.y >= 0 && r.z <= w && r.w <= height,
+                std::string("overlay outside drawable window: ") + id);
+        auto window = ImGui::FindWindowByName((std::string("##overlay-") + id).c_str());
+        require(window && std::abs(window->Pos.x - r.x) < 1 && std::abs(window->Pos.y - r.y) < 1 &&
+                    std::abs(window->Size.x - (r.z - r.x)) < 1 &&
+                    std::abs(window->Size.y - (r.w - r.y)) < 1,
+                "actual overlay window disagrees with bounded layout");
+    };
+    for (auto size :
+         {std::pair<int, int>{320, 240}, {640, 360}, {1080, 1920}, {1920, 1080}, {7680, 1440}}) {
+        SDL_SetWindowSize(a.window, size.first, size.second);
+        for (int language = 0; language < 4; ++language) {
+            a.language = language;
+            for (int corner = 0; corner < 4; ++corner) {
+                a.settings.hintCorner = corner;
+                a.settings.uiScale = corner; // Hint size must not follow menu scale.
+                h.frame();
+                inside("hint", size.first, size.second);
+                auto r = a.overlayBounds("hint");
+                require(r.z - r.x < 240 && r.w - r.y <= 28,
+                        "default reminder is no longer a small single-line badge");
+                require(std::abs((corner % 2 ? r.x : size.first - r.z) - 8) < 1 &&
+                            std::abs((corner < 2 ? size.second - r.w : r.y) - 8) < 1,
+                        "reminder is not anchored to its chosen screen corner");
+            }
+        }
+        const auto native = a.nativeFrameBounds();
+        a.settings.help = false;
+        h.frame();
+        const auto without = a.nativeFrameBounds();
+        require(native.x == without.x && native.y == without.y && native.z == without.z &&
+                    native.w == without.w,
+                "reminder visibility still reserves a gameplay footer");
+        a.settings.help = true;
+    }
+    SDL_SetWindowSize(a.window, 320, 240);
+    a.settings.hintScale = 180;
+    a.settings.hintMargin = 64;
+    a.settings.hintDetail = 2;
+    a.settings.performance = true;
+    a.settings.noticeSeconds = 0;
+    a.notice = std::string(600, 'W');
+    for (int language = 0; language < 4; ++language) {
+        a.language = language;
+        for (int corner = 0; corner < 4; ++corner) {
+            a.settings.hintCorner = corner;
+            h.frame();
+            for (auto id : {"hint", "notice", "performance"})
+                inside(id, 320, 240);
+        }
+    }
+    a.settings = Settings{};
+    a.settings.fullscreen = false;
+    a.settings.view = 4;
+    a.settings.mute = true;
+    a.settings.performance = true;
+    a.settings.hintSeconds = a.settings.noticeSeconds = 1;
+    a.overlayTestClock = 1000;
+    a.menu = true;
+    a.notice = "Timed notification";
+    h.frame();
+    a.toggleMenu();
+    h.frame();
+    require(visible("hint") && visible("notice"), "corner timers did not start on resume");
+    a.overlayTestClock = 2001;
+    h.frame();
+    require(!visible("hint") && !visible("notice") && visible("performance") &&
+                a.notice == "Timed notification",
+            "overlay timeout hid independent performance or lost the menu notification");
+    a.notify("Timed notification");
+    h.frame();
+    require(visible("notice"), "repeating the same notification did not restart its timer");
+    h.press(SDL_CONTROLLER_BUTTON_BACK);
+    require(a.menu, "Select cannot open options after reminder timeout");
+    h.press(SDL_CONTROLLER_BUTTON_START);
+    h.frame();
+    require(!a.menu && visible("hint"), "resuming did not rearm the reminder");
+    a.settings.help = false;
+    a.core.setRewinding(true);
+    h.frame();
+    require(visible("rewind") && visible("performance"),
+            "rewind or performance status depends on the menu reminder");
+    a.settings.rewindIndicator = false;
+    h.frame();
+    require(!visible("rewind"), "rewind indicator toggle ignored");
+    a.core.setRewinding(false);
+    SDL_Event escape{};
+    escape.type = SDL_KEYDOWN;
+    escape.key.keysym.sym = SDLK_ESCAPE;
+    escape.key.keysym.scancode = SDL_SCANCODE_ESCAPE;
+    a.event(escape);
+    h.frame();
+    require(a.menu, "Esc cannot open options while the reminder is disabled");
+    escape.type = SDL_KEYUP;
+    a.event(escape);
+    a.settings.help = true;
+    a.settings.hintSeconds = 0;
+    a.settings.hintDetail = 1;
+    a.toggleMenu();
+    SDL_Event key{};
+    key.type = SDL_KEYDOWN;
+    key.key.keysym.sym = SDLK_x;
+    key.key.keysym.scancode = SDL_SCANCODE_X;
+    a.event(key);
+    h.frame();
+    require(a.overlayText("hint") == tr("hintkeyboard", a.language),
+            "active-input reminder did not follow keyboard use");
+    key.type = SDL_KEYUP;
+    a.event(key);
+    for (int labels = 1; labels <= 3; ++labels) {
+        a.settings.padLabels = labels;
+        h.press(SDL_CONTROLLER_BUTTON_A);
+        require(a.overlayText("hint") == tr(labels == 2   ? "hintps"
+                                            : labels == 3 ? "hintnintendo"
+                                                          : "hintxbox",
+                                            a.language),
+                "active-input reminder did not follow controller labels");
+    }
+    const auto badge = a.overlayBounds("hint");
+    SDL_Event mouse{};
+    mouse.type = SDL_MOUSEMOTION;
+    mouse.motion.windowID = SDL_GetWindowID(a.window);
+    mouse.motion.x = int((badge.x + badge.z) / 2);
+    mouse.motion.y = int((badge.y + badge.w) / 2);
+    SDL_PushEvent(&mouse);
+    h.frame(); // Active-device text changes, so use the resulting badge centre.
+    const auto keyboardBadge = a.overlayBounds("hint");
+    mouse.type = SDL_MOUSEBUTTONDOWN;
+    mouse.button.windowID = SDL_GetWindowID(a.window);
+    mouse.button.button = SDL_BUTTON_LEFT;
+    mouse.button.x = int((keyboardBadge.x + keyboardBadge.z) / 2);
+    mouse.button.y = int((keyboardBadge.y + keyboardBadge.w) / 2);
+    SDL_PushEvent(&mouse);
+    h.frame();
+    mouse.type = SDL_MOUSEBUTTONUP;
+    SDL_PushEvent(&mouse);
+    h.frame();
+    require(a.menu, "clicking the corner badge did not open options");
+    a.settings = previous;
+    a.language = detectLanguage(previous.language);
+    a.notice = previousNotice;
+    a.overlayTestClock = 0;
+    SDL_SetWindowSize(a.window, 1280, 720);
+    h.frame();
+    std::cerr << "Compact overlays: 80 corner/language/size layouts, 16 crowded tiny layouts, "
+                 "independent status, timers, shortcuts and native framing passed\n";
+}
 int main() {
     try {
         SDL_SetMainReady();
@@ -354,10 +517,12 @@ int main() {
                  "fullscreen", "span",       "display",        "menulayout",    "uiscale",
                  "contrast",   "vsync",      "nearest",        "nativescale",   "workers",
                  "soft",       "scanlines",  "performance",    "defaults"},
-                {"showstage",     "focusplayer", "playerinset",  "enemypreview", "bosspreview",
-                 "scriptpreview", "enemystyle",  "enemyopacity", "spawntint",    "spawnlabels",
-                 "fitspawns",     "cameramode",  "follow",       "panspeed",     "hud",
-                 "hudsize",       "locator",     "minimap",      "ghost",        "help"},
+                {"showstage",     "focusplayer",   "playerinset",    "enemypreview", "bosspreview",
+                 "scriptpreview", "enemystyle",    "enemyopacity",   "spawntint",    "spawnlabels",
+                 "fitspawns",     "cameramode",    "follow",         "panspeed",     "hud",
+                 "hudsize",       "locator",       "minimap",        "ghost",        "help",
+                 "hintcorner",    "hintdetail",    "hintscale",      "hintopacity",  "hintmargin",
+                 "hintseconds",   "noticeseconds", "rewindindicator"},
                 {"backgroundstyle", "blur", "brightness", "parallax", "motion"},
                 {"volume", "mute", "pausefocus"},
                 {"padlabels", "jumpbuttons", "rewindbutton", "quickcontrols", "deadzone"},
@@ -388,6 +553,18 @@ int main() {
                 }
             }
             std::cerr << "All settings reached\n";
+            h.tab(2);
+            h.choose("hintcorner");
+            h.choose("hintdetail");
+            h.adjust("hintscale", a.settings.hintScale);
+            h.adjust("hintopacity", a.settings.hintOpacity);
+            h.adjust("hintmargin", a.settings.hintMargin);
+            h.adjust("hintseconds", a.settings.hintSeconds);
+            h.adjust("noticeseconds", a.settings.noticeSeconds);
+            const bool oldIndicator = a.settings.rewindIndicator;
+            h.activate("rewindindicator");
+            require(a.settings.rewindIndicator != oldIndicator, "rewind indicator via gamepad");
+            testCompactOverlays(h);
             h.tab(1);
             h.find("zoomout");
             SDL_Event helpKey{};
