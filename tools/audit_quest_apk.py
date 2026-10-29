@@ -24,7 +24,7 @@ signature=run([signer,'verify','--verbose','--print-certs',a.apk])
 aapt=tools/('aapt2.exe' if os.name=='nt' else 'aapt2')
 badging=run([aapt,'dump','badging',a.apk])
 assert "package: name='com.vhaloo.soniccompilationultra.quest'" in badging
-assert "versionCode='600'" in badging and "versionName='0.6.0-xr-preview'" in badging
+assert "versionCode='601'" in badging and "versionName='0.6.0-xr-preview'" in badging
 assert "native-code: 'arm64-v8a'" in badging
 assert 'QuestActivity' in badging
 manifest=run([aapt,'dump','xmltree','--file','AndroidManifest.xml',a.apk])

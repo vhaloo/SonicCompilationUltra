@@ -10,6 +10,7 @@ struct GlState {
         frontFace, pack, unpack;
     GLfloat clear[4];
     GLboolean blend, depth, cull, scissorTest, depthMask, colorMask[4];
+    bool pending = true;
     GlState() {
         glGetIntegerv(GL_CURRENT_PROGRAM, &program);
         glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &vao);
@@ -43,7 +44,9 @@ struct GlState {
         cull = glIsEnabled(GL_CULL_FACE);
         scissorTest = glIsEnabled(GL_SCISSOR_TEST);
     }
-    ~GlState() {
+    void restore() {
+        if (!pending) return;
+        pending = false;
         glUseProgram(program);
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, arrayBuffer);
@@ -76,6 +79,7 @@ struct GlState {
             else
                 glDisable(e.first);
     }
+    ~GlState() { restore(); }
 };
 } // namespace scu
 #endif

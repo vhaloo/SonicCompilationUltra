@@ -238,7 +238,7 @@ struct QuestPresentation::Impl {
         XrInstanceCreateInfo info{XR_TYPE_INSTANCE_CREATE_INFO};
         info.next = &android;
         std::strcpy(info.applicationInfo.applicationName, "Sonic Compilation Ultra XR");
-        info.applicationInfo.applicationVersion = 600;
+        info.applicationInfo.applicationVersion = 601;
         std::strcpy(info.applicationInfo.engineName, "SCU / Genesis Plus GX");
         info.applicationInfo.apiVersion = XR_MAKE_VERSION(1, 0, 45);
         info.enabledExtensionCount = uint32_t(enabled.size());
@@ -1405,6 +1405,7 @@ struct QuestPresentation::Impl {
                         head.orientation.z, head.orientation.w);
         }
         frameOpen = false;
+        restoreGraphics.restore();
         SDL_SetRenderTarget(app.renderer, nullptr);
         if (wasDrawn && activeScreen == &gameScreen && fixed() && !app.menu &&
             app.settings.questAdaptive && frame.predictedDisplayPeriod > 0) {

@@ -12,7 +12,7 @@ android {
         applicationId 'com.vhaloo.soniccompilationultra.quest'
         minSdk 29
         targetSdk 32
-        versionCode 600
+        versionCode 601
         versionName '0.6.0-xr-preview'
         ndk { abiFilters 'arm64-v8a' }
         externalNativeBuild {
