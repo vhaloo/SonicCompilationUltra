@@ -403,6 +403,10 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
     int w, h;
     double coverW = 0, coverH = 0;
     bool overview = cfg.view == 2;
+    if (overview && cfg.fixedMapWidth > 0 && cfg.fixedMapHeight > 0) {
+        v.width = cfg.fixedMapWidth;
+        v.height = cfg.fixedMapHeight;
+    }
     if (cfg.enemyPreview && g->family && v.family <= 3) {
         enemies.update(s, g, rom, v.stage, v.cameraX, v.cameraY, cfg.bossPreview,
                        cfg.scriptPreview);

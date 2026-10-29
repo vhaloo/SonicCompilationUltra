@@ -19,7 +19,7 @@ class App {
     std::array<uint32_t, 320 * 224> frozenBackground{};
     int backgroundStage = -1;
     bool backgroundFrozen = false;
-    uint64_t lastImageVersion = ~uint64_t(0), lastPresentationHash = 0;
+    uint64_t lastImageVersion = ~uint64_t(0), lastPresentationHash = 0, backdropSettingsHash = 0;
     bool cachedExpanded = false;
     bool browserOpen = false, folderMode = false;
     bool pathEditor = false, focusMenu = true, focusPage = false, focusBrowser = false;

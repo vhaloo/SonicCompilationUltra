@@ -16,6 +16,13 @@ struct Settings {
     bool rewindIndicator = true;
     int questWidth = 320, questDistance = 220, questHeight = 0, questTilt = 0;
     int questResolution = 1, questAnchor = 0, questHaptics = 30;
+    int questMode = 0, questWallHeight = 200, questWallGap = 0, questRefresh = 0;
+    int questWallDetail = 1, questMenuDistance = 100;
+    bool questAutoWall = true, questWallLocked = true, questAdaptive = true;
+    bool questPauseLost = true, questCompanion = true;
+    // Per-frame projection bounds, deliberately excluded from saved preferences.
+    int fixedMapWidth = 0, fixedMapHeight = 0;
+    bool projectionUiOnly = false;
     bool questPassthrough = false, questTouch = true, questFlip = false;
     bool mapExtension = true;
     bool smoothMap = true;

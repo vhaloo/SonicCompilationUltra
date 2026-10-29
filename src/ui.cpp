@@ -73,6 +73,28 @@ void App::settingGuide(bool compact) {
         }
         break;
     }
+    case HelpPicture::Wall: {
+        rect(.07f, .09f, .86f, .70f, muted, false);
+        line(.03f, .80f, .97f, .80f, cyan, 3);
+        rect(.12f, .24f, .70f, .49f, ink);
+        rect(.12f, .24f, .70f, .49f, cyan, false);
+        for (int i = 0; i < 12; ++i) {
+            float x = .14f + i * .055f, y = .58f - (i % 3) * .055f;
+            rect(x, y, .047f, .71f - y, muted);
+            line(x, y, x + .047f, y, cyan);
+        }
+        draw->AddCircleFilled(point(.30f, .45f), height * .025f, gold);
+        line(.87f, .24f, .87f, .73f, gold, 2);
+        line(.85f, .24f, .89f, .24f, gold, 2);
+        line(.85f, .73f, .89f, .73f, gold, 2);
+        draw->AddText(point(.79f, .12f), gold, "2 m");
+        rect(.36f, .87f, .18f, .08f, cyan, false);
+        line(.37f, .86f, .29f, .75f, muted);
+        line(.53f, .86f, .66f, .75f, muted);
+        rect(.68f, .11f, .07f, .06f, gold, false);
+        draw->AddCircle(point(.715f, .10f), height * .022f, gold, 12, 2);
+        break;
+    }
     case HelpPicture::Quest: {
         rect(0.05f, 0.12f, 0.90f, 0.78f, muted, false);
         line(0.05f, 0.90f, 0.32f, 0.61f, muted);
@@ -884,7 +906,11 @@ void App::pollInput() {
     }
 }
 unsigned App::advanceGame(double elapsed, bool unpaced) {
-    const bool paused = menu || (!focused && settings.pauseUnfocused && !headless);
+    const bool paused = menu || (!focused && settings.pauseUnfocused && !headless)
+#ifdef SCU_QUEST
+                        || (quest && quest->simulationPaused())
+#endif
+        ;
     if (paused || !core.loaded) {
         gameAccumulator = 0;
         core.setRewinding(false);
@@ -1002,7 +1028,7 @@ void App::prepareOverlays() {
     if (hintVisible) {
         const char *key = "hintshortcuts";
 #ifdef SCU_QUEST
-        key = "questhint";
+        key = settings.questMode ? "questwallhint" : "questhint";
 #else
         if (settings.hintDetail == 1) {
             int labels = controllerLabels();
@@ -1116,6 +1142,16 @@ void App::gameOverlays() {
     ImGui::PopStyleVar(4);
 }
 void App::present(bool capture) {
+    Settings transientSettings;
+    auto *projectionSettings = &settings;
+#ifdef SCU_QUEST
+    if (quest && settings.questMode) {
+        transientSettings = settings;
+        quest->configureRender(transientSettings);
+        projectionSettings = &transientSettings;
+    }
+#endif
+    auto &renderSettings = *projectionSettings;
     SDL_GetRendererOutputSize(renderer, &drawableW, &drawableH);
     if (drawableW <= 0 || drawableH <= 0)
         return;
@@ -1127,52 +1163,58 @@ void App::present(bool capture) {
     uint64_t hash = 1469598103934665603ull;
     for (int v : {drawableW,
                   drawableH,
-                  settings.view,
-                  settings.zoom,
-                  settings.zoomOut,
-                  settings.panoramaHeight,
-                  int(settings.mapExtension),
-                  int(settings.smoothMap),
-                  settings.camera,
-                  settings.left,
-                  settings.top,
-                  settings.background,
-                  settings.blur,
-                  settings.brightness,
-                  settings.overviewStyle,
-                  settings.quality,
-                  settings.hud,
-                  int(settings.playerInset),
-                  (int)settings.parallax,
-                  (int)settings.reduceMotion,
-                  (int)settings.enemyPreview,
-                  settings.enemyOpacity,
-                  settings.enemyStyle,
-                  (int)settings.bossPreview,
-                  (int)settings.scriptPreview,
-                  (int)settings.spawnTint,
-                  (int)settings.fitSpawns}) {
+                  renderSettings.view,
+                  renderSettings.zoom,
+                  renderSettings.zoomOut,
+                  renderSettings.panoramaHeight,
+                  int(renderSettings.mapExtension),
+                  int(renderSettings.smoothMap),
+                  renderSettings.camera,
+                  renderSettings.left,
+                  renderSettings.top,
+                  renderSettings.background,
+                  renderSettings.blur,
+                  renderSettings.brightness,
+                  renderSettings.overviewStyle,
+                  renderSettings.quality,
+                  renderSettings.hud,
+                  int(renderSettings.playerInset),
+                  (int)renderSettings.parallax,
+                  (int)renderSettings.reduceMotion,
+                  (int)renderSettings.enemyPreview,
+                  renderSettings.enemyOpacity,
+                  renderSettings.enemyStyle,
+                  (int)renderSettings.bossPreview,
+                  (int)renderSettings.scriptPreview,
+                  (int)renderSettings.spawnTint,
+                  (int)renderSettings.fitSpawns}) {
         hash ^= (uint32_t)v;
         hash *= 1099511628211ull;
     }
     bool presentationChanged = hash != lastPresentationHash;
     bool refresh = core.imageVersion != lastImageVersion || presentationChanged;
     if (refresh) {
-        cachedExpanded =
-            core.loaded && core.world.compose(core.snapshot, core.game, settings, drawableW,
-                                              drawableH, &core.native, core.nativeW, core.nativeH);
+        cachedExpanded = !renderSettings.projectionUiOnly && core.loaded &&
+                         core.world.compose(core.snapshot, core.game, renderSettings, drawableW,
+                                            drawableH, &core.native, core.nativeW, core.nativeH);
         lastImageVersion = core.imageVersion;
         lastPresentationHash = hash;
     }
     bool expanded = core.loaded && cachedExpanded;
-    if (core.loaded) {
-        bool fixed =
-            !settings.parallax || settings.reduceMotion ||
-            (scene.ready && (settings.camera == 2 || settings.camera == 4 || settings.view == 2));
-        bool retainBackground =
-            fixed && backgroundFrozen && backgroundStage == scene.stage && !presentationChanged;
+    if (core.loaded && !renderSettings.projectionUiOnly) {
+        bool fixed = !renderSettings.parallax || renderSettings.reduceMotion ||
+                     (scene.ready && (renderSettings.camera == 2 || renderSettings.camera == 4 ||
+                                      renderSettings.view == 2));
+        uint64_t backdropHash = 1469598103934665603ull;
+        for (int value :
+             {renderSettings.background, renderSettings.blur, renderSettings.brightness}) {
+            backdropHash ^= uint32_t(value);
+            backdropHash *= 1099511628211ull;
+        }
+        bool retainBackground = fixed && backgroundFrozen && backgroundStage == scene.stage &&
+                                backdropSettingsHash == backdropHash;
         if (refresh && !retainBackground)
-            core.world.makeBackdrop(core.snapshot, scene, settings, core.native, core.nativeW,
+            core.world.makeBackdrop(core.snapshot, scene, renderSettings, core.native, core.nativeW,
                                     core.nativeH);
         if (retainBackground)
             core.world.backdrop = frozenBackground;
@@ -1180,6 +1222,7 @@ void App::present(bool capture) {
             frozenBackground = core.world.backdrop;
             backgroundFrozen = fixed;
             backgroundStage = scene.stage;
+            backdropSettingsHash = backdropHash;
         }
         if (!bgTexture) {
             bgTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
@@ -1188,7 +1231,7 @@ void App::present(bool capture) {
         }
         if (refresh && !retainBackground)
             SDL_UpdateTexture(bgTexture, nullptr, core.world.backdrop.data(), 320 * 4);
-        if (settings.background == 2 && expanded) {
+        if (renderSettings.background == 2 && expanded) {
             int scale = std::max(1, (int)core.world.canvas.scale), tw = 320 * scale,
                 th = 224 * scale;
             for (int y = 0; y < drawableH; y += th)
@@ -1212,14 +1255,15 @@ void App::present(bool capture) {
             }
             if (!worldTexture)
                 throw std::runtime_error(SDL_GetError());
-            SDL_SetTextureScaleMode(worldTexture, settings.smoothMap && c.coverageW > c.width * 1.01
-                                                      ? SDL_ScaleModeLinear
-                                                      : SDL_ScaleModeNearest);
+            SDL_SetTextureScaleMode(worldTexture,
+                                    renderSettings.smoothMap && c.coverageW > c.width * 1.01
+                                        ? SDL_ScaleModeLinear
+                                        : SDL_ScaleModeNearest);
             if (refresh)
                 SDL_UpdateTexture(worldTexture, nullptr, c.pixels.data(), c.width * 4);
             SDL_RenderCopy(renderer, worldTexture, nullptr, nullptr);
-            if (((settings.view == 2 && settings.playerInset) ||
-                 (scene.family == 4 && settings.hud != 3)) &&
+            if (((renderSettings.view == 2 && renderSettings.playerInset) ||
+                 (scene.family == 4 && renderSettings.hud != 3)) &&
                 !core.native.empty()) {
                 if (!nativeTexture || nativeTW != core.nativeW || nativeTH != core.nativeH) {
                     if (nativeTexture)
@@ -1239,7 +1283,7 @@ void App::present(bool capture) {
                     y = drawableH - h - 16;
                 SDL_Rect d = avoidOverlays({x, y, w, h});
                 SDL_Rect border{d.x - 3, d.y - 3, w + 6, h + 6};
-                if (settings.view == 2 && settings.playerInset) {
+                if (renderSettings.view == 2 && renderSettings.playerInset) {
                     insetBounds = {float(d.x), float(d.y), float(d.x + d.w), float(d.y + d.h)};
                     SDL_SetRenderDrawColor(renderer, 85, 206, 217, 255);
                     SDL_RenderFillRect(renderer, &border);
@@ -1256,16 +1300,17 @@ void App::present(bool capture) {
                 nativeTW = core.nativeW;
                 nativeTH = core.nativeH;
             }
-            SDL_SetTextureScaleMode(nativeTexture, settings.integerScale ? SDL_ScaleModeNearest
-                                                                         : SDL_ScaleModeLinear);
+            SDL_SetTextureScaleMode(nativeTexture, renderSettings.integerScale
+                                                       ? SDL_ScaleModeNearest
+                                                       : SDL_ScaleModeLinear);
             if (refresh)
                 SDL_UpdateTexture(nativeTexture, nullptr, core.native.data(), core.nativeW * 4);
             int availableH = drawableH, safeW = std::min(drawableW, (int)(drawableH * 16.0 / 9));
-            float scale = settings.view == 0     ? float(settings.pixelScale())
-                          : settings.nativeScale ? settings.nativeScale
-                                                 : std::min(float(safeW) / core.nativeW,
-                                                            float(availableH) / core.nativeH);
-            if (settings.integerScale && scale >= 1)
+            float scale = renderSettings.view == 0     ? float(renderSettings.pixelScale())
+                          : renderSettings.nativeScale ? renderSettings.nativeScale
+                                                       : std::min(float(safeW) / core.nativeW,
+                                                                  float(availableH) / core.nativeH);
+            if (renderSettings.integerScale && scale >= 1)
                 scale = std::floor(scale);
             scale = std::min(
                 scale, std::min(float(drawableW) / core.nativeW, float(availableH) / core.nativeH));
@@ -1275,9 +1320,9 @@ void App::present(bool capture) {
             nativeBounds = {float(d.x), float(d.y), float(d.x + d.w), float(d.y + d.h)};
             SDL_RenderCopy(renderer, nativeTexture, nullptr, &d);
         }
-        if (settings.scanlines) {
+        if (renderSettings.scanlines) {
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-            SDL_SetRenderDrawColor(renderer, 0, 0, 0, settings.scanlines * 255 / 100);
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, renderSettings.scanlines * 255 / 100);
             for (int y = 1; y < drawableH; y += 3)
                 SDL_RenderDrawLine(renderer, 0, y, drawableW, y);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);

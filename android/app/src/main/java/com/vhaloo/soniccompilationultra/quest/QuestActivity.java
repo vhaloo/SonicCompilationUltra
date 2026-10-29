@@ -3,6 +3,7 @@ package com.vhaloo.soniccompilationultra.quest;
 import org.libsdl.app.SDLActivity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -67,6 +68,15 @@ public final class QuestActivity extends SDLActivity {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE); intent.setType("*/*");
             startActivityForResult(intent, IMPORT_ROM);
+        });
+    }
+    public boolean scenePermissionGranted() {
+        return checkSelfPermission("com.oculus.permission.USE_SCENE") == PackageManager.PERMISSION_GRANTED;
+    }
+    public void requestScenePermission() {
+        runOnUiThread(() -> {
+            if (!scenePermissionGranted())
+                requestPermissions(new String[]{"com.oculus.permission.USE_SCENE"}, 74);
         });
     }
     @Override protected void onActivityResult(int request, int result, Intent data) {

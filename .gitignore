@@ -13,6 +13,7 @@
 *.bak
 settings.ini
 library.tsv
+quest-wall-anchor.txt
 *.zip
 *.7z
 *.png

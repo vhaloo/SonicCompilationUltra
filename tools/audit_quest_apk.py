@@ -24,11 +24,12 @@ signature=run([signer,'verify','--verbose','--print-certs',a.apk])
 aapt=tools/('aapt2.exe' if os.name=='nt' else 'aapt2')
 badging=run([aapt,'dump','badging',a.apk])
 assert "package: name='com.vhaloo.soniccompilationultra.quest'" in badging
-assert "versionCode='400'" in badging and "versionName='0.4.0-quest-preview'" in badging
+assert "versionCode='500'" in badging and "versionName='0.5.0-quest-preview'" in badging
 assert "native-code: 'arm64-v8a'" in badging
 assert 'QuestActivity' in badging
 manifest=run([aapt,'dump','xmltree','--file','AndroidManifest.xml',a.apk])
 assert 'IMMERSIVE_HMD' in manifest and 'PASSTHROUGH' in manifest
+assert 'com.oculus.permission.USE_SCENE' in manifest and 'com.oculus.permission.USE_ANCHOR_API' in manifest
 for forbidden in ['android.permission.CAMERA','android.permission.RECORD_AUDIO','android.permission.INTERNET',
                   'android.permission.READ_EXTERNAL_STORAGE','android.permission.WRITE_EXTERNAL_STORAGE']:
     assert forbidden not in manifest,forbidden
@@ -82,7 +83,7 @@ with zipfile.ZipFile(a.apk) as z, tempfile.TemporaryDirectory(prefix='scu-quest-
             assert b'C:\\Users\\' not in data and b'E:\\Emulation' not in data,name
 report={'apk':str(a.apk),'sha256':hashlib.sha256(a.apk.read_bytes()).hexdigest(),'bytes':a.apk.stat().st_size,
         'signature_verified':True,'signature':signature,'package':'com.vhaloo.soniccompilationultra.quest',
-        'version':'0.4.0-quest-preview','abi':'arm64-v8a','native_dependencies':dependencies,
+        'version':'0.5.0-quest-preview','abi':'arm64-v8a','native_dependencies':dependencies,
         'private_game_data_included':a.allow_private,'cartridges':cartridges,
         'font_bytes':len(font),'application_executed':False,'headset_runtime_qualified':False}
 a.out.parent.mkdir(parents=True,exist_ok=True);a.out.write_text(json.dumps(report,indent=2))

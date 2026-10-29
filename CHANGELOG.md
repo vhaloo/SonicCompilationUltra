@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 Quest preview — Fixed wall AR and maximum refresh preference
+
+- Add scanned-wall fit, a whole-stage mural rising two metres from the floor, and a horizontal floor atlas. Stage bounds stay fixed while the player and your head move; the mural can extend past the physical wall without stretching game geometry.
+- Load wall/floor planes with optional spatial permission. Add Meta room capture, wall selection, manual virtual-wall placement, floor calibration and on-device anchor save/restore with failure recovery.
+- Keep a separate nearby options screen, placement locking and a right-stick menu recovery path. Tracking loss hides an attached wall and pauses by default. Cinema, tabletop and head-following screens remain available.
+- Request the highest runtime-reported headset refresh by default, with System and explicit supported-rate options. Reuse unchanged game images, bound mural textures and optionally adapt their render budget under CPU pressure. Original game speed is unchanged.
+- Add original wall diagrams and four-language setting guides. Compilation/lint/static inspection only; no game or headset session is run, and sustained Quest 3 performance remains unverified.
+
 ## 0.4.0 Quest preview — Standalone VR and passthrough AR
 
 - Add an Android ARM64 OpenXR edition that runs on Meta Quest without PC streaming. Play on a room-pinned cinema, tilted tabletop or head-following screen; optionally show the room through runtime passthrough.

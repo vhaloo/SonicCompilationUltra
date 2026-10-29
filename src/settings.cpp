@@ -4,35 +4,41 @@
 #include <algorithm>
 namespace scu {
 #define INT_FIELDS(X)                                                                              \
-    X(questWidth, 80, 800)                                                                         \
-    X(questDistance, 80, 600) X(questHeight, -150, 150) X(questTilt, -60, 80)                      \
-        X(questResolution, 0, 3) X(questAnchor, 0, 1) X(questHaptics, 0, 100) X(language, -1, 3)   \
-            X(view, 0, 4) X(zoom, 1, 8) X(zoomOut, 0, 3) X(hintCorner, 0, 3) X(hintScale, 60, 180) \
-                X(hintOpacity, 20, 100) X(hintMargin, 0, 64) X(hintDetail, 0, 2)                   \
-                    X(hintSeconds, 0, 30) X(noticeSeconds, 0, 30) X(panoramaHeight, 224, 4096)     \
-                        X(camera, 0, 4) X(background, 0, 5) X(blur, 0, 16) X(brightness, 10, 100)  \
-                            X(hud, 0, 3) X(hudScale, 0, 6) X(nativeScale, 0, 8) X(workers, 0, 16)  \
-                                X(volume, 0, 100) X(quality, 0, 2) X(uiScale, 0, 3) X(slot, 1, 9)  \
-                                    X(region, 0, 3) X(renderer, 0, 1) X(scanlines, 0, 60)          \
-                                        X(panSpeed, 1, 32) X(deadzone, 3000, 28000)                \
-                                            X(left, -32768, 32768) X(top, -16384, 16384)           \
-                                                X(menuLayout, 0, 1) X(display, -1, 31)             \
-                                                    X(padLabels, 0, 3) X(jumpLayout, 0, 2)         \
-                                                        X(overviewStyle, 0, 2)                     \
-                                                            X(enemyOpacity, 10, 80)                \
-                                                                X(enemyStyle, 0, 2)                \
-                                                                    X(rewindButton, 0, 2)          \
-                                                                        X(rewindMemory, 0, 2)
+    X(questMode, 0, 3)                                                                             \
+    X(questWallHeight, 50, 500)                                                                    \
+    X(questWallGap, 0, 100)                                                                        \
+    X(questRefresh, -1, 240) X(questWallDetail, 0, 2) X(questMenuDistance, 60, 250) X(             \
+        questWidth, 80, 800) X(questDistance, 80, 600) X(questHeight, -150, 150)                   \
+        X(questTilt, -60, 80) X(questResolution, 0, 3) X(questAnchor, 0, 1) X(                     \
+            questHaptics, 0, 100) X(language, -1, 3) X(view, 0, 4) X(zoom, 1, 8) X(zoomOut, 0, 3)  \
+            X(hintCorner, 0, 3) X(hintScale, 60, 180) X(hintOpacity, 20, 100) X(hintMargin, 0, 64) \
+                X(hintDetail, 0, 2) X(hintSeconds, 0, 30) X(noticeSeconds, 0, 30)                  \
+                    X(panoramaHeight, 224, 4096) X(camera, 0, 4) X(background, 0, 5)               \
+                        X(blur, 0, 16) X(brightness, 10, 100) X(hud, 0, 3) X(hudScale, 0, 6)       \
+                            X(nativeScale, 0, 8) X(workers, 0, 16) X(volume, 0, 100)               \
+                                X(quality, 0, 2) X(uiScale, 0, 3) X(slot, 1, 9) X(region, 0, 3)    \
+                                    X(renderer, 0, 1) X(scanlines, 0, 60) X(panSpeed, 1, 32)       \
+                                        X(deadzone, 3000, 28000) X(left, -32768, 32768)            \
+                                            X(top, -16384, 16384) X(menuLayout, 0, 1)              \
+                                                X(display, -1, 31) X(padLabels, 0, 3)              \
+                                                    X(jumpLayout, 0, 2) X(overviewStyle, 0, 2)     \
+                                                        X(enemyOpacity, 10, 80)                    \
+                                                            X(enemyStyle, 0, 2)                    \
+                                                                X(rewindButton, 0, 2)              \
+                                                                    X(rewindMemory, 0, 2)
 #define BOOL_FIELDS(X)                                                                             \
-    X(questPassthrough)                                                                            \
-    X(questTouch) X(questFlip) X(fullscreen) X(span) X(vsync) X(parallax) X(locator) X(minimap)    \
-        X(help) X(spindash) X(noSpriteLimit) X(integerScale) X(mute) X(pauseUnfocused)             \
-            X(performance) X(reduceMotion) X(autosave) X(rewind) X(ghost) X(invincible)            \
-                X(infiniteAir) X(safeEffects) X(confirmQuit) X(fastBoot) X(lockon)                 \
-                    X(confirmActions) X(quickControls) X(readyOnly) X(highContrast) X(playerInset) \
-                        X(enemyPreview) X(bossPreview) X(scriptPreview) X(spawnTint)               \
-                            X(spawnLabels) X(fitSpawns) X(rewindAudio) X(mapExtension)             \
-                                X(smoothMap) X(rewindIndicator)
+    X(questAutoWall)                                                                               \
+    X(questWallLocked)                                                                             \
+    X(questAdaptive)                                                                               \
+    X(questPauseLost) X(questCompanion) X(questPassthrough) X(questTouch) X(questFlip)             \
+        X(fullscreen) X(span) X(vsync) X(parallax) X(locator) X(minimap) X(help) X(spindash)       \
+            X(noSpriteLimit) X(integerScale) X(mute) X(pauseUnfocused) X(performance)              \
+                X(reduceMotion) X(autosave) X(rewind) X(ghost) X(invincible) X(infiniteAir)        \
+                    X(safeEffects) X(confirmQuit) X(fastBoot) X(lockon) X(confirmActions)          \
+                        X(quickControls) X(readyOnly) X(highContrast) X(playerInset)               \
+                            X(enemyPreview) X(bossPreview) X(scriptPreview) X(spawnTint)           \
+                                X(spawnLabels) X(fitSpawns) X(rewindAudio) X(mapExtension)         \
+                                    X(smoothMap) X(rewindIndicator)
 void Settings::load(const fs::path &dir) {
     std::ifstream f(dir / "settings.ini");
     std::string s;

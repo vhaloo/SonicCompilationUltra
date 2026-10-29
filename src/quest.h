@@ -3,6 +3,7 @@
 #include <memory>
 namespace scu {
 class App;
+struct Settings;
 // Android-only presenter. Simulation and the original SDL menu remain in App.
 class QuestPresentation {
     struct Impl;
@@ -14,6 +15,11 @@ class QuestPresentation {
     void initialise();
     bool beginFrame();
     void endFrame();
+    bool needsRedraw() const;
+    void prepareRender();
+    void rendered();
+    void configureRender(Settings &settings) const;
+    bool simulationPaused() const;
     void prepareUi();
     void drawReticle();
     void options();

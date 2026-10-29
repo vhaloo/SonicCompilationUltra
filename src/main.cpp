@@ -69,19 +69,21 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(panoramaHeight)
     SET(mapExtension)
     SET(smoothMap)
-    SET(camera) SET(hud) SET(hudScale) SET(background) SET(blur) SET(brightness) SET(parallax) SET(
-        minimap) SET(locator) SET(spindash) SET(invincible) SET(infiniteAir) SET(rewind)
-        SET(nativeScale) SET(ghost) SET(left) SET(top) SET(volume) SET(language) SET(help) SET(
-            workers) SET(fullscreen) SET(span) SET(vsync) SET(uiScale) SET(scanlines) SET(lockon)
-            SET(fastBoot) SET(menuLayout) SET(display) SET(padLabels) SET(jumpLayout)
-                SET(quickControls) SET(confirmActions) SET(confirmQuit) SET(highContrast)
-                    SET(readyOnly) SET(playerInset) SET(quality) SET(overviewStyle)
-                        SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle) SET(bossPreview)
-                            SET(scriptPreview) SET(spawnTint) SET(spawnLabels) SET(fitSpawns)
-                                SET(rewindAudio) SET(rewindButton) SET(rewindMemory) SET(hintCorner)
-                                    SET(hintScale) SET(hintOpacity) SET(hintMargin) SET(hintDetail)
-                                        SET(hintSeconds) SET(noticeSeconds) SET(rewindIndicator)
-                                            SET(performance)
+    SET(camera)
+    SET(hud)
+    SET(hudScale)
+    SET(background) SET(blur) SET(brightness) SET(parallax) SET(minimap) SET(locator) SET(spindash)
+        SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top)
+            SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen) SET(span) SET(vsync)
+                SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot) SET(menuLayout) SET(display)
+                    SET(padLabels) SET(jumpLayout) SET(quickControls) SET(confirmActions) SET(
+                        confirmQuit) SET(highContrast) SET(readyOnly) SET(playerInset) SET(quality)
+                        SET(overviewStyle) SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle)
+                            SET(bossPreview) SET(scriptPreview) SET(spawnTint) SET(spawnLabels)
+                                SET(fitSpawns) SET(rewindAudio) SET(rewindButton) SET(rewindMemory)
+                                    SET(hintCorner) SET(hintScale) SET(hintOpacity) SET(hintMargin)
+                                        SET(hintDetail) SET(hintSeconds) SET(noticeSeconds)
+                                            SET(rewindIndicator) SET(performance)
 #undef SET
                                                 throw std::runtime_error("Unknown option: " + key);
 }
@@ -413,8 +415,18 @@ int main(int argc, char **argv) {
                 measureFrames = 0;
                 measureStart = now;
             }
-            if (step % renderEvery == 0 || a.menu) {
+            if ((step % renderEvery == 0 || a.menu)
+#ifdef SCU_QUEST
+                && headset->needsRedraw()
+#endif
+            ) {
+#ifdef SCU_QUEST
+                headset->prepareRender();
+#endif
                 a.present();
+#ifdef SCU_QUEST
+                headset->rendered();
+#endif
                 ++presentedFrames;
             }
 #ifdef SCU_QUEST
@@ -427,8 +439,10 @@ int main(int argc, char **argv) {
                 break;
             if (args.count("--seconds") && now - start >= std::stod(args["--seconds"]))
                 break;
+#ifndef SCU_QUEST
             if (!limit || args.count("--realtime"))
                 SDL_Delay(a.settings.vsync ? 1 : 2);
+#endif
         }
         if (args.count("--capture")) {
             a.capturePath = args["--capture"];

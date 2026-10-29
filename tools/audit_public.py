@@ -12,7 +12,7 @@ rows=[]
 for name in files:
     path=root/name
     if not path.is_file():continue
-    if path.suffix.lower() in banned or path.name in {'settings.ini','library.tsv'} or re.search(r'^(generated|private|private_assets|build[^/]*)/', name):bad.append(name)
+    if path.suffix.lower() in banned or path.name in {'settings.ini','library.tsv','quest-wall-anchor.txt'} or re.search(r'^(generated|private|private_assets|build[^/]*)/', name):bad.append(name)
     data=path.read_bytes()
     if path.suffix.lower() in texttypes and not name.startswith('vendor/'):
         text=data.decode('utf-8',errors='replace')

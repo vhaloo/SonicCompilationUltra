@@ -1,9 +1,10 @@
-# Validation report — 28 October 2026
+# Validation report — 29 October 2026
 
 This report separates successful checks from coverage that has not been measured. A boot test or source build is not a full-game completion certificate.
 
 ## Standalone Quest preview — build and static checks only
 
+- The 0.5 wall update adds optional Scene/anchor services, fixed stage bounds, wall-fit/mural/floor-atlas presentation, local persistence, a separate companion menu and a maximum-available refresh preference. Source review covers permission refusal, manual fallback, stale/distant surfaces, reference-space changes, tracking-loss recovery, bounded textures and avoiding duplicate game-image rendering. These are implemented paths, not physical headset observations.
 - The Android ARM64 release target compiles with SDL 2.32.10, OpenXR Android loader 1.1.65, NDK 29.0.14206865 and Android Gradle Plugin 9.4.0. Android lint reports zero errors with narrowly scoped exceptions for the pinned SDL library's optional Bluetooth/capture methods; upstream warnings remain documented.
 - Static APK checks verify the signing certificate, package/activity/immersive manifest, ARM64 ELF libraries, their bundled/system dependencies, exported SDL entry point, interface font and OpenXR licence. The default APK contains no cartridges or user data. A personal asset build is kept outside the repository and checked separately.
 - The existing Windows target also compiles with the Android integration excluded. The installed desktop executable and the owner's original cartridge/save data are unchanged.

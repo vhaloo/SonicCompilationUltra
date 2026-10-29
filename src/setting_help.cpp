@@ -8,6 +8,232 @@ namespace scu {
         }                                                                                          \
     }
 static const SettingHelp entries[] = {
+    H("questmode", Wall,
+      "Spatial screen keeps normal cinema and camera choices. Wall fit stays inside a scanned "
+      "wall. Mural keeps the full stage at its natural shape, even beyond the wall. Floor atlas "
+      "lays it horizontally. Native-only scenes retain their original image.",
+      "Écran spatial garde les caméras normales. Ajuster au mur respecte ses limites. Le mural "
+      "garde tout le niveau et ses proportions, même au-delà du mur. Atlas au sol le pose à "
+      "l’horizontale. Les scènes natives gardent leur image originale.",
+      "Pantalla espacial conserva las cámaras normales. Ajustar a pared respeta sus límites. Mural "
+      "mantiene todo el nivel y su forma, incluso fuera de la pared. Atlas lo coloca horizontal. "
+      "Las escenas nativas conservan su imagen.",
+      "空間スクリーンは通常のカメラを使います。壁に合わせるモードは壁の範囲内に表示します。壁画は実"
+      "際の壁を越えてもステージ全体の比率を保ちます。床の地図は水平です。未対応の場面は元の画面を表"
+      "示します。"),
+    H("questwallheight", Wall,
+      "Default 200 cm: the mural rises two metres from the floor. Width follows the stage aspect "
+      "ratio. Wall-fit mode caps height to the available wall. On a floor atlas this sets its "
+      "depth. This changes physical size, not game speed.",
+      "Par défaut 200 cm : le mural monte de deux mètres depuis le sol. La largeur suit les "
+      "proportions du niveau. Ajuster au mur limite la hauteur à celle disponible. Pour l’atlas, "
+      "cela règle sa profondeur. La vitesse du jeu reste normale.",
+      "Por defecto 200 cm: el mural sube dos metros desde el suelo. El ancho sigue el nivel. "
+      "Ajustar a pared limita la altura disponible. En el atlas controla la profundidad. La "
+      "velocidad del juego no cambia.",
+      "初期値200cmでは床から高さ2mに表示します。幅はステージの比率に従います。壁合わせでは壁の高さ"
+      "までに制限します。床の地図では奥行きを設定します。ゲーム速度は変わりません。"),
+    H("questwallgap", Wall,
+      "Raise the mural's lower edge above the floor. Zero starts at floor level. The floor atlas "
+      "uses this as elevation. Wall-fit mode limits the gap to keep the screen within its wall.",
+      "Monte le bord inférieur du mural au-dessus du sol. Zéro commence au niveau du sol. Pour "
+      "l’atlas, règle sa hauteur au-dessus du sol. Ajuster au mur limite cet écart pour rester "
+      "dans le mur.",
+      "Eleva el borde inferior sobre el suelo. Cero empieza en el suelo. En el atlas controla la "
+      "elevación. Ajustar a pared limita el espacio para no salir de sus bordes.",
+      "壁画の下端と床の間隔です。0では床から始まります。床の地図では床からの高さです。壁合わせでは"
+      "壁からはみ出さないよう制限します。"),
+    H("questwalldistance", Wall,
+      "Choose the distance used by Place virtual wall in front of me, then activate that button. "
+      "Changing this preference alone does not move a locked mural.",
+      "Choisis la distance utilisée par Placer le mur virtuel devant moi, puis active ce bouton. "
+      "Ce réglage seul ne déplace pas un mural verrouillé.",
+      "Elige la distancia de Colocar pared virtual delante y activa ese botón. Este ajuste por sí "
+      "solo no mueve un mural bloqueado.",
+      "正面に仮想の壁を配置する際の距離です。設定後に配置ボタンを押してください。この設定だけでは固"
+      "定した壁画は動きません。"),
+    H("questautowall", Wall,
+      "Load the saved room model when entering a wall mode. Quest asks for spatial-data "
+      "permission. The app prefers a nearby wall in your viewing direction and keeps that choice. "
+      "Without a usable model, manual placement remains available, including outdoors.",
+      "Charge le modèle de pièce en mode mural. Le Quest demande l’accès aux données spatiales. "
+      "L’application préfère un mur proche dans ta direction et conserve ce choix. Sans modèle "
+      "utilisable, le placement manuel reste disponible, y compris dehors.",
+      "Carga el modelo guardado al entrar en modo pared. Quest pide permiso espacial. Se prefiere "
+      "una pared cercana en tu dirección y se mantiene esa elección. Sin modelo puedes colocarla "
+      "manualmente, también fuera.",
+      "壁モードで保存済みの部屋を読み込みます。Questが空間データの許可を求めます。正面付近の近い壁"
+      "を選び、その選択を維持します。モデルがない場合は屋外でも手動配置を使えます。"),
+    H("questwalllock", Wall,
+      "Enabled by default. Head movement and recentering leave the wall in place. Unlock to move "
+      "and scale it with both grips; lock again afterward. The full-stage framing stays fixed in "
+      "either case.",
+      "Activé par défaut. Les mouvements de tête et le recentrage laissent le mur en place. "
+      "Déverrouille pour le déplacer et l’agrandir avec les deux prises, puis reverrouille. Le "
+      "cadrage du niveau reste fixe.",
+      "Activado por defecto. La cabeza y el recentrado no mueven la pared. Desbloquea para mover y "
+      "escalar con ambos agarres y vuelve a bloquear. El encuadre del nivel sigue fijo.",
+      "初期設定では固定されています。頭を動かしたり再センタリングしても壁は動きません。両グリップで"
+      "移動・拡大するには解除し、調整後に再び固定してください。地図の範囲は固定のままです。"),
+    H("questpauselost", Wall,
+      "Pause play if the attached wall anchor or head pose becomes unavailable. The mural is "
+      "hidden instead of attaching to another wall. With head tracking restored, Y and the "
+      "companion menu allow restoration or manual placement.",
+      "Met le jeu en pause si l’ancrage ou la tête ne peut plus être localisé. Le mural est masqué "
+      "et ne passe pas sur un autre mur. Quand la tête est suivie, Y et le menu de proximité "
+      "permettent de restaurer ou replacer le mur.",
+      "Pausa si no se puede localizar el anclaje o la cabeza. El mural se oculta sin pasar a otra "
+      "pared. Al recuperar la cabeza, Y y el menú permiten restaurar o colocar de nuevo.",
+      "アンカーや頭の位置が取得できない間は一時停止します。別の壁に移さず、壁画を非表示にします。頭"
+      "の追跡が戻ったらYのメニューから復元または再配置できます。"),
+    H("questcompanion", Wall,
+      "Open Y options on a separate nearby screen while the mural stays on the wall. Turning this "
+      "off places options on the mural. In options, right-stick click always recovers a nearby "
+      "menu without moving the wall.",
+      "Ouvre les options Y sur un écran séparé près de toi, sans déplacer le mural. Désactivé, les "
+      "options restent sur le mural. Dans les options, le clic du stick droit ramène toujours un "
+      "menu proche sans déplacer le mur.",
+      "Abre las opciones Y en una pantalla cercana sin mover el mural. Desactivado, aparecen en el "
+      "mural. Dentro de opciones, pulsar la palanca derecha siempre recupera un menú cercano sin "
+      "mover la pared.",
+      "Yの設定を近くの別画面に表示し、壁画を動かしません。無効にすると設定も壁画上に表示します。設"
+      "定中は右スティック押下でいつでもメニューを近くに戻せます。"),
+    H("questmenudistance", Wall,
+      "Set the distance of the companion options panel. Its physical size scales with distance to "
+      "keep a readable angular size. Right-stick click positions it in front of you again.",
+      "Règle la distance du menu proche. Sa taille physique suit la distance pour conserver une "
+      "taille angulaire lisible. Le clic du stick droit le replace devant toi.",
+      "Ajusta la distancia del menú. Su tamaño físico sigue la distancia para conservar un tamaño "
+      "angular legible. La palanca derecha lo devuelve delante.",
+      "操作メニューまでの距離です。距離に合わせて物理サイズを変え、見かけの大きさを保ちます。右ステ"
+      "ィック押下で正面に戻します。"),
+    H("questwalldetail", Performance,
+      "Fast, Balanced and Sharp bound the mural's texture and map-sampling budgets. Larger "
+      "textures give more detail up close but cost memory and rendering time. Runtime texture "
+      "limits still apply; a huge map may be sampled down.",
+      "Rapide, Équilibré et Détaillé règlent les budgets de texture et d’échantillonnage. Plus de "
+      "détail de près demande plus de mémoire et de temps de rendu. Les limites du casque "
+      "s’appliquent ; une grande carte peut être réduite.",
+      "Rápido, Equilibrado y Nítido limitan la textura y el muestreo. Más detalle de cerca consume "
+      "memoria y tiempo. Se respetan los límites del visor; los mapas grandes pueden reducirse.",
+      "軽量・バランス・高精細で壁画のテクスチャと地図の描画量を設定します。近くでの細かさとメモリ・"
+      "描画時間の調整です。大きな地図は本体の上限に合わせて縮小される場合があります。"),
+    H("questadaptive", Performance,
+      "Reduce mural rendering resolution after sustained CPU budget pressure, then restore detail "
+      "conservatively. Headset refresh preference, physical size, map bounds and native game speed "
+      "stay unchanged. Disable to use a fixed detail budget.",
+      "Réduit la résolution du mural après une charge CPU durable, puis remonte prudemment le "
+      "détail. Fréquence demandée, taille physique, cadrage et vitesse du jeu restent identiques. "
+      "Désactive pour un budget fixe.",
+      "Reduce la resolución tras carga de CPU sostenida y recupera el detalle gradualmente. No "
+      "cambia la frecuencia solicitada, el tamaño físico, el mapa ni la velocidad del juego. "
+      "Desactívalo para un presupuesto fijo.",
+      "CPUの処理時間が継続して不足すると解像度を下げ、余裕が続けば慎重に戻します。要求する更新頻度"
+      "、物理サイズ、地図の範囲、ゲーム速度は変えません。固定品質にするには無効にします。"),
+    H("questplacewall", Wall,
+      "Create a manual virtual wall in front of your current horizontal viewing direction, at the "
+      "chosen distance and floor height. It does not detect a real surface. It stays still after "
+      "placement and can be saved as a local anchor.",
+      "Place un plan virtuel dans ta direction horizontale, à la distance choisie et au niveau du "
+      "sol. Ce bouton ne détecte pas une surface réelle. Le mur reste fixe et peut être enregistré "
+      "comme ancrage local.",
+      "Coloca un plano virtual en tu dirección horizontal, a la distancia y suelo elegidos. No "
+      "detecta una superficie real. Queda fijo y puede guardarse como anclaje local.",
+      "現在の水平方向の正面に、選んだ距離と床の高さで仮想の壁を置きます。実際の面を検出する操作では"
+      "ありません。配置後は固定され、本体のアンカーとして保存できます。"),
+    H("questfindwall", Wall,
+      "Reload nearby saved room surfaces and select a wall, preferring your viewing direction. "
+      "Spatial permission and a captured room are required. Your head direction is used only for "
+      "this selection, not to make the wall follow you.",
+      "Recharge les surfaces de la pièce et choisit un mur, de préférence dans ta direction. Une "
+      "pièce capturée et l’autorisation spatiale sont nécessaires. La direction sert au choix ; le "
+      "mur ne suit pas ta tête.",
+      "Recarga las superficies y elige una pared, preferiblemente en tu dirección. Requiere "
+      "habitación capturada y permiso espacial. La dirección sirve para elegir; la pared no sigue "
+      "tu cabeza.",
+      "保存した部屋の面を読み直し、視線の方向に近い壁を選びます。部屋のスキャンと空間データの許可が"
+      "必要です。頭の向きは選択時だけ使い、壁を追従させません。"),
+    H("questnextwall", Wall,
+      "Select the next usable wall in the loaded nearby room surfaces. The new choice remains "
+      "fixed until you select another wall or place it manually.",
+      "Choisit le mur suivant parmi les surfaces proches et localisables. Ce choix reste fixe "
+      "jusqu’au prochain changement ou placement manuel.",
+      "Elige la siguiente pared cercana localizable. Esa elección permanece fija hasta cambiarla o "
+      "colocarla manualmente.",
+      "読み込んだ部屋の近くにある、追跡可能な次の壁を選びます。次に選択または手動配置するまで固定し"
+      "ます。"),
+    H("questscanroom", Wall,
+      "Open Meta's Space Setup to capture or update the current room. Finish the system flow and "
+      "return to the app. The app then reloads surfaces. This needs spatial permission and is not "
+      "a continuous outdoor wall scanner.",
+      "Ouvre Space Setup de Meta pour capturer ou actualiser la pièce. Termine la procédure "
+      "système, puis reviens. L’application recharge ensuite les surfaces. Ce n’est pas un scanner "
+      "continu de murs extérieurs.",
+      "Abre Space Setup de Meta para capturar o actualizar la habitación. Completa el proceso y "
+      "vuelve. Después se recargan las superficies. No es un escáner continuo de paredes "
+      "exteriores.",
+      "MetaのSpace "
+      "Setupで部屋をスキャン・更新します。システムの操作を完了して戻ると面を再読込します。空間デー"
+      "タの許可が必要です。屋外の壁を常時検出する機能ではありません。"),
+    H("questcalibratefloor", Wall,
+      "Put the left controller at the floor height you want, then activate this button with the "
+      "right controller or menu navigation. Its tracked position sets the manual floor and "
+      "replaces the wall in front of you. Save the placement if desired.",
+      "Place la manette gauche à la hauteur du sol voulue, puis active ce bouton avec la droite ou "
+      "la navigation. Cette position définit le sol manuel et replace le mur devant toi. "
+      "Enregistre le placement au besoin.",
+      "Pon el mando izquierdo a la altura del suelo deseada y activa este botón con el derecho o "
+      "la navegación. Esa posición define el suelo manual y recoloca la pared delante. Puedes "
+      "guardar la colocación.",
+      "左コントローラーを床にしたい高さへ置き、右コントローラーかメニュー操作で実行します。その追跡"
+      "位置を床とし、壁を正面へ再配置します。必要なら配置を保存してください。"),
+    H("questsavewall", Wall,
+      "Create and save an on-device spatial anchor for this placement and wall bounds. It can be "
+      "located in another session in the same recognizable space. No cloud service is used. A "
+      "failed save keeps the previous local record.",
+      "Crée un ancrage dans le casque pour ce placement et les dimensions du mur. Il peut être "
+      "retrouvé dans une autre session si l’espace est reconnu. Aucun cloud. Un échec conserve le "
+      "précédent enregistrement local.",
+      "Crea un anclaje en el visor para esta colocación y los límites de pared. Puede localizarse "
+      "en otra sesión si se reconoce el espacio. No usa nube. Si falla, se conserva el registro "
+      "anterior.",
+      "配置と壁の範囲を本体の空間アンカーに保存します。同じ空間を認識できれば次のセッションでも探索"
+      "できます。クラウドは使いません。失敗した場合は以前の記録を保持します。"),
+    H("questrestorewall", Wall,
+      "Try to locate the last saved local wall anchor. Room changes, missing tracking or runtime "
+      "limitations may prevent restoration. Manual placement and room scanning remain available if "
+      "it cannot be found.",
+      "Essaie de localiser le dernier ancrage du mur. Une pièce modifiée, un suivi insuffisant ou "
+      "le système peuvent empêcher la restauration. Le placement manuel et la capture de pièce "
+      "restent disponibles.",
+      "Intenta localizar el último anclaje guardado. Cambios de habitación, seguimiento o límites "
+      "del sistema pueden impedirlo. Siguen disponibles la colocación manual y la captura.",
+      "最後に保存した壁のアンカーを探索します。部屋の変化、追跡不足、実行環境の制約で復元できない場"
+      "合があります。その場合も手動配置や部屋スキャンを利用できます。"),
+    H("questrefresh", Performance,
+      "Maximum available is the default: request the highest rate reported by the runtime. Choose "
+      "System or an available rate instead. The active rate is displayed below. The runtime can "
+      "limit the request; native game speed remains normal.",
+      "Maximum disponible est le défaut : demande la plus haute fréquence annoncée par le casque. "
+      "Tu peux choisir Système ou une fréquence proposée. La fréquence active est indiquée. Le "
+      "casque peut limiter la demande ; le jeu garde sa vitesse.",
+      "Máxima disponible pide la mayor frecuencia indicada por el visor. Puedes elegir Sistema u "
+      "otra disponible. Debajo se muestra la frecuencia activa. El visor puede limitarla; el juego "
+      "mantiene su velocidad normal.",
+      "初期設定は利用可能な最大値です。実行環境が示す最大の更新頻度を要求します。システム任せや表示"
+      "された値にも変更できます。実際の値は下に表示します。要求が制限されてもゲーム速度は通常のまま"
+      "です。"),
+    H("questpersonal", Quest,
+      "Return to a normal spatial screen that follows your head, one metre ahead at a readable "
+      "angular size. This leaves fixed wall framing and restores normal camera preferences. "
+      "Existing wall anchors remain stored.",
+      "Revient à un écran qui suit la tête, à un mètre, avec une taille angulaire lisible. Quitte "
+      "le cadrage mural fixe et retrouve les caméras normales. Les ancrages enregistrés sont "
+      "conservés.",
+      "Vuelve a una pantalla que sigue la cabeza, a un metro y con tamaño legible. Sale del "
+      "encuadre mural y recupera las cámaras normales. Conserva los anclajes guardados.",
+      "頭に追従する通常のスクリーンへ戻します。1m前方で見やすい大きさにします。壁の固定表示を解除し"
+      "、通常のカメラ設定を使います。保存したアンカーは保持します。"),
     H("questar", Quest,
       "Show the room around the game using Quest reconstruction passthrough. Camera images are "
       "handled by the headset compositor. Disable for a dark VR cinema.",
