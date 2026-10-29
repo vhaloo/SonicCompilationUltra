@@ -7,6 +7,7 @@ enum class HelpPicture {
     Camera,
     Hud,
     Reminder,
+    Quest,
     Background,
     Performance,
     Audio,

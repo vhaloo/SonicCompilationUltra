@@ -14,6 +14,9 @@ struct Settings {
     int hintCorner = 0, hintScale = 100, hintOpacity = 80, hintMargin = 8;
     int hintDetail = 0, hintSeconds = 0, noticeSeconds = 6;
     bool rewindIndicator = true;
+    int questWidth = 320, questDistance = 220, questHeight = 0, questTilt = 0;
+    int questResolution = 1, questAnchor = 0, questHaptics = 30;
+    bool questPassthrough = false, questTouch = true, questFlip = false;
     bool mapExtension = true;
     bool smoothMap = true;
     double pixelScale() const {

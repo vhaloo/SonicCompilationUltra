@@ -8,6 +8,123 @@ namespace scu {
         }                                                                                          \
     }
 static const SettingHelp entries[] = {
+    H("questar", Quest,
+      "Show the room around the game using Quest reconstruction passthrough. Camera images are "
+      "handled by the headset compositor. Disable for a dark VR cinema.",
+      "Affiche la pièce autour du jeu avec le passthrough du Quest. Les images sont gérées par le "
+      "compositeur du casque. Désactive pour un cinéma VR sombre.",
+      "Muestra la habitación alrededor del juego con passthrough de Quest. El compositor del visor "
+      "gestiona las imágenes. Desactívalo para cine oscuro en RV.",
+      "Questのパススルーで周囲の部屋を表示します。画像はヘッドセットの合成処理が扱います。無効にす"
+      "ると暗いVRシネマになります。"),
+    H("questanchor", Quest,
+      "Room-pinned stays still as your head moves. Head-following keeps the screen ahead. "
+      "Right-stick click recenters at your current position and horizontal viewing direction.",
+      "Fixé dans la pièce reste immobile quand ta tête bouge. Suivre la tête garde l’écran devant "
+      "toi. Le clic du stick droit recentre selon ta position et ta direction horizontale.",
+      "Fija mantiene la pantalla quieta al mover la cabeza. Seguir la cabeza la mantiene delante. "
+      "La palanca derecha recentra según tu posición y dirección horizontal.",
+      "部屋固定では頭を動かしても同じ位置に残ります。頭に追従では常に正面に表示します。右スティック"
+      "押下で現在の位置と視線の正面へ戻します。"),
+    H("questwidth", Quest,
+      "Set screen width from 80 to 800 cm. Height follows the canvas aspect ratio. Both grips can "
+      "resize a room-pinned screen as you move your hands apart or together.",
+      "Règle la largeur de 80 à 800 cm. La hauteur suit le ratio du canevas. Maintiens les deux "
+      "prises et écarte ou rapproche les mains pour redimensionner un écran fixé.",
+      "Ajusta el ancho de 80 a 800 cm. La altura sigue el lienzo. Mantén ambos agarres y separa o "
+      "acerca las manos para escalar una pantalla fija.",
+      "幅を80～800cmで設定します。高さはキャンバスの縦横比に従います。両グリップを押して手の間隔を"
+      "変えると固定スクリーンを拡大縮小できます。"),
+    H("questdistance", Quest,
+      "Place the screen 80–600 cm ahead when recentering. Both grips can move a room-pinned screen "
+      "afterward.",
+      "Place l’écran de 80 à 600 cm devant toi lors du recentrage. Les deux prises permettent "
+      "ensuite de déplacer un écran fixé.",
+      "Coloca la pantalla a 80–600 cm al recentrar. Después puedes mover una pantalla fija con "
+      "ambos agarres.",
+      "再センタリング時に正面80～600cmへ配置します。部屋固定では両グリップでも移動できます。"),
+    H("questheight", Quest,
+      "Offset the screen centre from eye height. Negative values lower it for tabletop play. "
+      "Recenter after changing between seated and standing play.",
+      "Décale le centre par rapport aux yeux. Les valeurs négatives abaissent l’écran en table. "
+      "Recentre après un changement entre la position assise et debout.",
+      "Desplaza el centro respecto a los ojos. Valores negativos bajan la pantalla para mesa. "
+      "Recentra al cambiar entre sentado y de pie.",
+      "目の高さに対する中心位置を調整します。負の値でテーブル向けに下げます。座る・立つを切り替えた"
+      "ら再センタリングしてください。"),
+    H("questtilt", Quest,
+      "Tilt the screen toward a tabletop. The physical panel changes orientation while the "
+      "cartridge simulation stays the same.",
+      "Incline l’écran en table. Cela change l’orientation physique de l’écran tout en conservant "
+      "la simulation de la cartouche.",
+      "Inclina la pantalla como mesa. Cambia la orientación física y conserva la simulación del "
+      "cartucho.",
+      "スクリーンをテーブル状に傾けます。空間内の向きが変わり、カートリッジの動作は保たれます。"),
+    H("questresolution", Quest,
+      "Choose 720p, 1080p, 1440p or an ultra-wide 48:9 canvas. Larger canvases cost more GPU work "
+      "and memory. Pixel 1:1 describes this canvas; headset optics and composition resample the "
+      "image.",
+      "Choisis 720p, 1080p, 1440p ou 48:9. Les grands canevas sollicitent davantage le GPU et la "
+      "mémoire. Le 1:1 concerne ce canevas ; les optiques et la composition rééchantillonnent "
+      "l’image.",
+      "Elige 720p, 1080p, 1440p o 48:9. Los lienzos mayores usan más GPU y memoria. El 1:1 "
+      "describe el lienzo; óptica y composición remuestrean la imagen.",
+      "720p・1080p・1440p・48:9を選びます。大きいほどGPUとメモリを使います。1:"
+      "1はキャンバス内の比率で、光学系と合成処理が画像を再標本化します。"),
+    H("questtouch", Quest,
+      "Left stick moves; A/right trigger jumps; B starts/pauses; Y opens options; X changes "
+      "overview or opens a guide. Switch Touch off to give a Bluetooth gamepad the first player "
+      "slot.",
+      "Stick gauche : mouvement ; A/gâchette droite : saut ; B : pause ; Y : options ; X : vue "
+      "générale ou guide. Désactive Touch pour donner le joueur 1 à une manette Bluetooth.",
+      "Palanca izquierda: mover; A/gatillo derecho: saltar; B: pausa; Y: opciones; X: vista "
+      "general o guía. Desactiva Touch para asignar jugador 1 al mando Bluetooth.",
+      "左スティック移動、A／右トリガーでジャンプ、Bで開始・一時停止、Yで設定、Xで全体表示・ガイド。"
+      "Bluetoothゲームパッドをプレイヤー1にするにはTouchを無効にします。"),
+    H("questhaptics", Quest,
+      "Adjust the short vibration on right-pointer menu clicks. Zero disables it. Game sound and "
+      "cartridge controls remain independent.",
+      "Règle la brève vibration lors des clics du pointeur droit. Zéro la désactive. Le son et les "
+      "commandes de la cartouche restent indépendants.",
+      "Ajusta la vibración corta al pulsar con el puntero derecho. Cero la desactiva. Audio y "
+      "controles del cartucho son independientes.",
+      "右ポインターで選択したときの短い振動を調整します。0で無効。ゲーム音声とカートリッジの操作は"
+      "独立しています。"),
+    H("questflip", Quest,
+      "Reverse the image vertically as a compatibility adjustment. Leave off for the normal "
+      "SDL/OpenXR orientation.",
+      "Retourne l’image verticalement pour la compatibilité. Laisse désactivé pour l’orientation "
+      "SDL/OpenXR normale.",
+      "Invierte la imagen verticalmente como ajuste de compatibilidad. Déjalo desactivado para la "
+      "orientación SDL/OpenXR normal.",
+      "互換性調整として上下反転します。通常のSDL/OpenXR表示では無効のままにしてください。"),
+    H("questrecenter", Quest,
+      "Place the screen ahead at your current head position and horizontal viewing direction, "
+      "preserving size and tilt. Right-stick click does the same during play.",
+      "Replace l’écran devant ta position et ta direction horizontale actuelles en gardant la "
+      "taille et l’inclinaison. Le clic du stick droit fait pareil en jeu.",
+      "Coloca la pantalla delante de tu posición y dirección horizontal, conservando tamaño e "
+      "inclinación. La palanca derecha hace lo mismo al jugar.",
+      "大きさと傾きを保って現在の頭の位置と水平な視線の正面へ戻します。プレイ中の右スティック押下で"
+      "も同じ操作ができます。"),
+    H("questcinema", Quest,
+      "Use a room-pinned screen 320 cm wide at 240 cm distance, level with the eyes and without "
+      "tilt. Other game and save options are retained.",
+      "Écran fixé de 320 cm de large à 240 cm, à hauteur des yeux et sans inclinaison. Les autres "
+      "réglages du jeu et des sauvegardes sont conservés.",
+      "Pantalla fija de 320 cm a 240 cm, a la altura de los ojos y sin inclinación. Conserva los "
+      "demás ajustes y guardados.",
+      "幅320cm、距離240cm、目の高さ、傾きなしの部屋固定スクリーンにします。他のゲームとセーブ設定は"
+      "保ちます。"),
+    H("questtabletop", Quest,
+      "Use a 220 cm screen at 140 cm distance, 60 cm below eye height with a 65-degree tilt. "
+      "Whole-stage view is selected so the terrain can be explored as a board.",
+      "Écran de 220 cm à 140 cm, 60 cm sous les yeux et incliné de 65 degrés. Le niveau entier est "
+      "sélectionné pour explorer le terrain comme un plateau.",
+      "Pantalla de 220 cm a 140 cm, 60 cm bajo los ojos e inclinada 65 grados. Selecciona el nivel "
+      "completo para ver el terreno como tablero.",
+      "幅220cm、距離140cm、目より60cm下、65度の傾斜にします。ステージ全体を盤面のように見渡す表示へ"
+      "切り替えます。"),
     H("hintcorner", Reminder,
       "Put the compact reminder and status cards in any screen corner. The default is bottom "
       "right, at the outside edge even on ultrawide displays. The player close-up moves clear of "

@@ -13,6 +13,95 @@ struct Text {
         }                                                                                          \
     }
 static const Text texts[] = {
+    T("questtab", "Quest VR / AR", "Quest VR / AR", "Quest VR / RA", "Quest VR / AR"),
+    T("questguidebutton", "Setting guide · X", "Guide du réglage · X", "Guía del ajuste · X",
+      "設定ガイド · X"),
+    T("questguidehint",
+      "Point at or focus a setting for its illustrated explanation. X opens this guide; B or Y "
+      "closes it first.",
+      "Pointe ou sélectionne un réglage pour son explication illustrée. X ouvre ce guide ; B ou Y "
+      "le ferme en premier.",
+      "Apunta o selecciona un ajuste para ver su explicación. X abre esta guía; B o Y la cierra "
+      "primero.",
+      "設定を指すか選ぶと図付き説明が表示されます。Xでこのガイドを開き、BまたはYで閉じます。"),
+    T("questtrigger", "left trigger", "gâchette gauche", "gatillo izquierdo", "左トリガー"),
+    T("questintro",
+      "A spatial screen for your classic cartridges. Pin it in the room, bring it closer, or use a "
+      "tilted tabletop. Headset behavior is experimental and has not been physically tested.",
+      "Un écran spatial pour tes cartouches classiques. Fixe-le dans la pièce, rapproche-le ou "
+      "incline-le en table. Cette version est expérimentale et n’a pas été essayée sur un casque.",
+      "Una pantalla espacial para tus cartuchos clásicos. Fíjala en la habitación, acércala o "
+      "inclínala como mesa. Esta versión es experimental y no se ha probado en un visor físico.",
+      "クラシックゲームを空間のスクリーンに表示します。部屋に固定、接近、テーブル状の傾きを選べます"
+      "。実機では未検証の実験版です。"),
+    T("questar", "Passthrough AR · see the room", "AR avec passthrough · voir la pièce",
+      "RA con passthrough · ver la habitación", "パススルーAR · 部屋を表示"),
+    T("questarunavailable", "Passthrough is unavailable in this session. VR remains available.",
+      "Le passthrough est indisponible dans cette session. La VR reste accessible.",
+      "El passthrough no está disponible en esta sesión. La RV sigue disponible.",
+      "このセッションではパススルーを利用できません。VRは利用できます。"),
+    T("questanchor", "Screen anchoring", "Ancrage de l’écran", "Anclaje de pantalla",
+      "スクリーンの固定"),
+    T("questroom", "Pinned in the room", "Fixé dans la pièce", "Fija en la habitación",
+      "部屋に固定"),
+    T("questhead", "Follow the head", "Suivre la tête", "Seguir la cabeza", "頭に追従"),
+    T("questwidth", "Physical screen width", "Largeur physique de l’écran",
+      "Ancho físico de pantalla", "スクリーンの幅"),
+    T("questdistance", "Viewing distance", "Distance de visionnement", "Distancia de visión",
+      "表示距離"),
+    T("questheight", "Height relative to the eyes", "Hauteur par rapport aux yeux",
+      "Altura respecto a los ojos", "目の高さからの位置"),
+    T("questtilt", "Tabletop tilt", "Inclinaison de la table", "Inclinación de mesa",
+      "テーブルの傾き"),
+    T("questresolution", "Spatial screen resolution", "Résolution de l’écran spatial",
+      "Resolución de la pantalla espacial", "空間スクリーンの解像度"),
+    T("questeco", "Lightweight · 1280 × 720", "Léger · 1280 × 720", "Ligero · 1280 × 720",
+      "軽量 · 1280 × 720"),
+    T("questbalanced", "Balanced · 1920 × 1080", "Équilibré · 1920 × 1080",
+      "Equilibrado · 1920 × 1080", "標準 · 1920 × 1080"),
+    T("questsharp", "Sharp · 2560 × 1440", "Net · 2560 × 1440", "Nítido · 2560 × 1440",
+      "高精細 · 2560 × 1440"),
+    T("questwide", "Ultra-wide 48:9 · 3072 × 576", "Ultra-large 48:9 · 3072 × 576",
+      "Ultraancha 48:9 · 3072 × 576", "超横長48:9 · 3072 × 576"),
+    T("questtouch", "Use Quest Touch controls", "Utiliser les contrôleurs Quest Touch",
+      "Usar mandos Quest Touch", "Quest Touchコントローラーを使用"),
+    T("questhaptics", "Touch vibration strength", "Intensité des vibrations Touch",
+      "Intensidad de vibración Touch", "Touchの振動の強さ"),
+    T("questflip", "Flip the screen image vertically", "Retourner l’image verticalement",
+      "Invertir imagen verticalmente", "画面を上下反転"),
+    T("questrecenter", "Recenter screen · right stick click", "Recentrer · clic du stick droit",
+      "Recentrar · clic de palanca derecha", "画面を中央へ · 右スティック押下"),
+    T("questcinema", "Cinema layout", "Disposition cinéma", "Disposición de cine", "シネマ配置"),
+    T("questtabletop", "Tabletop whole-stage layout", "Table avec niveau entier",
+      "Mesa con nivel completo", "ステージ全体をテーブル表示"),
+    T("questgrab",
+      "Hold both grip buttons to move and scale a room-pinned screen. Release to pin it. Point the "
+      "right controller at the menu and squeeze its trigger to click; the right stick scrolls.",
+      "Maintiens les deux boutons de prise pour déplacer et redimensionner l’écran fixé. Relâche "
+      "pour le fixer. Pointe le contrôleur droit sur le menu et presse sa gâchette pour cliquer ; "
+      "le stick droit défile.",
+      "Mantén ambos botones de agarre para mover y escalar la pantalla fija. Suelta para fijarla. "
+      "Apunta al menú con el mando derecho y pulsa su gatillo; la palanca derecha desplaza.",
+      "両方のグリップを押して固定スクリーンを移動・拡大縮小し、離すと固定します。右コントローラーで"
+      "メニューを指し、トリガーで選択。右スティックでスクロールします。"),
+    T("questqualitynote",
+      "Lightweight reduces battery and rendering load. A larger virtual canvas costs more GPU "
+      "work. Pixel 1:1 refers to game pixels in this canvas; headset optics and the compositor "
+      "resample the final image. For a Bluetooth gamepad, switch Touch controls off.",
+      "Léger réduit la charge et la consommation. Un canevas plus grand sollicite davantage le "
+      "GPU. Le 1:1 concerne les pixels du jeu dans ce canevas ; les optiques et le compositeur "
+      "rééchantillonnent l’image. Pour une manette Bluetooth, désactive les contrôleurs Touch.",
+      "Ligero reduce carga y consumo. Un lienzo mayor requiere más GPU. El 1:1 se refiere a "
+      "píxeles del juego en el lienzo; óptica y compositor remuestrean la imagen final. Para un "
+      "mando Bluetooth, desactiva los mandos Touch.",
+      "軽量設定は処理と消費電力を抑えます。キャンバスが大きいほどGPU負荷が増えます。1:"
+      "1はキャンバス内の画素を指し、光学系と合成処理で最終画像は再標本化されます。Bluetoothゲームパ"
+      "ッドではTouch操作を無効にしてください。"),
+    T("questhint", "Options · Y", "Options · Y", "Opciones · Y", "設定 · Y"),
+    T("questnav", "A: confirm · B: back · grips: tabs · right stick: scroll · X: guide · Y: menu",
+      "A : valider · B : retour · prises : onglets · stick droit : défiler · X : guide · Y : menu",
+      "A: aceptar · B: volver · agarres: pestañas · palanca derecha: desplazar · X: guía · Y: menú",
+      "A:決定 · B:戻る · グリップ:タブ · 右スティック:スクロール · X:ガイド · Y:メニュー"),
     T("hintshortcuts", "Options · Select / Esc", "Options · Select / Échap",
       "Opciones · Select / Esc", "設定 · Select / Esc"),
     T("hintkeyboard", "Options · Esc", "Options · Échap", "Opciones · Esc", "設定 · Esc"),

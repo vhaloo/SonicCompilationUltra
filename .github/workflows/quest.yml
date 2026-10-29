@@ -1,0 +1,42 @@
+name: Quest compile and static APK checks
+on:
+  push:
+    branches: [quest-standalone]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  quest:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+      - name: Install pinned build components
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;29.0.14206865' 'cmake;3.31.6'
+      - name: Audit public source and prepare SDL
+        run: |
+          python tools/audit_public.py
+          python tools/prepare_quest.py
+      - name: Compile and lint without application execution
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --max-workers=2 :app:assembleRelease :app:lintRelease
+      - name: Inspect ROM-free APK and signature
+        run: python tools/audit_quest_apk.py android/app/build/outputs/apk/release/app-release.apk --sdk "$ANDROID_HOME" --out quest-audit.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Quest-ROM-free-preview
+          path: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/reports/lint-results-release.html
+            quest-audit.json
+          if-no-files-found: error

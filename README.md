@@ -11,6 +11,8 @@
 
 Windows and Linux · **macOS: experimental** · English, French, Spanish and Japanese · Keyboard and gamepads
 
+**Standalone Quest VR / AR preview:** the Android build presents the collection on a tracked cinema or tabletop screen, with optional room passthrough and Quest Touch controls. It runs on the headset without PC streaming. Headset behavior and performance are unverified; see [Quest installation, controls and build instructions](docs/QUEST.md).
+
 **Mac builds are experimental:** Intel and Apple Silicon packages pass automated build/runtime checks, but have not been tried on a physical Mac. Display, audio and real-controller compatibility still need Mac testing. Linux packages are checked on Ubuntu 22.04 in CI, including the portable launcher.
 
 ## Start playing

@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "quest.h"
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_sdlrenderer2.h>
 #include <imgui_internal.h>
@@ -70,6 +71,20 @@ void App::settingGuide(bool compact) {
                  0.19f, 0.24f, 0.15f, cyan);
             rect(0.73f, 0.65f, 0.18f, 0.19f, cyan, false);
         }
+        break;
+    }
+    case HelpPicture::Quest: {
+        rect(0.05f, 0.12f, 0.90f, 0.78f, muted, false);
+        line(0.05f, 0.90f, 0.32f, 0.61f, muted);
+        line(0.95f, 0.90f, 0.68f, 0.61f, muted);
+        rect(0.26f, 0.20f, 0.48f, 0.42f, ink);
+        rect(0.26f, 0.20f, 0.48f, 0.42f, cyan, false);
+        for (int i = 0; i < 5; ++i)
+            rect(0.30f + i * 0.08f, 0.45f - (i % 2) * 0.08f, 0.07f, 0.12f, muted);
+        draw->AddCircleFilled(point(0.50f, 0.40f), height * 0.035f, gold);
+        rect(0.38f, 0.76f, 0.24f, 0.12f, cyan, false);
+        line(0.18f, 0.74f, 0.50f, 0.40f, gold);
+        draw->AddCircleFilled(point(0.18f, 0.74f), height * 0.04f, gold);
         break;
     }
     case HelpPicture::Reminder: {
@@ -149,7 +164,13 @@ void App::settingGuide(bool compact) {
     if (!compact) {
         ImGui::Spacing();
         ImGui::Separator();
-        ImGui::TextWrapped("%s", tr("guidehint", language));
+        ImGui::TextWrapped("%s", tr(
+#ifdef SCU_QUEST
+                                     "questguidehint",
+#else
+                                     "guidehint",
+#endif
+                                     language));
     }
 }
 void App::control(const char *key) {
@@ -206,6 +227,15 @@ void App::initialise(const fs::path &base, bool hidden) {
     basePath = base;
     fs::create_directories(library.dataDir);
     settings.load(library.dataDir);
+#ifdef SCU_QUEST
+    settings.renderer = 0;
+    settings.vsync = false;
+    settings.fullscreen = false;
+    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengles2");
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+#endif
     library.load();
     language = detectLanguage(settings.language);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
@@ -213,6 +243,9 @@ void App::initialise(const fs::path &base, bool hidden) {
     window = SDL_CreateWindow("Sonic Compilation Ultra", SDL_WINDOWPOS_CENTERED,
                               SDL_WINDOWPOS_CENTERED, 1280, 720,
                               SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI |
+#ifdef SCU_QUEST
+                                  SDL_WINDOW_OPENGL |
+#endif
                                   (hidden ? SDL_WINDOW_HIDDEN : SDL_WINDOW_SHOWN));
     if (!window)
         throw std::runtime_error(SDL_GetError());
@@ -314,6 +347,39 @@ void App::refreshControllers() {
             SDL_GameControllerClose(p);
             p = nullptr;
         }
+#ifdef SCU_QUEST
+    if (!pads[0] && pads[1]) {
+        std::swap(pads[0], pads[1]);
+        activePad = 0;
+    }
+    // Touch is player one even if a Bluetooth pad was connected before startup.
+    if (settings.questTouch) {
+        for (int i = 0; i < SDL_NumJoysticks(); ++i) {
+            const char *name = SDL_JoystickNameForIndex(i);
+            if (!name || std::strcmp(name, "SCU Quest Touch") || !SDL_IsGameController(i))
+                continue;
+            auto instance = SDL_JoystickGetDeviceInstanceID(i);
+            auto same = [&](SDL_GameController *pad) {
+                return pad &&
+                       SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(pad)) == instance;
+            };
+            if (same(pads[1])) {
+                std::swap(pads[0], pads[1]);
+                activePad = 1 - activePad;
+            } else if (!same(pads[0])) {
+                auto preferred = SDL_GameControllerOpen(i);
+                if (preferred) {
+                    if (pads[1])
+                        SDL_GameControllerClose(pads[1]);
+                    pads[1] = pads[0];
+                    pads[0] = preferred;
+                    activePad = 0;
+                }
+            }
+            break;
+        }
+    }
+#endif
     for (int i = 0; i < SDL_NumJoysticks(); i++) {
         if (!SDL_IsGameController(i))
             continue;
@@ -401,6 +467,10 @@ void App::toggleMenu() {
     dirty = true;
 }
 void App::applyDisplay() {
+#ifdef SCU_QUEST
+    dirty = true;
+    return;
+#endif
     if (!previousFullscreen && settings.fullscreen) {
         SDL_GetWindowPosition(window, &windowedBounds.x, &windowedBounds.y);
         SDL_GetWindowSize(window, &windowedBounds.w, &windowedBounds.h);
@@ -865,6 +935,15 @@ uint64_t App::overlayNow() const {
 #endif
     return SDL_GetTicks64();
 }
+void App::logicalWindowSize(int &width, int &height) const {
+#ifdef SCU_QUEST
+    if (quest) {
+        quest->logicalSize(width, height);
+        return;
+    }
+#endif
+    SDL_GetWindowSize(window, &width, &height);
+}
 void App::prepareOverlays() {
     overlays.clear();
     const auto now = overlayNow();
@@ -877,7 +956,7 @@ void App::prepareOverlays() {
         return;
     }
     int width = 0, height = 0;
-    SDL_GetWindowSize(window, &width, &height);
+    logicalWindowSize(width, height);
     if (width <= 0 || height <= 0)
         return;
     const float margin =
@@ -905,6 +984,9 @@ void App::prepareOverlays() {
     const char *binding = settings.rewindButton == 1   ? "L1 / LB"
                           : settings.rewindButton == 2 ? "R2 / RT"
                                                        : "L2 / LT";
+#ifdef SCU_QUEST
+    binding = tr("questtrigger", language);
+#endif
     auto rewindText = [&](bool active) {
         char text[256];
         std::snprintf(text, sizeof text, tr(active ? "rewinding" : "rewindhint", language), binding,
@@ -913,6 +995,9 @@ void App::prepareOverlays() {
     };
     if (hintVisible) {
         const char *key = "hintshortcuts";
+#ifdef SCU_QUEST
+        key = "questhint";
+#else
         if (settings.hintDetail == 1) {
             int labels = controllerLabels();
             key = !padUsed || !pads[activePad] ? "hintkeyboard"
@@ -920,6 +1005,7 @@ void App::prepareOverlays() {
                   : labels == 3                ? "hintnintendo"
                                                : "hintxbox";
         }
+#endif
         std::string text = tr(key, language);
         if (detailed && settings.rewind)
             text += "\n" + rewindText(core.isRewinding());
@@ -959,7 +1045,7 @@ void App::prepareOverlays() {
 }
 SDL_Rect App::avoidOverlays(SDL_Rect rect) const {
     int width = 1, height = 1;
-    SDL_GetWindowSize(window, &width, &height);
+    logicalWindowSize(width, height);
     const float sx = float(drawableW) / std::max(1, width);
     const float sy = float(drawableH) / std::max(1, height);
     for (size_t pass = 0; pass < overlays.size(); ++pass)
@@ -1193,6 +1279,10 @@ void App::present(bool capture) {
     }
     ImGui_ImplSDLRenderer2_NewFrame();
     ImGui_ImplSDL2_NewFrame();
+#ifdef SCU_QUEST
+    if (quest)
+        quest->prepareUi();
+#endif
     updateNavigationController();
     bool editing = GImGui->ActiveId != 0 ||
                    (!GImGui->OpenPopupStack.empty() && GImGui->OpenPopupStack.back().Window &&
@@ -1222,6 +1312,10 @@ void App::present(bool capture) {
         gameOverlays();
     if (menu)
         ui();
+#ifdef SCU_QUEST
+    if (quest)
+        quest->drawReticle();
+#endif
     ImGui::Render();
     ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
     if (capture || screenshotRequested) {
@@ -1232,7 +1326,11 @@ void App::present(bool capture) {
         screenshot(p);
         screenshotRequested = false;
     }
+#ifdef SCU_QUEST
+    SDL_RenderFlush(renderer);
+#else
     SDL_RenderPresent(renderer);
+#endif
     ++presentationFrames;
     uint64_t now = SDL_GetTicks64();
     if (!presentationClock)
@@ -1404,6 +1502,10 @@ int App::controllerLabels() const {
     return labels;
 }
 std::string App::navigationHint() const {
+#ifdef SCU_QUEST
+    if (settings.questTouch)
+        return tr("questnav", language);
+#endif
     int labels = controllerLabels();
     return tr(labels == 2 ? "navps" : labels == 3 ? "navnintendo" : "navxbox", language);
 }
@@ -1445,7 +1547,7 @@ void App::menuInput(bool editing) {
     if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Tab, false))
         direction = ImGui::GetIO().KeyShift ? -1 : 1;
     if (direction) {
-        tab = (tab + direction + 9) % 9;
+        tab = (tab + direction + sectionCount()) % sectionCount();
         focusPage = true;
         ImGui::SetNavCursorVisible(true);
     }
@@ -1547,18 +1649,34 @@ void App::ui() {
         nextButton(importKey);
     }
     if (button(importKey))
+#ifdef SCU_QUEST
+        quest->chooseRom();
+#else
         beginBrowser(false);
+#endif
     control("import");
     nextButton("quit");
     if (button("quit"))
         requestAction(1);
     focusMenu = false;
     ImGui::Separator();
-    const char *tabs[] = {"library",  "video",    "camera", "atmosphere", "sound",
-                          "controls", "gameplay", "saves",  "about"};
+    const char *tabs[] = {"library",
+                          "video",
+                          "camera",
+                          "atmosphere",
+                          "sound",
+                          "controls",
+                          "gameplay",
+                          "saves",
+                          "about"
+#ifdef SCU_QUEST
+                          ,
+                          "questtab"
+#endif
+    };
     if (small) {
         if (button("prevsection")) {
-            tab = (tab + 8) % 9;
+            tab = (tab + sectionCount() - 1) % sectionCount();
             focusPage = true;
         }
         ImGui::SameLine();
@@ -1566,12 +1684,12 @@ void App::ui() {
         std::vector<const char *> labels;
         for (auto key : tabs)
             labels.push_back(tr(key, language));
-        if (ImGui::Combo("##section", &tab, labels.data(), 9))
+        if (ImGui::Combo("##section", &tab, labels.data(), sectionCount()))
             focusPage = true;
         control("section");
         ImGui::SameLine();
         if (button("nextsection")) {
-            tab = (tab + 1) % 9;
+            tab = (tab + 1) % sectionCount();
             focusPage = true;
         }
     }
@@ -1583,7 +1701,7 @@ void App::ui() {
     float contentH = std::max(50.0f, ImGui::GetContentRegionAvail().y - footer);
     if (!small) {
         ImGui::BeginChild("##sections", {230 * uiFactor, contentH}, ImGuiChildFlags_NavFlattened);
-        for (int n = 0; n < 9; ++n) {
+        for (int n = 0; n < sectionCount(); ++n) {
             if (ImGui::Selectable((std::string(tr(tabs[n], language)) + "###" + tabs[n]).c_str(),
                                   tab == n)) {
                 tab = n;
@@ -1594,7 +1712,7 @@ void App::ui() {
         ImGui::EndChild();
         ImGui::SameLine();
     }
-    bool sideGuide = tab > 0 && tab < 8 && safe >= 1000 * uiFactor && !tiny;
+    bool sideGuide = tab > 0 && (tab < 8 || tab == 9) && safe >= 1000 * uiFactor && !tiny;
     float guideW = sideGuide ? 310 * uiFactor : 0;
     float pageW =
         sideGuide ? ImGui::GetContentRegionAvail().x - guideW - ImGui::GetStyle().ItemSpacing.x : 0;
@@ -1623,7 +1741,13 @@ void App::ui() {
         ImGui::EndChild();
     }
     ImGui::Separator();
-    if (button("settingguide"))
+    if (button(
+#ifdef SCU_QUEST
+            "questguidebutton"
+#else
+            "settingguide"
+#endif
+            ))
         guideRequested = true;
     ImGui::TextWrapped("%s", navigationHint().c_str());
     if (!tiny)
@@ -1812,6 +1936,7 @@ void App::optionsUi(int section) {
                                         language));
         }
         ImGui::TextWrapped("%s", tr("pixelhelp", language));
+#ifndef SCU_QUEST
         bool full = settings.fullscreen, span = settings.span;
         int display = settings.display;
         check("fullscreen", settings.fullscreen);
@@ -1836,19 +1961,24 @@ void App::optionsUi(int section) {
         control("display");
         if (full != settings.fullscreen || span != settings.span || display != settings.display)
             applyDisplay();
+#endif
         changed |= choice("menulayout", settings.menuLayout, {"fullmenu", "compactmenu"});
         changed |=
             choice("uiscale", settings.uiScale, {"auto", "smalltext", "largetext", "hugetext"});
         check("contrast", settings.highContrast);
+#ifndef SCU_QUEST
         check("vsync", settings.vsync);
+#endif
         check("nearest", settings.integerScale);
         slide("nativescale", settings.nativeScale, 0, 8);
         slide("workers", settings.workers, 0, 16);
+#ifndef SCU_QUEST
         bool soft = settings.renderer != 0;
         if (tick("soft", soft)) {
             settings.renderer = soft ? 1 : 0;
             changed = true;
         }
+#endif
         slide("scanlines", settings.scanlines, 0, 60);
         check("performance", settings.performance);
         if (button("defaults"))
@@ -2039,6 +2169,11 @@ void App::optionsUi(int section) {
         ImGui::TextWrapped("%s", tr("savehelp", language));
         break;
     }
+#ifdef SCU_QUEST
+    case 9:
+        quest->options();
+        break;
+#endif
     case 8:
         ImGui::Text("Sonic Compilation Ultra %s", SCU_VERSION);
         if (button("sourcehelp"))

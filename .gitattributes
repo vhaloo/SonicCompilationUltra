@@ -8,3 +8,6 @@
 *.ttf binary
 *.ico binary
 *.png binary
+
+# Preserve the upstream toolchain notice verbatim, including its whitespace.
+licenses/Android-NDK-TOOLCHAIN-NOTICE.txt -whitespace

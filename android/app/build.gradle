@@ -1,0 +1,64 @@
+plugins { id 'com.android.application' }
+
+def sdl = file(providers.gradleProperty('scuSdlDir').getOrElse('../.deps/SDL2-2.32.10'))
+def generatedAssets = layout.buildDirectory.dir('generated/scu-assets')
+def privateAssets = providers.gradleProperty('scuPrivateAssets').orNull
+def keyFile = providers.gradleProperty('scuKeyStore').orElse(providers.environmentVariable('SCU_QUEST_KEYSTORE')).orNull
+android {
+    namespace 'com.vhaloo.soniccompilationultra.quest'
+    compileSdk 36
+    ndkVersion '29.0.14206865'
+    defaultConfig {
+        applicationId 'com.vhaloo.soniccompilationultra.quest'
+        minSdk 29
+        targetSdk 32
+        versionCode 400
+        versionName '0.4.0-quest-preview'
+        ndk { abiFilters 'arm64-v8a' }
+        externalNativeBuild {
+            cmake {
+                arguments '-DBUILD_TESTING=OFF', '-DANDROID_STL=c++_shared',
+                    "-DSCU_SDL_SOURCE=${sdl.absolutePath.replace('\\','/')}", '-DSCU_FETCH_SDL=OFF'
+                targets 'SonicCompilationUltra', 'SDL2'
+                cppFlags '-std=c++17'
+            }
+        }
+    }
+    signingConfigs {
+        if (keyFile) {
+            portable {
+                storeFile file(keyFile)
+                storePassword providers.environmentVariable('SCU_QUEST_KEY_PASSWORD').get()
+                keyAlias 'scu-quest'
+                keyPassword providers.environmentVariable('SCU_QUEST_KEY_PASSWORD').get()
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig keyFile ? signingConfigs.portable : signingConfigs.debug
+        }
+    }
+    externalNativeBuild { cmake { path '../../CMakeLists.txt'; version '3.31.6' } }
+    buildFeatures { prefab true; buildConfig false }
+    sourceSets {
+        main {
+            java.srcDir new File(sdl, 'android-project/app/src/main/java')
+            assets.srcDir generatedAssets.get().asFile
+            if (privateAssets) assets.srcDir file(privateAssets)
+        }
+    }
+    packaging { jniLibs { useLegacyPackaging true } }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    lint { abortOnError true; checkReleaseBuilds true; lintConfig file('lint.xml'); disable 'ExpiredTargetSdkVersion' }
+}
+tasks.register('prepareScuAssets', Copy) {
+    from('../../assets') { into 'scu/assets' }
+    from('../../LICENSE') { into 'scu/licences' }
+    from('../../THIRD_PARTY_NOTICES.md') { into 'scu/licences' }
+    from('../../licenses') { into 'scu/licences' }
+    into generatedAssets
+}
+tasks.named('preBuild').configure { dependsOn 'prepareScuAssets' }
+dependencies { implementation 'org.khronos.openxr:openxr_loader_for_android:1.1.65' }

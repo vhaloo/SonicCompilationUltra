@@ -7,7 +7,13 @@
 #include <map>
 #endif
 namespace scu {
+#ifdef SCU_QUEST
+class QuestPresentation;
+#endif
 class App {
+#ifdef SCU_QUEST
+    friend class QuestPresentation;
+#endif
     SDL_Texture *worldTexture = nullptr, *nativeTexture = nullptr, *bgTexture = nullptr;
     int textureW = 0, textureH = 0, nativeTW = 0, nativeTH = 0;
     std::array<uint32_t, 320 * 224> frozenBackground{};
@@ -54,6 +60,7 @@ class App {
     void optionsUi(int section);
     void browserUi();
     void hud();
+    void logicalWindowSize(int &width, int &height) const;
     void error(const std::exception &e);
     void menuInput(bool editing);
     void syncNavigationController();
@@ -74,6 +81,16 @@ class App {
     int controllerLabels() const;
 
   public:
+#ifdef SCU_QUEST
+    QuestPresentation *quest = nullptr;
+#endif
+    static constexpr int sectionCount() {
+#ifdef SCU_QUEST
+        return 10;
+#else
+        return 9;
+#endif
+    }
     Settings settings;
     Library library;
     Core core;
@@ -109,7 +126,7 @@ class App {
         return tab;
     }
     void showSection(int n) {
-        tab = n >= 0 && n < 9 ? n : 0;
+        tab = n >= 0 && n < sectionCount() ? n : 0;
         menu = true;
         focusPage = true;
     }

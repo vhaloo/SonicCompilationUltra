@@ -1,5 +1,16 @@
 # Third-party notices
 
+## Standalone Quest additions
+
+The Android edition uses the Khronos OpenXR Android loader 1.1.65 from Maven Central
+(`org.khronos.openxr:openxr_loader_for_android`), under Apache-2.0. The loader's
+licence is supplied with the dependency and in `licenses/OpenXR-loader-Apache-2.0.txt`.
+SDL's Java Activity/support sources come from the same pinned SDL 2.32.10 source
+archive as the native library. The Gradle wrapper is standard Gradle build tooling
+under Apache-2.0. Android/NDK platform libraries retain their respective terms.
+The packaged Android C++ and OpenMP runtimes are supplied by NDK 29.0.14206865;
+its NOTICE and NOTICE.toolchain files are retained under `licenses/Android-NDK-*`.
+
 Sonic Compilation Ultra is distributed for noncommercial use with complete source. Individual components retain their own terms; the project licence does not replace those terms.
 
 | Component | Copyright / source | Licence / supplied notice |
