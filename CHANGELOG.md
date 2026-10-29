@@ -3,7 +3,7 @@
 ## 0.6.0 XR preview — Stereo furniture and startup repair
 
 - Repair partial UI shutdown, use app-owned internal storage with external-data migration, identify the app as immersive and preserve SDL graphics state around the full OpenXR frame sequence.
-- Add stereo 3D pinball cabinets, automatic complete-board Spinball presentation, curved CRT enclosures/shaders, aligned surrounding terrain and curved stage galleries.
+- Add stereo 3D pinball cabinets, automatic complete-board Spinball presentation, curved CRT enclosures/shaders, aligned surrounding terrain, a repeated 360° cartridge backdrop and curved stage galleries.
 - Separate resizing from placement locking. Add two-grip/stick resizing, 5–20,000% scale, half/double/reset, cabinet dimensions/slope/glass, CRT presets/mask/curvature and VR surroundings.
 - Add portable desktop cabinet/CRT frames and illustrated guides in four languages. Expand the renamed OFL font subset and load every translated glyph.
 - Verify Quest 3 library/options and original-pattern stereo previews with cartridge execution disabled at the core boundary; statically check all 12 personal cartridge entries. No gameplay was launched or tested.

@@ -4,7 +4,7 @@ This report separates successful checks from coverage that has not been measured
 
 ## 0.6 XR preview — physical frontend checks, no gameplay
 
-- On a USB-connected Quest 3, the library/options and original-pattern pinball/CRT/curved previews reach native SDL/OpenXR startup and submit stereo projection plus an independent menu quad. Actual eye-buffer and options captures were visually inspected. The earlier partial-UI cleanup crash, window-placement failure and black menu transfer were reproduced from evidence and repaired.
+- On a USB-connected Quest 3, the library/options and original-pattern pinball/CRT/curved previews reach native SDL/OpenXR startup and submit stereo projection plus an independent menu quad. Actual eye-buffer and options captures were visually inspected. The earlier partial-UI cleanup crash, window-placement failure and black menu transfer were identified in logs/captures and repaired.
 - Menu verification locks `Core::load`. Diagnostic frames record `coreLoaded=0` and `coreFrame=0`; cartridge file checks report **12 entries, 12 readable, cartridgeExecution=0**. Those checks decode/check files, not game instructions. No ROM was launched or played.
 - The runtime reports a **120 Hz display target** with maximum refresh selected. Short empty-preview observations include startup/capture stalls; they do not establish sustained 120 FPS, gameplay performance, thermal behavior or battery life.
 - Android compilation, lint and static signature/dependency/manifest/data-boundary inspection apply to both ordinary and personal APKs. The ordinary APK/source package exclude ROMs and private data. The local personal APK is not uploaded.

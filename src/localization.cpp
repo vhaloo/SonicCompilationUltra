@@ -13,6 +13,9 @@ struct Text {
         }                                                                                          \
     }
 static const Text texts[] = {
+    T("questworldbackdrop", "Wrap the game's backdrop around the VR room",
+      "Étendre le décor sur 360° en VR", "Fondo del juego a 360° en RV",
+      "VRの周囲360度に背景を表示"),
     T("desktoppresentation", "Desktop frame", "Cadre sur PC", "Marco de escritorio",
       "デスクトップのフレーム"),
     T("desktopplain", "Full canvas", "Canevas entier", "Lienzo completo", "キャンバス全体"),
@@ -274,16 +277,13 @@ static const Text texts[] = {
     T("questtrigger", "left trigger", "gâchette gauche", "gatillo izquierdo", "左トリガー"),
     T("questintro",
       "Choose a giant fixed mural, a complete-board 3D pinball cabinet, a curved gallery or a 3D "
-      "CRT with the level around it. Use both grips to resize. This XR edition remains "
-      "experimental; menu verification does not establish gameplay compatibility.",
+      "CRT with the level around it. Use both grips to resize. Experimental XR preview.",
       "Choisis un mural géant fixe, un flipper 3D avec plateau entier, une galerie incurvée ou un "
-      "CRT 3D entouré du niveau. Les deux prises redimensionnent. Cette édition XR reste "
-      "expérimentale ; la vérification du menu ne valide pas le gameplay.",
+      "CRT 3D entouré du niveau. Les deux prises redimensionnent. Aperçu XR expérimental.",
       "Elige mural gigante fijo, pinball 3D completo, galería curva o CRT 3D rodeado del nivel. "
-      "Ambos agarres cambian el tamaño. Esta edición XR sigue siendo experimental; comprobar menús "
-      "no valida la jugabilidad.",
+      "Ambos agarres cambian el tamaño. Vista previa XR experimental.",
       "固定された巨大壁画、全盤面3Dピンボール、湾曲ギャラリー、ステージに囲まれた3Dブラウン管を選べ"
-      "ます。両グリップで拡縮。このXR版は実験版で、メニュー確認はゲーム動作の検証ではありません。"),
+      "ます。両グリップで拡縮。実験的なXRプレビュー版です。"),
     T("questar", "Passthrough AR · see the room", "AR avec passthrough · voir la pièce",
       "RA con passthrough · ver la habitación", "パススルーAR · 部屋を表示"),
     T("questarunavailable", "Passthrough is unavailable in this session. VR remains available.",

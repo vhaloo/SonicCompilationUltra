@@ -9,6 +9,19 @@ namespace scu {
         }                                                                                          \
     }
 static const SettingHelp entries[] = {
+    H("questworldbackdrop", Background,
+      "Surround the VR CRT with a distant, repeated panorama made from the game's own backdrop. "
+      "Your background style, blur and brightness choices still apply. The expanded stage stays "
+      "aligned with the TV in front of this scenery. AR keeps your real room visible instead.",
+      "Entoure le CRT en VR d’un panorama lointain répété, issu du décor du jeu. Les choix de "
+      "fond, flou et luminosité s’appliquent toujours. Le niveau étendu reste aligné sur le "
+      "téléviseur devant ce décor. En AR, ta pièce réelle reste visible.",
+      "Rodea el CRT en RV con un panorama lejano repetido del fondo del juego. Se mantienen "
+      "estilo, desenfoque y brillo. El nivel ampliado sigue alineado con el TV delante del fondo. "
+      "En RA se conserva tu habitación real.",
+      "ゲームの背景を繰り返した遠景でVRのブラウン管を囲みます。背景の種類、ぼかし、明るさの設定も反"
+      "映します。拡張ステージは遠景の手前でテレビと位置を合わせます。ARでは実際の部屋を表示します"
+      "。"),
     H("desktoppresentation", Crt,
       "Choose the ordinary canvas, a whole-board pinball cabinet frame, or a CRT with the expanded "
       "level behind it. Desktop frames use portable 2D geometry on SDL renderers; the Quest "
@@ -143,10 +156,21 @@ static const SettingHelp entries[] = {
       "立体モードで暗い空間か静かな手続き型スタジオの床を選びます。パススルーはスタジオを実際の部屋"
       "に置き換えます。アプリはカメラ映像を取得・録画しません。"),
     H("questmode", Wall,
-      "Choose a normal spatial screen, scanned wall, full-stage mural, floor atlas, 3D pinball cabinet, 3D CRT with surrounding terrain, or curved stage gallery. The complete current stage keeps fixed framing in map modes. Unsupported scenes keep their native viewport. Furniture modes always keep options nearby.",
-      "Choisis écran spatial, mur scanné, mural complet, atlas au sol, flipper 3D, CRT 3D avec terrain autour ou galerie incurvée. Le niveau actuel entier reste fixe dans les modes carte. Les scènes non compatibles gardent leur vue native. Le mobilier garde toujours les options à proximité.",
-      "Elige pantalla espacial, pared capturada, mural completo, atlas de suelo, pinball 3D, CRT 3D con terreno alrededor o galería curva. El nivel completo mantiene encuadre fijo en modos mapa. Las escenas no compatibles usan su vista nativa. Los muebles mantienen las opciones cerca.",
-      "空間スクリーン、スキャンした壁、全ステージ壁画、床の地図、3Dピンボール筐体、周囲に地形を表示する3Dブラウン管、湾曲ギャラリーを選びます。地図モードは全ステージを固定表示。未対応場面は元の画面を使い、家具モードの設定は常に近くに表示します。"),
+      "Choose a normal spatial screen, scanned wall, full-stage mural, floor atlas, 3D pinball "
+      "cabinet, 3D CRT with surrounding terrain, or curved stage gallery. The complete current "
+      "stage keeps fixed framing in map modes. Unsupported scenes keep their native viewport. "
+      "Furniture modes always keep options nearby.",
+      "Choisis écran spatial, mur scanné, mural complet, atlas au sol, flipper 3D, CRT 3D avec "
+      "terrain autour ou galerie incurvée. Le niveau actuel entier reste fixe dans les modes "
+      "carte. Les scènes non compatibles gardent leur vue native. Le mobilier garde toujours les "
+      "options à proximité.",
+      "Elige pantalla espacial, pared capturada, mural completo, atlas de suelo, pinball 3D, CRT "
+      "3D con terreno alrededor o galería curva. El nivel completo mantiene encuadre fijo en modos "
+      "mapa. Las escenas no compatibles usan su vista nativa. Los muebles mantienen las opciones "
+      "cerca.",
+      "空間スクリーン、スキャンした壁、全ステージ壁画、床の地図、3Dピンボール筐体、周囲に地形を表示"
+      "する3Dブラウン管、湾曲ギャラリーを選びます。地図モードは全ステージを固定表示。未対応場面は元"
+      "の画面を使い、家具モードの設定は常に近くに表示します。"),
     H("questwallheight", Wall,
       "Default 200 cm: the mural rises two metres from the floor. Width follows the stage aspect "
       "ratio. Wall-fit mode caps height to the available wall. On a floor atlas this sets its "

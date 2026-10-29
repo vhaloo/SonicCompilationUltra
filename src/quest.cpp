@@ -1323,10 +1323,13 @@ struct QuestPresentation::Impl {
                                    ? gameScreen.canvas
                                    : nullptr;
             content.native = &app.core.native;
+            content.backdrop = &app.core.world.backdrop;
             content.nativeWidth = app.core.nativeW;
             content.nativeHeight = app.core.nativeH;
             content.version = app.core.imageVersion;
             content.scene = app.core.world.inspect(app.core.snapshot, app.core.game);
+            if (mode() == 4 && !content.scene.ready)
+                content.expanded = nullptr;
             auto &canvas = app.core.world.canvas;
             content.left = canvas.left;
             content.top = canvas.top;
@@ -1605,7 +1608,7 @@ void QuestPresentation::options() {
     }
     changed |= a.slider("questresizespeed", s.questResizeSpeed, 25, 300, "%d%%");
     ImGui::TextWrapped("%s", tr("questresizehint", a.language));
-    if (impl->mode() == 4 || s.questSpinballAuto) {
+    if (impl->mode() == 4) {
         changed |= a.slider("questcabinetwidth", s.questCabinetWidth, 40, 600, "%d cm");
         changed |= a.slider("questcabinetheight", s.questCabinetHeight, 30, 160, "%d cm");
         changed |= a.slider("questcabinettilt", s.questCabinetTilt, 0, 40, "%d°");
@@ -1621,6 +1624,7 @@ void QuestPresentation::options() {
         changed |= a.slider("questcrtstrength", s.questCrtStrength, 0, 100, "%d%%");
         changed |= a.slider("questcrtcurve", s.questCrtCurve, 0, 100, "%d%%");
         changed |= a.tick("questsurround", s.questSurround);
+        changed |= a.tick("questworldbackdrop", s.questWorldBackdrop);
         changed |= a.slider("questsurroundbrightness", s.questSurroundBrightness, 0, 100, "%d%%");
     }
     if (impl->mode() == 6)

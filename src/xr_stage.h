@@ -11,6 +11,7 @@ namespace scu {
 struct XrStageContent {
     SDL_Texture *expanded = nullptr;
     const std::vector<uint32_t> *native = nullptr;
+    const std::array<uint32_t, 320 * 224> *backdrop = nullptr;
     int nativeWidth = 320, nativeHeight = 224;
     uint64_t version = 0;
     bool loaded = false;

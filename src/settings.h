@@ -26,7 +26,7 @@ struct Settings {
     int desktopPresentation = 0, desktopFrameScale = 100, desktopCrtStrength = 40,
         desktopCabinetAngle = 35;
     bool desktopSurround = true, desktopCrtMask = true;
-    bool questSpinballAuto = true, questSurround = true;
+    bool questSpinballAuto = true, questSurround = true, questWorldBackdrop = true;
     bool questAutoWall = true, questWallLocked = true, questAdaptive = true;
     bool questPauseLost = true, questCompanion = true;
     // Per-frame projection bounds, deliberately excluded from saved preferences.

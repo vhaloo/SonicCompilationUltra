@@ -264,6 +264,10 @@ void main(){
    c+=vec3(.015,.025,.04)*pow(1.0-facing,3.0)*glassStrength;
   }
   if(kind==3)c*=surroundBrightness;
+ }else if(kind==6){
+  vec2 uv=vec2(fract(texcoord.x*4.0),texcoord.y);
+  float fade=smoothstep(0.0,.28,uv.y)*smoothstep(0.0,.28,1.0-uv.y);
+  c=mix(vec3(.008,.013,.025),displayColor(uv)*surroundBrightness,fade);
  }else if(kind==4){
   float fresnel=pow(1.0-facing,4.0);c=vec3(.2,.47,.65);a=glassStrength*(.015+.14*fresnel);
  }else if(kind==5){
@@ -335,11 +339,12 @@ struct XrStageRenderer::Impl {
     std::array<Eye, 2> eyes{};
     std::array<XrCompositionLayerProjectionView, 2> projectionViews{};
     XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
-    GLuint program = 0, framebuffer = 0, nativeTexture = 0, demoTexture = 0;
+    GLuint program = 0, framebuffer = 0, nativeTexture = 0, demoTexture = 0, backdropTexture = 0;
     int nativeW = 0, nativeH = 0;
-    uint64_t nativeVersion = ~uint64_t(0), frameCount = 0, meshHash = 0;
+    uint64_t nativeVersion = ~uint64_t(0), backdropVersion = ~uint64_t(0), frameCount = 0,
+             meshHash = 0;
     bool srgb = false;
-    Mesh furniture, screen, glass, plain;
+    Mesh furniture, screen, glass, plain, surroundings;
     Matrix screenLocal = Matrix::identity(), glassLocal = Matrix::identity();
     int vp = -1, model = -1, kind = -1, eyePosition = -1;
     void initialise(XrInstance instance, XrSystemId system, XrSession xrSession) {
@@ -416,6 +421,22 @@ struct XrStageRenderer::Impl {
         quad(q, Matrix::identity(), {-.5f, -.5f, 0}, {.5f, -.5f, 0}, {.5f, .5f, 0}, {-.5f, .5f, 0},
              {0, 0, 1}, white);
         plain.upload(q);
+        Vertices panorama;
+        for (int i = 0; i < 64; ++i) {
+            float u = i / 64.f, v = (i + 1) / 64.f;
+            auto pt = [](float t, float y) {
+                return V3{std::sin(t * 2 * pi), y, std::cos(t * 2 * pi)};
+            };
+            size_t start = panorama.size();
+            quad(panorama, Matrix::identity(), pt(u, -1), pt(v, -1), pt(v, 1), pt(u, 1), {0, 0, 1},
+                 white);
+            const float coords[6][2]{{u, 1}, {v, 1}, {v, 0}, {u, 1}, {v, 0}, {u, 0}};
+            for (int j = 0; j < 6; ++j) {
+                panorama[start + j].u = coords[j][0];
+                panorama[start + j].v = coords[j][1];
+            }
+        }
+        surroundings.upload(panorama);
         std::vector<uint32_t> demo(512 * 512);
         for (int y = 0; y < 512; ++y)
             for (int x = 0; x < 512; ++x) {
@@ -471,10 +492,30 @@ struct XrStageRenderer::Impl {
         }
         return nativeTexture;
     }
+    GLuint backdrop(const XrStageContent &c) {
+        if (!c.loaded || !c.backdrop)
+            return demoTexture;
+        if (!backdropTexture)
+            glGenTextures(1, &backdropTexture);
+        glBindTexture(GL_TEXTURE_2D, backdropTexture);
+        if (backdropVersion != c.version) {
+            std::vector<uint32_t> rgba(c.backdrop->size());
+            for (size_t i = 0; i < rgba.size(); ++i) {
+                uint32_t p = (*c.backdrop)[i];
+                rgba[i] = (p & 0xff00ff00) | ((p >> 16) & 255) | ((p & 255) << 16);
+            }
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 320, 224, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                         rgba.data());
+            textureParameters();
+            backdropVersion = c.version;
+        }
+        return backdropTexture;
+    }
     void geometry(const Settings &s, int mode, float ratio, int nw, int nh) {
         uint64_t hash = 1469598103934665603ull;
-        for (int v : {mode, int(ratio * 10000), nw, nh, s.questCabinetWidth, s.questCabinetHeight,
-                      s.questCabinetTilt, s.questTvWidth, s.questCrtCurve, s.questCurve}) {
+        for (int v :
+             {mode, int(ratio * 10000), nw, nh, s.questCabinetWidth, s.questCabinetHeight,
+              s.questCabinetTilt, s.questTvWidth, s.questCrtCurve, s.questCurve, int(s.help)}) {
             hash ^= uint32_t(v);
             hash *= 1099511628211ull;
         }
@@ -590,6 +631,15 @@ struct XrStageRenderer::Impl {
             quad(p, Matrix::identity(), {-.5f, -.5f, 0}, {.5f, -.5f, 0}, {.5f, .5f, 0},
                  {-.5f, .5f, 0}, {0, 0, 1}, white);
         }
+        if (mode == 6 && s.help) {
+            float w = s.questWallHeight * .01f * ratio, angle = s.questCurve * pi / 180,
+                  radius = w / angle;
+            XrPosef badge{{0, -std::sin(angle / 4), 0, std::cos(angle / 4)},
+                          {std::sin(angle / 2) * radius, .06f, radius * (1 - std::cos(angle / 2))}};
+            auto m = poseMatrix(badge);
+            box(f, {-.24f, .055f, .006f}, {.56f, .13f, .01f}, ink, .8f, m);
+            legend(f, m, {-.46f, .022f, .013f}, .009f, "Y MENU");
+        }
         furniture.upload(f);
         screen.upload(p);
         glass.upload(g);
@@ -642,6 +692,8 @@ struct XrStageRenderer::Impl {
         glUniform1i(glGetUniformLocation(program, "srgbTarget"), srgb);
         glUniform1i(glGetUniformLocation(program, "flipImage"), s.questFlip);
         GLuint nativeImage = native(content), expanded = demoTexture;
+        GLuint backdropImage =
+            !ar && mode == 5 && s.questWorldBackdrop ? backdrop(content) : demoTexture;
         bool bound = false;
         if (content.expanded) {
             float w = 0, h = 0;
@@ -682,6 +734,14 @@ struct XrStageRenderer::Impl {
             glUniformMatrix4fv(vp, 1, GL_FALSE, vpMatrix.v);
             glUniform3f(eyePosition, views[i].pose.position.x, views[i].pose.position.y,
                         views[i].pose.position.z);
+            if (!ar && mode == 5 && s.questWorldBackdrop && content.loaded) {
+                glDepthMask(GL_FALSE);
+                XrPosef backdropPose{origin.orientation, views[i].pose.position};
+                draw(surroundings,
+                     product(poseMatrix(backdropPose), placement({0, 0, 0}, {500, 300, 500})), 6,
+                     backdropImage);
+                glDepthMask(GL_TRUE);
+            }
             if (!ar && s.questEnvironment) {
                 auto ground =
                     product(poseMatrix(origin), placement({0, -.01f, 0}, {1000, 1000, 1}, -pi / 2));
@@ -776,6 +836,7 @@ struct XrStageRenderer::Impl {
         screen.clear();
         glass.clear();
         plain.clear();
+        surroundings.clear();
         if (program)
             glDeleteProgram(program);
         if (framebuffer)
@@ -784,6 +845,8 @@ struct XrStageRenderer::Impl {
             glDeleteTextures(1, &nativeTexture);
         if (demoTexture)
             glDeleteTextures(1, &demoTexture);
+        if (backdropTexture)
+            glDeleteTextures(1, &backdropTexture);
         for (auto &e : eyes) {
             if (e.depth)
                 glDeleteRenderbuffers(1, &e.depth);

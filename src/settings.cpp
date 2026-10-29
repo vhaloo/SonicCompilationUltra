@@ -41,7 +41,7 @@ namespace scu {
                                                                         X(rewindButton, 0, 2)      \
                                                                             X(rewindMemory, 0, 2)
 #define BOOL_FIELDS(X)                                                                             \
-    X(desktopSurround) X(desktopCrtMask) X(questAutoWall)                                           \
+    X(questWorldBackdrop) X(desktopSurround) X(desktopCrtMask) X(questAutoWall)                     \
     X(questSpinballAuto) X(questSurround) X(questWallLocked) X(questAdaptive) X(questPauseLost)    \
         X(questCompanion) X(questPassthrough) X(questTouch) X(questFlip) X(fullscreen) X(span)     \
             X(vsync) X(parallax) X(locator) X(minimap) X(help) X(spindash) X(noSpriteLimit)        \

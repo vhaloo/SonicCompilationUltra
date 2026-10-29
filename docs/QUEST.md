@@ -49,7 +49,7 @@ Spinball uses its existing four-board cartridge terrain decoder; the 3D cabinet 
 
 **Placement locking does not prevent resizing.** The physical scale slider spans 5–20,000%, with half/double/reset buttons. Physical size is independent of texture allocation. Wall-fit mode remains bounded by its wall; use Mural for unrestricted expansion. Options keep their own readable size, and R3 brings them near you. The Meta button keeps its system function.
 
-Pinball width, front height, slope and glass reflections are adjustable. CRT choices include clean, living-room and arcade presets, effect strength, phosphor mask, real tube curvature, picture width, surrounding terrain and its brightness. Choose a quiet studio floor or dark void in VR, or passthrough AR for your room. Cinema, tabletop, head-follow, cabinet and curved-gallery presets are available.
+Pinball width, front height, slope and glass reflections are adjustable. CRT choices include clean, living-room and arcade presets, effect strength, phosphor mask, real tube curvature, picture width, surrounding terrain and its brightness. An optional 360° panorama repeats the game's own backdrop around the VR room; background style/blur settings still apply. Choose a quiet studio floor or dark void in VR, or passthrough AR for your room. Cinema, tabletop, head-follow, cabinet and curved-gallery presets are available.
 
 A Bluetooth gamepad can use the existing controller menus. Disable **Use Quest Touch controls** to assign that pad to player one; menu pointing and Y access remain available. Physical controller behavior still needs user validation.
 
