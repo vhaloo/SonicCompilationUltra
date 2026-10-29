@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0 XR preview — Stereo furniture and startup repair
+
+- Repair partial UI shutdown, use app-owned internal storage with external-data migration, identify the app as immersive and preserve SDL graphics state around the full OpenXR frame sequence.
+- Add stereo 3D pinball cabinets, automatic complete-board Spinball presentation, curved CRT enclosures/shaders, aligned surrounding terrain and curved stage galleries.
+- Separate resizing from placement locking. Add two-grip/stick resizing, 5–20,000% scale, half/double/reset, cabinet dimensions/slope/glass, CRT presets/mask/curvature and VR surroundings.
+- Add portable desktop cabinet/CRT frames and illustrated guides in four languages. Expand the renamed OFL font subset and load every translated glyph.
+- Verify Quest 3 library/options and original-pattern stereo previews with cartridge execution disabled at the core boundary; statically check all 12 personal cartridge entries. No gameplay was launched or tested.
+- Publish ROM-free software/source only. Personal cartridges, saves, signing keys and APK remain local. macOS stays experimental; desktop companion CI compiles/packages without running games.
+
 ## 0.5.0 Quest preview — Fixed wall AR and maximum refresh preference
 
 - Add scanned-wall fit, a whole-stage mural rising two metres from the floor, and a horizontal floor atlas. Stage bounds stay fixed while the player and your head move; the mural can extend past the physical wall without stretching game geometry.

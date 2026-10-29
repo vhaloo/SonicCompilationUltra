@@ -18,11 +18,21 @@ struct Settings {
     int questResolution = 1, questAnchor = 0, questHaptics = 30;
     int questMode = 0, questWallHeight = 200, questWallGap = 0, questRefresh = 0;
     int questWallDetail = 1, questMenuDistance = 100;
+    int questScale = 100, questResizeSpeed = 100;
+    int questCabinetWidth = 140, questCabinetHeight = 85, questCabinetTilt = 12;
+    int questTvWidth = 160, questCurve = 90;
+    int questCrt = 2, questCrtMask = 1, questCrtStrength = 80, questCrtCurve = 35;
+    int questGlass = 60, questSurroundBrightness = 45, questEnvironment = 1;
+    int desktopPresentation = 0, desktopFrameScale = 100, desktopCrtStrength = 40,
+        desktopCabinetAngle = 35;
+    bool desktopSurround = true, desktopCrtMask = true;
+    bool questSpinballAuto = true, questSurround = true;
     bool questAutoWall = true, questWallLocked = true, questAdaptive = true;
     bool questPauseLost = true, questCompanion = true;
     // Per-frame projection bounds, deliberately excluded from saved preferences.
     int fixedMapWidth = 0, fixedMapHeight = 0;
     bool projectionUiOnly = false;
+    bool projectionCleanScene = false;
     bool questPassthrough = false, questTouch = true, questFlip = false;
     bool mapExtension = true;
     bool smoothMap = true;

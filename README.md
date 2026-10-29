@@ -11,9 +11,17 @@
 
 Windows and Linux · **macOS: experimental** · English, French, Spanish and Japanese · Keyboard and gamepads
 
-**[Standalone Quest VR / AR preview](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/quest-preview-0.5.0):** play on a cinema, tabletop, scanned wall, two-metre stage mural or floor atlas. The mural stays fixed while you look around; a separate nearby options panel keeps controls reachable. Maximum available headset refresh is requested by default. Runs on the headset without PC streaming. Headset behavior and performance remain unverified; see [installation and controls](docs/QUEST.md) and the [wall AR guide](docs/QUEST_WALLS.md).
+**[Standalone Quest XR preview 0.6](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/quest-preview-0.6.0):** giant AR murals, automatic full-board Spinball cabinets, a 3D CRT with the level around it, curved galleries and tabletop/cinema views. Resize with both grips, even with placement locked; Y opens the nearby illustrated options. Maximum available headset refresh is the default. [Install and choose a mode](docs/QUEST.md).
 
-**Mac builds are experimental:** Intel and Apple Silicon packages pass automated build/runtime checks, but have not been tried on a physical Mac. Display, audio and real-controller compatibility still need Mac testing. Linux packages are checked on Ubuntu 22.04 in CI, including the portable launcher.
+Quest 3 **library/options and empty stereo previews were verified with all cartridge execution blocked**. Gameplay and sustained performance remain untested for this preview. Windows companion frames use portable 2D rendering; Quest furniture uses stereo 3D. **macOS remains experimental**; 0.6 desktop validation is compilation/packaging only.
+
+<table><tr>
+<td width="50%"><img src="docs/screenshots/quest-pinball-preview.png" alt="Quest 3 stereo cabinet preview with an original test pattern"><br><em>3D pinball cabinet · empty library preview</em></td>
+<td width="50%"><img src="docs/screenshots/quest-crt-preview.png" alt="Quest 3 stereo CRT preview with an original test pattern"><br><em>3D CRT · empty library preview</em></td>
+</tr></table>
+
+*On-device eye-buffer captures, with an original pattern and a viewer-aligned preview. No ROM was running. [Verification scope](docs/TEST_REPORT.md).*
+
 
 ## Start playing
 

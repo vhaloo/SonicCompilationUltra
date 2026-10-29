@@ -13,6 +13,109 @@ struct Text {
         }                                                                                          \
     }
 static const Text texts[] = {
+    T("desktoppresentation", "Desktop frame", "Cadre sur PC", "Marco de escritorio",
+      "デスクトップのフレーム"),
+    T("desktopplain", "Full canvas", "Canevas entier", "Lienzo completo", "キャンバス全体"),
+    T("desktopcabinet", "Pinball cabinet frame", "Cadre de flipper", "Marco de pinball",
+      "ピンボール筐体フレーム"),
+    T("desktopcrt", "CRT and surrounding level", "CRT et niveau autour", "CRT y nivel alrededor",
+      "ブラウン管と周囲のステージ"),
+    T("desktopframescale", "Frame size", "Taille du cadre", "Tamaño del marco", "フレームの大きさ"),
+    T("desktopcabinetangle", "Cabinet perspective", "Perspective du flipper",
+      "Perspectiva del mueble", "筐体の遠近感"),
+    T("desktopcrtstrength", "Desktop CRT strength", "Intensité CRT sur PC",
+      "Intensidad CRT de escritorio", "デスクトップCRT効果の強さ"),
+    T("desktopcrtmask", "Subtle desktop phosphor mask", "Masque de phosphore discret sur PC",
+      "Máscara de fósforo sutil de escritorio", "デスクトップの弱い蛍光体マスク"),
+    T("desktopsurround", "Extend the level behind the frame", "Étendre le niveau derrière le cadre",
+      "Extender el nivel detrás del marco", "フレームの背後にステージを展開"),
+    T("questpinball", "3D full-board pinball", "Flipper 3D, plateau entier", "Pinball 3D completo",
+      "全盤面3Dピンボール"),
+    T("questcrtroom", "3D CRT + surrounding world", "CRT 3D et monde autour",
+      "CRT 3D y mundo alrededor", "3Dブラウン管と周囲の世界"),
+    T("questcurved", "Curved level gallery", "Galerie de niveau incurvée", "Galería de nivel curva",
+      "湾曲ステージギャラリー"),
+    T("questspinballauto", "Use the 3D cabinet automatically for Spinball",
+      "Flipper 3D automatique pour Spinball", "Usar mueble 3D automáticamente en Spinball",
+      "Spinballを自動で3D筐体に表示"),
+    T("questscale", "Physical scale", "Échelle physique", "Escala física", "実寸スケール"),
+    T("questhalf", "Half size", "Taille ÷ 2", "Mitad de tamaño", "半分のサイズ"),
+    T("questdouble", "Double size", "Taille × 2", "Doble de tamaño", "2倍のサイズ"),
+    T("questscalereset", "Reset to 100%", "Revenir à 100 %", "Volver al 100 %", "100%に戻す"),
+    T("questresizespeed", "Grip + stick resize speed", "Vitesse de zoom prises + stick",
+      "Velocidad de agarres y palanca", "グリップとスティックの拡縮速度"),
+    T("questresizehint",
+      "Hold both grips and spread your hands to resize, even while placement is locked. Regrip to "
+      "keep scaling, or move the right stick up/down while gripping. Y opens options; R3 brings "
+      "the menu back nearby.",
+      "Maintiens les deux prises et écarte les mains pour agrandir, même si le placement est "
+      "verrouillé. Reprends les prises pour continuer, ou utilise le stick droit haut/bas en les "
+      "maintenant. Y : options ; R3 : menu près de toi.",
+      "Mantén ambos agarres y separa las manos para cambiar el tamaño, incluso con posición "
+      "bloqueada. Suelta y vuelve a agarrar o usa la palanca derecha arriba/abajo. Y: opciones; "
+      "R3: acercar menú.",
+      "両グリップを押して手を広げると、位置固定中でも拡大できます。握り直すか右スティック上下で続け"
+      "て拡縮。Yで設定、R3でメニューを近くに戻します。"),
+    T("questcabinetwidth", "Pinball playfield width", "Largeur du plateau de flipper",
+      "Anchura del tablero de pinball", "ピンボール盤面の幅"),
+    T("questcabinetheight", "Pinball front height", "Hauteur avant du flipper",
+      "Altura frontal del pinball", "筐体前面の高さ"),
+    T("questcabinettilt", "Playfield slope", "Inclinaison du plateau", "Inclinación del tablero",
+      "盤面の傾斜"),
+    T("questglass", "Glass reflections", "Reflets du verre", "Reflejos del cristal",
+      "ガラスの反射"),
+    T("questpinballnote",
+      "All four supported Spinball boards keep their complete terrain and original gameplay. The "
+      "cabinet adds 3D furniture, rails, glass and a native backglass view. Objects still follow "
+      "the cartridge's activation range.",
+      "Les quatre plateaux compatibles conservent leur terrain entier et leur gameplay original. "
+      "Le meuble ajoute structure 3D, rails, verre et vue native sur le fronton. Les objets "
+      "suivent toujours la portée d’activation de la cartouche.",
+      "Los cuatro tableros compatibles conservan todo el terreno y la jugabilidad original. El "
+      "mueble añade estructura 3D, raíles, cristal y pantalla nativa. Los objetos respetan el "
+      "alcance de activación del cartucho.",
+      "対応する4盤面の全地形と元のゲーム動作を保持します。3D筐体、レール、ガラス、元の画面を映すバ"
+      "ックボードを追加。オブジェクトの動作範囲はカートリッジに従います。"),
+    T("questtvwidth", "CRT picture width", "Largeur de l’image CRT", "Anchura de imagen CRT",
+      "ブラウン管の映像幅"),
+    T("questcrt", "CRT picture preset", "Profil d’image CRT", "Perfil de imagen CRT",
+      "ブラウン管プリセット"),
+    T("questcrtoff", "Off", "Désactivé", "Desactivado", "オフ"),
+    T("questcrtclean", "Clean monitor", "Moniteur net", "Monitor limpio", "クリアモニター"),
+    T("questcrtconsumer", "Living-room CRT", "Téléviseur de salon", "Televisor doméstico",
+      "家庭用ブラウン管"),
+    T("questcrtarcade", "Arcade tube", "Tube d’arcade", "Tubo de arcade", "アーケード管"),
+    T("questcrtmask", "Phosphor mask", "Masque de phosphore", "Máscara de fósforo", "蛍光体マスク"),
+    T("questmasklight", "Subtle RGB", "RVB discret", "RGB sutil", "弱いRGB"),
+    T("questmaskstrong", "Strong RGB", "RVB marqué", "RGB intenso", "強いRGB"),
+    T("questcrtstrength", "CRT effect strength", "Intensité de l’effet CRT",
+      "Intensidad del efecto CRT", "ブラウン管効果の強さ"),
+    T("questcrtcurve", "Tube curvature", "Courbure du tube", "Curvatura del tubo", "画面の湾曲"),
+    T("questsurround", "Expand the level around the CRT", "Étendre le niveau autour du CRT",
+      "Extender el nivel alrededor del CRT", "ブラウン管の周囲にステージを展開"),
+    T("questsurroundbrightness", "Surrounding level brightness", "Luminosité du niveau autour",
+      "Brillo del nivel alrededor", "周囲のステージの明るさ"),
+    T("questcurve", "Gallery wrap angle", "Angle de la galerie", "Ángulo de la galería",
+      "ギャラリーの角度"),
+    T("questenvironment", "VR surroundings", "Environnement VR", "Entorno de RV", "VRの環境"),
+    T("questvoid", "Dark void", "Fond sombre", "Vacío oscuro", "暗い空間"),
+    T("questlounge", "Quiet studio floor", "Sol de studio discret", "Suelo de estudio discreto",
+      "落ち着いたスタジオの床"),
+    T("queststereonote",
+      "3D furniture uses stereo rendering; options stay on a separate sharp panel. AR shows your "
+      "room instead of the studio. The preview pattern contains no game assets.",
+      "Le mobilier est rendu en stéréo ; les options restent sur un panneau net séparé. En AR, ta "
+      "pièce remplace le studio. Le motif d’aperçu ne contient aucun asset de jeu.",
+      "Los muebles se renderizan en estéreo; las opciones conservan un panel nítido. RA muestra tu "
+      "habitación en lugar del estudio. El patrón de vista previa no contiene recursos del juego.",
+      "家具は立体描画し、設定は別の鮮明なパネルに表示。ARではスタジオの代わりに実際の部屋が見えます"
+      "。プレビュー模様にゲーム素材は含まれません。"),
+    T("questpinballpreset", "Giant pinball preset", "Profil flipper géant",
+      "Perfil de pinball gigante", "巨大ピンボール設定"),
+    T("questcrtpreset", "CRT world preset", "Profil monde CRT", "Perfil de mundo CRT",
+      "ブラウン管ワールド設定"),
+    T("questcurvedpreset", "Curved gallery preset", "Profil galerie incurvée",
+      "Perfil de galería curva", "湾曲ギャラリー設定"),
     T("questmode", "Presentation mode", "Mode de présentation", "Modo de presentación",
       "表示モード"),
     T("questscreenmode", "Spatial screen", "Écran spatial", "Pantalla espacial", "空間スクリーン"),
@@ -170,14 +273,17 @@ static const Text texts[] = {
       "設定を指すか選ぶと図付き説明が表示されます。Xでこのガイドを開き、BまたはYで閉じます。"),
     T("questtrigger", "left trigger", "gâchette gauche", "gatillo izquierdo", "左トリガー"),
     T("questintro",
-      "A spatial screen for your classic cartridges. Pin it in the room, bring it closer, or use a "
-      "tilted tabletop. Headset behavior is experimental and has not been physically tested.",
-      "Un écran spatial pour tes cartouches classiques. Fixe-le dans la pièce, rapproche-le ou "
-      "incline-le en table. Cette version est expérimentale et n’a pas été essayée sur un casque.",
-      "Una pantalla espacial para tus cartuchos clásicos. Fíjala en la habitación, acércala o "
-      "inclínala como mesa. Esta versión es experimental y no se ha probado en un visor físico.",
-      "クラシックゲームを空間のスクリーンに表示します。部屋に固定、接近、テーブル状の傾きを選べます"
-      "。実機では未検証の実験版です。"),
+      "Choose a giant fixed mural, a complete-board 3D pinball cabinet, a curved gallery or a 3D "
+      "CRT with the level around it. Use both grips to resize. This XR edition remains "
+      "experimental; menu verification does not establish gameplay compatibility.",
+      "Choisis un mural géant fixe, un flipper 3D avec plateau entier, une galerie incurvée ou un "
+      "CRT 3D entouré du niveau. Les deux prises redimensionnent. Cette édition XR reste "
+      "expérimentale ; la vérification du menu ne valide pas le gameplay.",
+      "Elige mural gigante fijo, pinball 3D completo, galería curva o CRT 3D rodeado del nivel. "
+      "Ambos agarres cambian el tamaño. Esta edición XR sigue siendo experimental; comprobar menús "
+      "no valida la jugabilidad.",
+      "固定された巨大壁画、全盤面3Dピンボール、湾曲ギャラリー、ステージに囲まれた3Dブラウン管を選べ"
+      "ます。両グリップで拡縮。このXR版は実験版で、メニュー確認はゲーム動作の検証ではありません。"),
     T("questar", "Passthrough AR · see the room", "AR avec passthrough · voir la pièce",
       "RA con passthrough · ver la habitación", "パススルーAR · 部屋を表示"),
     T("questarunavailable", "Passthrough is unavailable in this session. VR remains available.",
@@ -954,6 +1060,13 @@ static const Text texts[] = {
       "Usa las pestañas para más opciones. Los cambios se guardan automáticamente.",
       "タブで他の設定を開けます。変更は自動的に保存されます。"),
 };
+std::string translationGlyphs() {
+    std::string result;
+    for (const auto &entry : texts)
+        for (auto text : entry.text)
+            result += text;
+    return result;
+}
 const char *tr(const char *key, int language) {
     for (auto &t : texts)
         if (std::strcmp(t.key, key) == 0)

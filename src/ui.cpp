@@ -73,6 +73,49 @@ void App::settingGuide(bool compact) {
         }
         break;
     }
+    case HelpPicture::Pinball: {
+        ImVec2 a = point(.20f, .70f), b = point(.62f, .79f), c = point(.80f, .25f),
+               d = point(.43f, .18f);
+        draw->AddQuadFilled(a, b, c, d, muted);
+        draw->AddQuad(a, b, c, d, cyan, 3);
+        rect(.44f, .06f, .37f, .15f, cyan, false);
+        for (int i = 0; i < 4; ++i) {
+            float x = .43f + (i % 2) * .16f, y = .32f + (i / 2) * .17f;
+            draw->AddCircle(point(x, y), height * .05f, gold, 18, 2);
+        }
+        line(.25f, .71f, .25f, .94f, muted, 5);
+        line(.62f, .80f, .62f, .97f, muted, 5);
+        line(.77f, .31f, .77f, .71f, muted, 4);
+        line(.35f, .67f, .43f, .63f, gold, 4);
+        line(.46f, .65f, .52f, .71f, gold, 4);
+        draw->AddCircleFilled(point(.49f, .48f), height * .022f, gold);
+        break;
+    }
+    case HelpPicture::Crt: {
+        for (int i = 0; i < 12; ++i)
+            rect(.02f + i * .082f, .42f + (i % 3) * .06f, .075f, .38f, muted);
+        rect(.20f, .15f, .60f, .62f, ink);
+        rect(.20f, .15f, .60f, .62f, cyan, false);
+        rect(.25f, .21f, .50f, .44f, muted);
+        for (int i = 0; i < 12; ++i)
+            line(.26f, .23f + i * .033f, .74f, .23f + i * .033f, ink, 1);
+        draw->AddCircleFilled(point(.50f, .43f), height * .045f, gold);
+        rect(.30f, .70f, .31f, .025f, muted);
+        draw->AddCircle(point(.71f, .71f), height * .025f, gold, 16, 2);
+        rect(.28f, .79f, .44f, .16f, muted, false);
+        break;
+    }
+    case HelpPicture::Resize: {
+        rect(.10f, .12f, .80f, .65f, cyan, false);
+        rect(.31f, .30f, .38f, .30f, gold, false);
+        line(.32f, .84f, .16f, .84f, cyan, 3);
+        line(.68f, .84f, .84f, .84f, cyan, 3);
+        draw->AddCircleFilled(point(.32f, .84f), height * .05f, gold);
+        draw->AddCircleFilled(point(.68f, .84f), height * .05f, gold);
+        draw->AddTriangleFilled(point(.10f, .84f), point(.18f, .78f), point(.18f, .90f), cyan);
+        draw->AddTriangleFilled(point(.90f, .84f), point(.82f, .78f), point(.82f, .90f), cyan);
+        break;
+    }
     case HelpPicture::Wall: {
         rect(.07f, .09f, .86f, .70f, muted, false);
         line(.03f, .80f, .97f, .80f, cyan, 3);
@@ -246,6 +289,7 @@ bool App::slider(const char *key, int &value, int lo, int hi, const char *format
     return changed;
 }
 void App::initialise(const fs::path &base, bool hidden) {
+    SDL_Log("SCU startup: local settings and library");
     basePath = base;
     fs::create_directories(library.dataDir);
     settings.load(library.dataDir);
@@ -259,6 +303,22 @@ void App::initialise(const fs::path &base, bool hidden) {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 #endif
     library.load();
+    if (menuVerificationOnly) {
+        size_t readable = 0;
+        for (const auto &entry : library.entries) {
+            try {
+                // File checks only: Core::load remains locked throughout.
+                auto bytes = library.bytes(entry);
+                if (!bytes.empty())
+                    ++readable;
+            } catch (const std::exception &error) {
+                SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "SCU library file unavailable: %s (%s)",
+                            entry.id.c_str(), error.what());
+            }
+        }
+        SDL_Log("SCU library file audit: entries=%zu readable=%zu cartridgeExecution=0",
+                library.entries.size(), readable);
+    }
     language = detectLanguage(settings.language);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     SDL_SetHint(SDL_HINT_GAMECONTROLLER_USE_BUTTON_LABELS, "0");
@@ -283,10 +343,11 @@ void App::initialise(const fs::path &base, bool hidden) {
         throw std::runtime_error(SDL_GetError());
     SDL_RendererInfo rendererInfo{};
     SDL_GetRendererInfo(renderer, &rendererInfo);
-    fprintf(stderr, "SCU renderer: %s; max texture %d x %d\n", rendererInfo.name,
+    SDL_Log("SCU renderer: %s; max texture %d x %d", rendererInfo.name,
             rendererInfo.max_texture_width, rendererInfo.max_texture_height);
     IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
+    uiContext = ImGui::CreateContext();
+    SDL_Log("SCU startup: interface font at %s", base.u8string().c_str());
     auto &io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_NavEnableGamepad;
     io.ConfigNavEscapeClearFocusItem = false;
@@ -296,6 +357,13 @@ void App::initialise(const fs::path &base, bool hidden) {
     ImFontGlyphRangesBuilder builder;
     builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
     builder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
+    auto translated = translationGlyphs();
+    builder.AddText(translated.c_str());
+    size_t helpCount = 0;
+    const auto *helpEntries = allSettingHelp(helpCount);
+    for (size_t i = 0; i < helpCount; ++i)
+        for (auto text : helpEntries[i].text)
+            builder.AddText(text);
     static const ImWchar punctuation[] = {0x2000, 0x206F, 0};
     builder.AddRanges(punctuation);
     builder.AddChar(0x2212);
@@ -330,8 +398,13 @@ void App::initialise(const fs::path &base, bool hidden) {
     style.Colors[ImGuiCol_Text] = {0.87f, 0.94f, 0.98f, 1};
     style.Colors[ImGuiCol_NavCursor] = {1, 0.85f, 0.25f, 1};
     baseStyle = style;
-    ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
-    ImGui_ImplSDLRenderer2_Init(renderer);
+    uiPlatformReady = ImGui_ImplSDL2_InitForSDLRenderer(window, renderer);
+    if (!uiPlatformReady)
+        throw std::runtime_error("Cannot initialize the SDL interface backend");
+    uiRendererReady = ImGui_ImplSDLRenderer2_Init(renderer);
+    if (!uiRendererReady)
+        throw std::runtime_error("Cannot initialize the interface renderer");
+    SDL_Log("SCU startup: interface ready");
     refreshControllers();
     if (!hidden)
         applyDisplay();
@@ -345,10 +418,13 @@ App::~App() {
     for (auto p : pads)
         if (p)
             SDL_GameControllerClose(p);
-    if (ImGui::GetCurrentContext()) {
-        ImGui_ImplSDLRenderer2_Shutdown();
-        ImGui_ImplSDL2_Shutdown();
-        ImGui::DestroyContext();
+    if (uiContext) {
+        ImGui::SetCurrentContext(uiContext);
+        if (uiRendererReady)
+            ImGui_ImplSDLRenderer2_Shutdown();
+        if (uiPlatformReady)
+            ImGui_ImplSDL2_Shutdown();
+        ImGui::DestroyContext(uiContext);
     }
     if (worldTexture)
         SDL_DestroyTexture(worldTexture);
@@ -545,6 +621,11 @@ void App::import(const fs::path &path, bool folder) {
     }
 }
 bool App::play(const std::string &id) {
+    if (menuVerificationOnly) {
+        notify("Menu verification: cartridge execution is disabled.");
+        SDL_Log("SCU menu verification: cartridge launch blocked");
+        return false;
+    }
     if (!core.load(id)) {
         notify(std::string(tr("error", language)) + ": " + core.status);
         return false;
@@ -570,7 +651,7 @@ void App::beginBrowser(bool folder) {
     snprintf(pathBuffer, sizeof pathBuffer, "%s", browsePath.c_str());
 }
 void App::flushSettings() {
-    if (dirty) {
+    if (dirty && !menuVerificationOnly) {
         settings.save(library.dataDir);
         dirty = false;
     }
@@ -1145,9 +1226,19 @@ void App::present(bool capture) {
     Settings transientSettings;
     auto *projectionSettings = &settings;
 #ifdef SCU_QUEST
-    if (quest && settings.questMode) {
+    if (quest) {
         transientSettings = settings;
         quest->configureRender(transientSettings);
+        projectionSettings = &transientSettings;
+    }
+#else
+    if (settings.desktopPresentation) {
+        transientSettings = settings;
+        transientSettings.projectionCleanScene = true;
+        transientSettings.view = 2;
+        transientSettings.camera = 4;
+        transientSettings.mapExtension = true;
+        transientSettings.fitSpawns = false;
         projectionSettings = &transientSettings;
     }
 #endif
@@ -1177,6 +1268,10 @@ void App::present(bool capture) {
                   renderSettings.brightness,
                   renderSettings.overviewStyle,
                   renderSettings.quality,
+                  int(renderSettings.projectionUiOnly),
+                  int(renderSettings.projectionCleanScene),
+                  renderSettings.fixedMapWidth,
+                  renderSettings.fixedMapHeight,
                   renderSettings.hud,
                   int(renderSettings.playerInset),
                   (int)renderSettings.parallax,
@@ -1262,7 +1357,8 @@ void App::present(bool capture) {
             if (refresh)
                 SDL_UpdateTexture(worldTexture, nullptr, c.pixels.data(), c.width * 4);
             SDL_RenderCopy(renderer, worldTexture, nullptr, nullptr);
-            if (((renderSettings.view == 2 && renderSettings.playerInset) ||
+            if (!renderSettings.projectionCleanScene &&
+                ((renderSettings.view == 2 && renderSettings.playerInset) ||
                  (scene.family == 4 && renderSettings.hud != 3)) &&
                 !core.native.empty()) {
                 if (!nativeTexture || nativeTW != core.nativeW || nativeTH != core.nativeH) {
@@ -1328,6 +1424,30 @@ void App::present(bool capture) {
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
         }
     }
+#ifndef SCU_QUEST
+    if (settings.desktopPresentation && core.loaded && !core.native.empty()) {
+        bool upload = refresh;
+        if (!nativeTexture || nativeTW != core.nativeW || nativeTH != core.nativeH) {
+            if (nativeTexture)
+                SDL_DestroyTexture(nativeTexture);
+            nativeTexture =
+                SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
+                                  core.nativeW, core.nativeH);
+            nativeTW = core.nativeW;
+            nativeTH = core.nativeH;
+            upload = true;
+        }
+        if (!nativeTexture)
+            throw std::runtime_error(SDL_GetError());
+        SDL_SetTextureScaleMode(nativeTexture,
+                                settings.integerScale ? SDL_ScaleModeNearest : SDL_ScaleModeLinear);
+        if (upload)
+            SDL_UpdateTexture(nativeTexture, nullptr, core.native.data(), core.nativeW * 4);
+        desktopFrame.draw(renderer, expanded ? worldTexture : nativeTexture, nativeTexture,
+                          core.nativeW, core.nativeH, scene, core.world.canvas, settings, drawableW,
+                          drawableH);
+    }
+#endif
     ImGui_ImplSDLRenderer2_NewFrame();
     ImGui_ImplSDL2_NewFrame();
 #ifdef SCU_QUEST
@@ -1357,9 +1477,13 @@ void App::present(bool capture) {
     controls.clear();
     controlRects.clear();
 #endif
-    if (expanded)
+    if (expanded && !renderSettings.projectionCleanScene)
         hud();
-    if (!menu)
+    if (!menu && (!renderSettings.projectionCleanScene
+#ifndef SCU_QUEST
+                  || settings.desktopPresentation
+#endif
+                  ))
         gameOverlays();
     if (menu)
         ui();
@@ -2021,6 +2145,21 @@ void App::optionsUi(int section) {
         check("vsync", settings.vsync);
 #endif
         check("nearest", settings.integerScale);
+#ifndef SCU_QUEST
+        changed |= choice("desktoppresentation", settings.desktopPresentation,
+                          {"desktopplain", "desktopcabinet", "desktopcrt"});
+        if (settings.desktopPresentation) {
+            slide("desktopframescale", settings.desktopFrameScale, 50, 130, "%d%%");
+            if (settings.desktopPresentation == 1)
+                slide("desktopcabinetangle", settings.desktopCabinetAngle, 10, 60, "%d°");
+            else {
+                slide("desktopcrtstrength", settings.desktopCrtStrength, 0, 100, "%d%%");
+                check("desktopcrtmask", settings.desktopCrtMask);
+                check("desktopsurround", settings.desktopSurround);
+                slide("questsurroundbrightness", settings.questSurroundBrightness, 0, 100, "%d%%");
+            }
+        }
+#endif
         slide("nativescale", settings.nativeScale, 0, 8);
         slide("workers", settings.workers, 0, 16);
 #ifndef SCU_QUEST

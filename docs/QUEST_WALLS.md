@@ -27,7 +27,7 @@ The two-metre mural is deliberately allowed to be wider than the real wall. The 
 - **Right stick click:** recenter the companion menu while the wall is locked.
 - **X during mural play:** toggle the live player close-up.
 - **Left trigger:** rewind with reverse sound.
-- Unlock placement to move/scale it using both grips. The base stays at floor height; lock it again afterward.
+- Both grips always resize, even with placement locked. Regrip to continue or use right-stick up/down while holding both grips. Unlock placement only when you also want to translate it. The base stays at floor height.
 
 **Save wall placement locally** creates and stores an on-device spatial anchor. **Restore saved placement** attempts to locate it in a later session. Saving is optional and depends on runtime support. A saved anchor may be unavailable after room changes or when tracking cannot recognize the space. The app preserves the last stored record if a new save fails.
 
@@ -43,7 +43,7 @@ Choose **Fast**, **Balanced** or **Sharp** mural detail. Texture dimensions are 
 
 ## Status
 
-This is an experimental standalone APK. Validation for this delivery is compilation, Android lint, source review and static APK/signature/dependency/content inspection only. No game, installer or headset session is executed. Physical alignment, relocalization, image quality, controllers, passthrough, comfort, sustained FPS and battery/thermal behavior require Quest 3 hardware validation.
+This is an experimental standalone APK. Version 0.6 adds verified Quest 3 library/options startup and empty stereo-preview rendering, with cartridge loading locked. No game was launched or played. Physical wall alignment, relocalization, controller interaction, passthrough, comfort, sustained gameplay FPS and battery/thermal behavior remain unqualified. See [current verification](TEST_REPORT.md) and [all seven modes](QUEST.md).
 
 ## Official examples and design sources
 

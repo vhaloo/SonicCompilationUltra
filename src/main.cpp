@@ -73,18 +73,21 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(hud)
     SET(hudScale)
     SET(background)
-    SET(blur) SET(brightness) SET(parallax) SET(minimap) SET(locator) SET(spindash) SET(invincible)
-        SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top) SET(volume)
-            SET(language) SET(help) SET(workers) SET(fullscreen) SET(span) SET(vsync) SET(uiScale)
-                SET(scanlines) SET(lockon) SET(fastBoot) SET(menuLayout) SET(display) SET(padLabels)
-                    SET(jumpLayout) SET(quickControls) SET(confirmActions) SET(confirmQuit)
-                        SET(highContrast) SET(readyOnly) SET(playerInset) SET(quality) SET(
-                            overviewStyle) SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle)
-                            SET(bossPreview) SET(scriptPreview) SET(spawnTint) SET(spawnLabels)
-                                SET(fitSpawns) SET(rewindAudio) SET(rewindButton) SET(rewindMemory)
-                                    SET(hintCorner) SET(hintScale) SET(hintOpacity) SET(hintMargin)
-                                        SET(hintDetail) SET(hintSeconds) SET(noticeSeconds)
-                                            SET(rewindIndicator) SET(performance)
+    SET(blur)
+    SET(brightness)
+    SET(parallax)
+    SET(minimap) SET(locator) SET(spindash) SET(invincible) SET(infiniteAir) SET(rewind) SET(
+        nativeScale) SET(ghost) SET(left) SET(top) SET(volume) SET(language) SET(help) SET(workers)
+        SET(fullscreen) SET(span) SET(vsync) SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot)
+            SET(menuLayout) SET(display) SET(padLabels) SET(jumpLayout) SET(quickControls)
+                SET(confirmActions) SET(confirmQuit) SET(highContrast) SET(readyOnly)
+                    SET(playerInset) SET(quality) SET(overviewStyle) SET(enemyPreview)
+                        SET(enemyOpacity) SET(enemyStyle) SET(bossPreview) SET(scriptPreview)
+                            SET(spawnTint) SET(spawnLabels) SET(fitSpawns) SET(rewindAudio)
+                                SET(rewindButton) SET(rewindMemory) SET(hintCorner) SET(hintScale)
+                                    SET(hintOpacity) SET(hintMargin) SET(hintDetail)
+                                        SET(hintSeconds) SET(noticeSeconds) SET(rewindIndicator)
+                                            SET(performance)
 #undef SET
                                                 throw std::runtime_error("Unknown option: " + key);
 }
@@ -203,7 +206,8 @@ int main(int argc, char **argv) {
             }
             if (k == "--fullscreen" || k == "--mute" || k == "--software" || k == "--headless" ||
                 k == "--realtime" || k == "--menu" || k == "--no-autoresume" ||
-                k == "--no-fast-boot" || k == "--resume-last") {
+                k == "--no-fast-boot" || k == "--resume-last" || k == "--menu-only" ||
+                k == "--xr-options") {
                 args[k] = "1";
                 continue;
             }
@@ -254,6 +258,8 @@ int main(int argc, char **argv) {
 #ifdef SCU_QUEST
         SDL_SetHint(SDL_HINT_ANDROID_BLOCK_ON_PAUSE, "0");
 #endif
+        if (args.count("--startup-error"))
+            throw std::runtime_error(args["--startup-error"]);
         if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER | SDL_INIT_TIMER))
             throw std::runtime_error(SDL_GetError());
         fs::path dir;
@@ -271,6 +277,10 @@ int main(int argc, char **argv) {
 #endif
         auto holder = std::make_unique<App>(dir);
         auto &a = *holder;
+        a.menuVerificationOnly = args.count("--menu-only");
+        a.core.executionDisabled = a.menuVerificationOnly;
+        if (a.menuVerificationOnly)
+            SDL_Log("SCU menu verification: cartridge execution locked at core boundary");
         a.headless = args.count("--headless");
         a.core.headless = a.headless;
         char *base = SDL_GetBasePath();
@@ -289,12 +299,18 @@ int main(int argc, char **argv) {
         else
             SDL_SetHint(SDL_HINT_RENDER_DRIVER, "direct3d11");
 #endif
-        a.initialise(baseDir, a.headless);
+        try {
+            a.initialise(baseDir, a.headless);
+        } catch (const std::exception &error) {
+            SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SCU startup failed: %s", error.what());
+            throw;
+        }
 #ifdef SCU_QUEST
         // Only personal APKs opt into this one-time profile, including on upgrade.
         const auto personalFlag = baseDir / "personal-wall-preset-0500.txt";
         const auto personalMarker = dir / "personal-wall-preset-0500.applied";
-        if (fs::is_regular_file(personalFlag) && !fs::exists(personalMarker)) {
+        if (!a.menuVerificationOnly && fs::is_regular_file(personalFlag) &&
+            !fs::exists(personalMarker)) {
             const auto backup = dir / "settings-before-personal-wall-0500.ini";
             if (fs::is_regular_file(dir / "settings.ini") && !fs::exists(backup))
                 writeBytesAtomic(backup, readBytes(dir / "settings.ini"));
@@ -320,6 +336,46 @@ int main(int argc, char **argv) {
                 "Personal wall profile 0500 applied; later choices are kept.\n";
             writeBytesAtomic(personalMarker, std::vector<uint8_t>(note.begin(), note.end()));
         }
+        const auto xrProfile = baseDir / "personal-xr-preset-0600.txt";
+        const auto xrMarker = dir / "personal-xr-preset-0600.applied";
+        if (!a.menuVerificationOnly && fs::is_regular_file(xrProfile) && !fs::exists(xrMarker)) {
+            const auto backup = dir / "settings-before-personal-xr-0600.ini";
+            if (fs::is_regular_file(dir / "settings.ini") && !fs::exists(backup))
+                writeBytesAtomic(backup, readBytes(dir / "settings.ini"));
+            a.settings.questMode = 2;
+            a.settings.questPassthrough = true;
+            a.settings.questSpinballAuto = true;
+            a.settings.questScale = 100;
+            a.settings.questWallHeight = 200;
+            a.settings.questWallGap = 0;
+            a.settings.questRefresh = 0;
+            a.settings.questWallLocked = true;
+            a.settings.questCompanion = true;
+            a.settings.questCabinetWidth = 140;
+            a.settings.questCabinetHeight = 85;
+            a.settings.questCabinetTilt = 12;
+            a.settings.questSurround = true;
+            a.settings.questCrt = 2;
+            a.settings.questAutoWall = true;
+            a.settings.questAdaptive = true;
+            a.settings.view = 2;
+            a.settings.mapExtension = true;
+            a.settings.menuLayout = 0;
+            a.settings.save(dir);
+            const std::string note =
+                "Personal XR 0600 defaults applied; later choices are retained.\n";
+            writeBytesAtomic(xrMarker, std::vector<uint8_t>(note.begin(), note.end()));
+        }
+        if (a.menuVerificationOnly && args.count("--xr-preview")) {
+            a.settings.questMode = std::clamp(std::stoi(args["--xr-preview"]), 0, 6);
+            a.settings.questAutoWall = false;
+            a.settings.questPassthrough = false;
+            a.settings.questCompanion = true;
+        }
+        if (a.menuVerificationOnly && args.count("--xr-capture"))
+            a.xrMenuCapture = args["--xr-capture"];
+        if (a.menuVerificationOnly && args.count("--xr-options"))
+            a.showSection(9);
         auto headset = std::make_unique<QuestPresentation>(a);
         a.quest = headset.get();
         headset->initialise();
@@ -549,6 +605,7 @@ int main(int argc, char **argv) {
         SDL_Quit();
         return 0;
     } catch (const std::exception &e) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SCU fatal: %s", e.what());
         fprintf(stderr, "Sonic Compilation Ultra: %s\n", e.what());
         SDL_Quit();
         return 1;

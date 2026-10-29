@@ -66,7 +66,7 @@ def main():
             subprocess.run(['install_name_tool','-change',sdl,'@executable_path/../Frameworks/'+target.name,str(payload/'MacOS/SonicCompilationUltra')],check=True)
             subprocess.run(['install_name_tool','-id','@executable_path/../Frameworks/'+target.name,str(target)],check=True)
         subprocess.run(['codesign','--force','--deep','--sign','-',str(stage/'Sonic Compilation Ultra.app')],check=True)
-        (stage/'MACOS_EXPERIMENTAL.txt').write_text('macOS builds are experimental.\nAutomated compilation, synthetic runtime/controller tests and portable UI checks are performed.\nPhysical Mac display, Retina, audio and controller behaviour have not been tested.\nThis app is ad-hoc signed, not notarized.\nSee docs/QUICK_START.md and docs/TEST_REPORT.md.\n',encoding='utf-8')
+        (stage/'MACOS_EXPERIMENTAL.txt').write_text('macOS builds are experimental.\nCompilation and packaging do not establish runtime compatibility.\nPhysical Mac display, Retina, audio and controller behaviour have not been tested.\nThis app is ad-hoc signed, not notarized.\nSee docs/QUICK_START.md and docs/TEST_REPORT.md for the checks applicable to this release.\n',encoding='utf-8')
     else:
         copy_file(binary,stage/binary.name)
         shutil.copytree(ROOT/'assets',stage/'assets')

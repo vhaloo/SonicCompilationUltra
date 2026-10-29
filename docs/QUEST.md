@@ -1,70 +1,75 @@
-# Standalone Meta Quest VR / AR preview
+# Standalone Meta Quest XR preview 0.6
 
-This experimental Android ARM64 edition runs the collection on the headset. It presents the original games on a tracked spatial screen: a room-pinned cinema, a tilted whole-stage tabletop, or a head-following panel. Passthrough AR shows the room around that screen. The game simulation, cartridge graphics, saves, rewind and illustrated options use the same collection engine as the desktop app.
+Play your own cartridges on a giant AR mural, a complete-board pinball cabinet, a 3D CRT, a curved gallery, a floor atlas or a simple spatial screen. **Y opens the options.** Every control has an illustrated explanation in English, French, Spanish and Japanese.
 
-**0.5 wall AR:** choose a scanned wall, a fixed two-metre stage mural or a floor atlas. Local anchors, manual placement and a separate nearby menu provide several ways to use the same games. Maximum available headset refresh is the default preference. See the [wall placement, modes and performance guide](QUEST_WALLS.md).
+**Experimental preview.** Library/options startup and stereo preview rendering have been checked on a USB-connected Quest 3 with cartridge execution locked. No ROM was launched or played for this release. Gameplay, physical wall alignment, room relocalization, real-controller coverage and sustained performance remain unqualified. [What was verified](TEST_REPORT.md).
 
-**Status:** built for Quest 2, Quest Pro, Quest 3 and Quest 3S with OpenGL ES 3.2 and OpenXR. Physical headset behavior, image orientation/color, tracking, passthrough, input, comfort and performance have not been verified. No game or headset session is run as part of this delivery. A successful build or APK signature check does not establish those runtime properties.
+## Install and add your cartridges
 
-## Install
+1. Enable developer mode using [Meta's instructions](https://developers.meta.com/vr/documentation/android-apps/enable-developer-mode/), connect USB and approve debugging in your headset.
+2. Install the ROM-free APK with SideQuest or `adb install -r collection.apk`.
+3. Open **Sonic Compilation Ultra XR** from Unknown Sources. Choose **Choose ROM…** and select your own supported cartridge file or ZIP. [Required editions](ROMS.md).
+4. Choose a game and **Play**. Use **B** for the original Start button; **Y** returns to the collection options.
 
-1. Enable developer mode for your Quest using [Meta's supported process](https://developers.meta.com/vr/documentation/android-apps/enable-developer-mode/) and approve USB debugging on your own headset.
-2. Sideload the APK with SideQuest or `adb install -r path/to/collection.apk`.
-3. Open **Sonic Compilation Ultra XR** in the headset's Unknown Sources / developer app list.
+The public APK contains no cartridges, saves, extracted game artwork or private signing keys. A personal APK may package its owner's files locally; that edition must stay private. The document picker copies selected files into app-owned storage. No storage-wide, microphone, internet or camera-image permission is requested. Passthrough is composed by the headset runtime.
 
-Meta also documents the [ADB installation commands](https://developers.meta.com/vr/documentation/native/android/ts-adb/). Installing and running on a headset are owner-controlled steps; this delivery performs neither.
+## Choose how to play
 
-The ordinary APK contains no ROMs. **Choose ROM…** opens Android's document picker; select a cartridge dump or ZIP that you are entitled to use. The app copies it into its own local ROM folder. No storage-wide permission, microphone access, network service or camera-image access is requested. Passthrough is composed by the headset runtime.
+| Presentation | Use it for |
+|---|---|
+| Full-stage AR mural | Platformers fixed on a wall, initially two metres high. Turn or move to inspect the supported current stage without camera scrolling. |
+| Fit a scanned wall | Keep the display inside a captured wall's bounds. Manual placement is also available. |
+| Floor atlas | Lay the supported whole stage horizontally. |
+| 3D full-board pinball | Spinball's complete board inside an original 3D cabinet with rails, legs, glass and native backglass view. Selected automatically for Spinball unless disabled. |
+| 3D CRT + surrounding world | A curved tube in a 3D enclosure. The television shows the authentic native viewport; supported terrain extends around it at the matching pixel scale. |
+| Curved level gallery | Wrap the supported stage through 10–220 degrees. |
+| Spatial screen | Cinema, tilted tabletop or head-following screen with the collection's normal camera choices. |
 
-A separately prepared **private personal APK** can contain the owner's cartridges. Its first launch copies those files into local app storage. Subsequent launches and APK updates preserve files that already exist. Private ROM-containing APKs and archives stay outside the public repository and public releases.
+New Quest installations start with the AR mural, automatic Spinball cabinet, nearby options and **Maximum available** refresh preference. Existing settings are retained. Personal 0.6 builds can opt into these defaults once, keeping a backup of previous settings. Later choices are preserved.
 
-The personal 0.5 test APK opts into a one-time wall profile, including on upgrade: two-metre AR mural, whole-stage framing, locked placement, nearby options, adaptive Balanced detail and maximum-available refresh preference. Existing settings are backed up before this change; later user choices are retained. The ROM-free APK has no opt-in flag.
+Spinball uses its existing four-board cartridge terrain decoder; the 3D cabinet is presentation furniture around the authentic 2D playfield and original physics. Distant objects still obey cartridge activation rules. Unsupported scenes, puzzle boards and special projections keep their native image. This is an independent fan project, not an official remake.
 
-## Touch controls
+## Resize and control it
 
 | Action | Quest Touch |
 |---|---|
-| Move | Left stick |
-| Jump / game action | A or right trigger |
-| Original Start / pause | B during play |
-| Open / close app options | Y |
-| Switch whole-stage / pixel view; toggle close-up in fixed wall modes | X during play |
-| Confirm / back in options | A / B |
+| Open / close options | Y |
+| Confirm / back | A / B |
 | Explain the focused setting | X in options |
-| Point and click | Right controller aim + right trigger |
-| Scroll menus | Right stick |
+| Point / click | Right controller aim / trigger |
+| Navigate / scroll | Left stick / right stick |
 | Previous / next section | Left / right grip separately |
-| Recenter screen | Right stick click |
-| Move and resize a room-pinned screen | Hold both grips; move hands together or apart |
+| Recover nearby menu | Right stick click (R3) |
+| Resize | Hold both grips and spread or close your hands; release and regrip to continue |
+| Continuous large resizing | Both grips + right-stick up/down |
+| Move the placement | Unlock placement, then move both gripped hands together |
 | Rewind with reverse sound | Hold left trigger |
+| Jump / action | A or right trigger |
+| Original Start | B during play |
 
-The system Meta button remains the headset's control. A connected Bluetooth gamepad can use the existing menus; turn **Use Quest Touch controls** off under **Quest VR / AR** to give the gamepad the first player slot. Physical controller compatibility remains unverified.
+**Placement locking does not prevent resizing.** The physical scale slider spans 5–20,000%, with half/double/reset buttons. Physical size is independent of texture allocation. Wall-fit mode remains bounded by its wall; use Mural for unrestricted expansion. Options keep their own readable size, and R3 brings them near you. The Meta button keeps its system function.
 
-The right-controller menu pointer and Y menu access stay available when Touch gameplay is switched off, so you can turn it back on. Touch is routed to player one when enabled, including when a Bluetooth pad was connected first. Headset session suspension resets the game-loop time reference instead of accumulating a catch-up burst.
+Pinball width, front height, slope and glass reflections are adjustable. CRT choices include clean, living-room and arcade presets, effect strength, phosphor mask, real tube curvature, picture width, surrounding terrain and its brightness. Choose a quiet studio floor or dark void in VR, or passthrough AR for your room. Cinema, tabletop, head-follow, cabinet and curved-gallery presets are available.
 
-Touch always uses its left trigger for rewind. The ordinary gamepad rewind binding is retained for Bluetooth-pad mode, so changing it does not leave Touch without rewind.
+A Bluetooth gamepad can use the existing controller menus. Disable **Use Quest Touch controls** to assign that pad to player one; menu pointing and Y access remain available. Physical controller behavior still needs user validation.
 
-## Make the screen yours
+## Walls, detail and refresh
 
-The **Quest VR / AR** section includes passthrough, room/head anchoring, width (80–800 cm), distance (80–600 cm), vertical offset, tabletop tilt, resolution, Touch input, pointer-click vibration, an orientation compatibility switch, recentering and cinema/tabletop presets. Each control has an original diagram and explanations in English, French, Spanish and Japanese.
+See the [wall guide](QUEST_WALLS.md) for captured rooms, manual/outdoor placement, floor calibration, local anchors and tracking recovery. Room recognition needs suitable spatial permission and tracking; outdoor wall recognition is not guaranteed. Manual placement does not require Scene permission.
 
-- **Cinema:** 320 cm wide, 240 cm ahead, at eye height.
-- **Tabletop:** 220 cm wide, 140 cm ahead, 60 cm below the eyes, tilted 65°, with whole-stage view.
-- **Canvas choices:** 1280×720, 1920×1080, 2560×1440 or ultra-wide 3072×576 (48:9).
+The app requests the highest runtime-reported display rate by default; System and explicit supported rates are available. Quest 3 menu checks observed a 120 Hz display target. This does not guarantee sustained 120 FPS in games. The original simulation retains its native cadence. Bounded mural textures, cached game images and optional adaptive detail control work independently of physical scale. The stereo furniture uses bounded eye buffers; the options retain a separate sharp compositor quad.
 
-Ordinary room-pinned placement is local to the session. Wall modes can optionally store a local spatial anchor and restore it in a recognizable space. Auto placement reads a captured room after spatial-data permission; manual placement remains available without it. Original whole-map, panorama, 1/8 zoom and native framing remain available in Spatial screen mode; fixed modes retain whole-stage framing. Special projections keep their native screen.
+**Pixel 1:1 describes game pixels in the virtual canvas.** Headset projection, optics and composition resample that canvas. Extremely large murals have finite stage bounds and finite detail.
 
-**Pixel 1:1 refers to game pixels in the virtual canvas.** The headset compositor and optics resample the final image. Start with Lightweight rendering or the 720p canvas if needed; larger canvases increase GPU and memory load. No Quest framerate or battery-life measurements are claimed.
+## Local files and updates
 
-## Local saves and updates
+Version 0.6 keeps runtime files in **private internal app storage**. It attempts a one-time copy of readable `UserData` and `ROMs` from the older external-files location, preserving originals. APK asset copying preserves existing cartridges and saves. Update with the same package/signing key; uninstalling can erase app data. Keep your original PC saves and private cartridge archives as independent backups. Cross-architecture emulator snapshots remain unverified; raw SRAM is supplied where available.
 
-ROMs, settings and saves use the app's external-files directory, normally under `Android/data/com.vhaloo.soniccompilationultra.quest/files/`. Android may restrict direct access; use your own authorized file/ADB tools to back up that directory. Uninstalling the app can remove its data. Updating the same package with the same signing key preserves its app data under Android's normal update behavior.
+The startup path now reports its original error and safely cleans up partial UI initialization. The immersive manifest and complete OpenXR graphics-state guard prevent the observed startup/window-placement and black-menu failures.
 
-Private builds copy raw cartridge SRAM where supplied. Windows emulator snapshots are preserved in a separate desktop backup; Quest creates its own native snapshots. Cross-architecture snapshot compatibility is unverified. Keep the original PC data.
+## Build and verification boundary
 
-## Build without game execution
-
-Use JDK 21, Android SDK platform 36, CMake 3.31.6 and NDK 29.0.14206865. Gradle and Android Gradle Plugin are pinned by the project. The application targets API 32 for the standalone Quest preview; it is a sideload build, not a Meta Store submission.
+Build with JDK 21, Android SDK 36, NDK 29.0.14206865 and CMake 3.31.6:
 
 ```sh
 python tools/prepare_quest.py
@@ -72,12 +77,10 @@ cd android
 ./gradlew --no-daemon --max-workers=2 :app:assembleRelease :app:lintRelease
 ```
 
-On Windows use `gradlew.bat`. Configure the Android SDK in an ignored `android/local.properties` or `ANDROID_HOME`. SDL 2.32.10 is downloaded with a SHA-256 check. The OpenXR Android loader is pinned to Maven Central version 1.1.65. The SDL renderer draws once into an offscreen canvas; a GPU framebuffer blit transfers it to an OpenXR quad swapchain. The compositor handles tracked stereo placement and optional `XR_FB_passthrough` reconstruction.
+Windows uses `gradlew.bat`. OpenXR loader 1.1.65 and SDL 2.32.10 are pinned. `SCU_QUEST_KEYSTORE` and `SCU_QUEST_KEY_PASSWORD` select your private update key. Keep it outside the repository. `-PscuPrivateAssets=/outside/repo/assets` adds a private `scu/ROMs` and `scu/UserData` tree; ordinary builds omit it.
 
-Without a supplied signing key, local/CI builds use Android's development key. For repeatable personal updates, retain your own key and set `SCU_QUEST_KEYSTORE` and `SCU_QUEST_KEY_PASSWORD` in the build environment. Keep keys and passwords private. `-PscuPrivateAssets=/outside/repository/assets` adds a local `scu/ROMs` and `scu/UserData` tree; the default build excludes it.
+For an owner-authorized frontend check, start the activity with `--ez scu_menu_only true`. This disables cartridge loading at the core boundary. Optional `--ei scu_preview_mode 4`, `--ez scu_options true`, `--ez scu_capture true` and `--es scu_language ja` select an empty preview/options screen and diagnostic captures. These sessions never establish gameplay qualification. Preview captures use an original pattern and a viewer-aligned empty scene.
 
-Optional wall features use `XR_FB_scene`, spatial-entity query/storage, scene capture and local floor reference spaces when reported by the runtime. The manifest declares Meta Scene and anchor permissions; the app requests Scene consent for wall discovery. Its saved anchor UUID and bounds stay in local `UserData/quest-wall-anchor.txt`. No cloud anchor or camera-image API is used. `XR_FB_display_refresh_rate` enumerates rates and requests the selected preference, with a system fallback if declined.
+The desktop companion adds renderer-neutral 2D cabinet/CRT frames under **Screen → Desktop frame**. Actual stereo furniture and GPU CRT tube shaders are Quest features. macOS remains experimental. The 0.6 companion workflow compiles/packages Windows, Linux and macOS without launching the application.
 
-Lint exceptions are limited to three pinned SDL files implementing optional Bluetooth Steam-controller and microphone-capture paths. The application requests neither permission; SDL guards Bluetooth initialization, and this frontend never opens audio capture. The app's own Activity and manifest remain checked. Upstream compiler warnings are recorded separately from app build errors.
-
-Static APK inspection should check its signature, ARM64 libraries, SDL entry point, manifest, packaged fonts/loader, ROM-free default boundary and the hashes of any private cartridges. None of these checks validates headset runtime behavior.
+Design references: [Meta compositor sample](https://github.com/meta-quest/Meta-OpenXR-SDK/tree/main/Samples/XrSamples/XrCompositor_NativeActivity), [Meta OpenXR samples](https://developers.meta.com/vr/documentation/native/native-openxr-sdk-sample/) and the [Khronos OpenXR specification](https://registry.khronos.org/OpenXR/specs/1.0-khr/html/xrspec.html). Their sample code, room models and artwork are not bundled.

@@ -2,6 +2,7 @@
 #include "core.h"
 #include "localization.h"
 #include "setting_help.h"
+#include "desktop_frame.h"
 #include <imgui.h>
 #ifdef SCU_UI_TESTS
 #include <map>
@@ -15,6 +16,9 @@ class App {
     friend class QuestPresentation;
 #endif
     SDL_Texture *worldTexture = nullptr, *nativeTexture = nullptr, *bgTexture = nullptr;
+    DesktopFrame desktopFrame;
+    ImGuiContext *uiContext = nullptr;
+    bool uiPlatformReady = false, uiRendererReady = false;
     int textureW = 0, textureH = 0, nativeTW = 0, nativeTH = 0;
     std::array<uint32_t, 320 * 224> frozenBackground{};
     int backgroundStage = -1;
@@ -100,6 +104,8 @@ class App {
     uint16_t pendingButtons[2]{};
     bool running = true, menu = true, focused = true, headless = false, dirty = false;
     bool screenshotRequested = false;
+    bool menuVerificationOnly = false;
+    std::string xrMenuCapture;
     bool rewindHeld = false;
     int language = 0, drawableW = 1280, drawableH = 720;
     double measuredFps = 0;

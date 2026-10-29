@@ -1,5 +1,6 @@
 #include "setting_help.h"
 #include <cstring>
+#include <initializer_list>
 namespace scu {
 #define H(key, picture, en, fr, es, ja)                                                            \
     {                                                                                              \
@@ -8,19 +9,144 @@ namespace scu {
         }                                                                                          \
     }
 static const SettingHelp entries[] = {
+    H("desktoppresentation", Crt,
+      "Choose the ordinary canvas, a whole-board pinball cabinet frame, or a CRT with the expanded "
+      "level behind it. Desktop frames use portable 2D geometry on SDL renderers; the Quest "
+      "edition adds stereo 3D furniture and tube shaders. Frame size changes presentation, not "
+      "game speed or controls.",
+      "Choisis le canevas habituel, un cadre de flipper avec plateau entier ou un CRT avec le "
+      "niveau derrière. Sur PC, les cadres utilisent une géométrie 2D portable avec SDL ; sur "
+      "Quest, le mobilier et le tube sont rendus en stéréo 3D. La taille du cadre ne change ni "
+      "vitesse ni commandes.",
+      "Elige lienzo normal, marco de pinball completo o CRT con nivel detrás. Los marcos de "
+      "escritorio usan geometría 2D portable con SDL; Quest añade muebles y tubo en 3D estéreo. El "
+      "tamaño no cambia velocidad ni controles.",
+      "通常のキャンバス、全盤面のピンボール筐体フレーム、周囲にステージを展開するブラウン管を選びま"
+      "す。デスクトップはSDLの移植可能な2D描画、Questは立体3D筐体と管面シェーダーを使用します。サイ"
+      "ズはゲーム速度や操作を変えません。"),
+    H("questscale", Resize,
+      "Change physical size from 5% to 20,000% without increasing texture memory. Both grips "
+      "resize even with placement locked. Spread your hands, regrip to continue, or use "
+      "right-stick up/down while gripping. Half, double and reset are available here. The nearby "
+      "menu keeps its own size.",
+      "Change la taille physique de 5 à 20 000 % sans augmenter la mémoire des textures. Les deux "
+      "prises redimensionnent même en placement verrouillé. Écarte les mains, reprends les prises "
+      "ou utilise le stick droit haut/bas. Demi-taille, double et remise à zéro sont disponibles. "
+      "Le menu proche garde sa taille.",
+      "Cambia el tamaño físico del 5 al 20 000 % sin aumentar memoria de texturas. Ambos agarres "
+      "redimensionan incluso con posición bloqueada. Separa las manos, vuelve a agarrar o usa la "
+      "palanca derecha arriba/abajo. Hay mitad, doble y reinicio. El menú cercano mantiene su "
+      "tamaño.",
+      "テクスチャメモリを増やさず実寸を5〜20,000%"
+      "に変更します。位置固定中でも両グリップで拡縮。手を広げ、握り直すか右スティック上下で続けます"
+      "。半分・2倍・リセットも使用可能。近くのメニューの大きさは変わりません。"),
+    H("questspinballauto", Pinball,
+      "When Sonic Spinball is loaded, select its complete-board 3D cabinet automatically. Other "
+      "games retain the presentation chosen above. Disable this to use murals, the CRT or any "
+      "other mode for Spinball. Cartridge title and unsupported scenes retain a native fallback.",
+      "Au chargement de Sonic Spinball, sélectionne automatiquement le meuble 3D et le plateau "
+      "entier. Les autres jeux gardent le mode choisi au-dessus. Désactive pour utiliser le mural, "
+      "le CRT ou un autre mode avec Spinball. Le titre et les scènes non compatibles gardent une "
+      "vue native.",
+      "Al cargar Sonic Spinball, selecciona automáticamente su mueble 3D completo. Los otros "
+      "juegos conservan el modo elegido arriba. Desactívalo para usar mural, CRT u otro modo con "
+      "Spinball. Títulos y escenas no compatibles conservan una vista nativa.",
+      "Sonic "
+      "Spinballを読み込むと全盤面の3D筐体を自動選択。他のゲームは選択中の表示を維持します。Spinball"
+      "で壁画やブラウン管を使うには無効にします。タイトルや未対応の場面には元の画面を使用します。"),
+    H("questcabinetwidth", Pinball,
+      "Width sets the playfield in centimetres; depth follows the complete board's true aspect. "
+      "Front height measures from the floor, and slope raises the rear. Global physical scale "
+      "multiplies the whole cabinet, including its legs and backglass. The original 2D playfield "
+      "and physics remain authentic.",
+      "La largeur règle le plateau en centimètres ; sa profondeur suit les proportions du plateau "
+      "entier. La hauteur avant se mesure depuis le sol ; l’inclinaison relève l’arrière. "
+      "L’échelle globale multiplie le meuble entier, pieds et fronton compris. Le plateau 2D et la "
+      "physique restent ceux du jeu.",
+      "La anchura define el tablero en centímetros; la profundidad conserva su proporción. La "
+      "altura frontal se mide desde el suelo y la inclinación eleva la parte trasera. La escala "
+      "global multiplica todo el mueble, patas y panel incluidos. Se mantienen tablero 2D y física "
+      "originales.",
+      "幅をcmで設定し、奥行きは全盤面の比率に従います。前面高さは床から測り、傾斜は奥を持ち上げます"
+      "。全体スケールは脚とバックボードも拡縮。盤面の2D画像と物理動作は元のゲームを保持します。"),
+    H("questglass", Pinball,
+      "A light, view-dependent glass reflection above the board. Set zero for maximum visibility "
+      "and lower blending cost. Reflections do not hide the ball with an opaque overlay.",
+      "Reflet léger du verre selon le point de vue, au-dessus du plateau. Zéro maximise la "
+      "visibilité et réduit le mélange graphique. Aucun reflet opaque ne cache la bille.",
+      "Reflejo suave del cristal según el punto de vista. Cero ofrece máxima visibilidad y reduce "
+      "el coste de mezcla. No se oculta la bola con reflejos opacos.",
+      "視点に応じた軽いガラス反射です。0で視認性を最大にし、合成負荷を減らします。不透明な反射でボ"
+      "ールを隠しません。"),
+    H("questtvwidth", Crt,
+      "Set the native CRT picture width in centimetres. Its height keeps the cartridge aspect "
+      "ratio. The cabinet and stand follow it; global scale multiplies the complete object. "
+      "Surrounding terrain aligns to the original camera at this same pixel scale.",
+      "Règle la largeur de l’image CRT en centimètres. Sa hauteur respecte les proportions de la "
+      "cartouche. Le meuble et le pied suivent ; l’échelle globale multiplie l’objet entier. Le "
+      "terrain autour s’aligne sur la caméra native à cette même échelle de pixels.",
+      "Define la anchura de la imagen CRT en centímetros. La altura conserva la proporción del "
+      "cartucho. Mueble y soporte se adaptan; la escala global multiplica todo. El terreno "
+      "alrededor se alinea con la cámara original a la misma escala de píxel.",
+      "元の映像幅をcmで設定します。高さはカートリッジの比率を保持。筐体と台座も追従し、全体スケール"
+      "で全体を拡縮します。周囲の地形は同じピクセル密度で元のカメラに合わせます。"),
+    H("questcrt", Crt,
+      "Clean, living-room and arcade presets increase scanline contrast. Off gives an unfiltered "
+      "picture in the 3D TV. Shader scanlines and the RGB mask fade when too small to resolve, "
+      "reducing shimmer. Strength blends the effect; curvature changes the actual tube mesh.",
+      "Les profils moniteur, salon et arcade renforcent progressivement les lignes de balayage. "
+      "Désactivé conserve une image brute dans le téléviseur 3D. Les lignes et le masque RVB "
+      "s’effacent quand ils sont trop fins, pour réduire le scintillement. L’intensité dose "
+      "l’effet ; la courbure modifie le maillage du tube.",
+      "Monitor, doméstico y arcade aumentan el contraste de líneas. Desactivado conserva la imagen "
+      "sin filtro dentro del TV 3D. Líneas y máscara RGB se atenúan al ser demasiado pequeñas para "
+      "evitar parpadeos. La intensidad mezcla el efecto; la curvatura modifica la malla del tubo.",
+      "クリア・家庭用・アーケードの順に走査線を強めます。オフでは3Dテレビ内に未処理の映像を表示。細"
+      "かすぎる走査線とRGBマスクを弱め、ちらつきを抑えます。強度で効果を調整し、湾曲は画面メッシュ"
+      "を変更します。"),
+    H("questsurround", Crt,
+      "Place expanded cartridge terrain around and behind the native CRT viewport, aligned with "
+      "its camera. The TV remains the real game view. Brightness dims the surrounding world for "
+      "focus. Native-only scenes omit the extension. This is the supported current stage, not "
+      "invented or downloaded scenery.",
+      "Place le terrain étendu autour et derrière la vue native du CRT, aligné sur sa caméra. Le "
+      "téléviseur reste la vraie vue du jeu. La luminosité atténue le monde autour. Les scènes "
+      "natives n’ont pas d’extension. Il s’agit du niveau compatible actuel, sans décor inventé ou "
+      "téléchargé.",
+      "Coloca terreno ampliado alrededor y detrás del CRT, alineado con su cámara. El TV conserva "
+      "la vista real. El brillo permite atenuar el entorno. Las escenas solo nativas omiten la "
+      "extensión. Se muestra el nivel actual compatible, sin decorado inventado o descargado.",
+      "拡張したカートリッジの地形を元のカメラに合わせ、ブラウン管の周囲と背後に表示します。テレビ内"
+      "は実際のゲーム画面です。周囲の明るさを下げて集中できます。未対応場面では拡張せず、現在の対応"
+      "ステージのみ使用します。"),
+    H("questcurve", Wall,
+      "Wrap the entire supported stage around a curved mesh from 10 to 220 degrees. Physical "
+      "height and scale determine size; the menu stays flat and nearby. A very wide level can "
+      "surround you: resize or reposition it to suit your seated view.",
+      "Enroule le niveau entier sur un maillage incurvé de 10 à 220 degrés. La hauteur et "
+      "l’échelle déterminent la taille ; le menu reste plat et proche. Un niveau très large peut "
+      "t’entourer : redimensionne ou replace-le pour ton point de vue assis.",
+      "Envuelve el nivel completo en una malla curva de 10 a 220 grados. Altura y escala definen "
+      "el tamaño; el menú sigue plano y cercano. Un nivel muy ancho puede rodearte: ajusta tamaño "
+      "y posición para jugar sentado.",
+      "対応ステージ全体を10〜220度の湾曲メッシュに展開。高さとスケールが大きさを決め、メニューは平"
+      "面で近くに残ります。横長のステージは周囲を囲めます。着席位置に合わせて拡縮・配置してください"
+      "。"),
+    H("questenvironment", Quest,
+      "Choose a dark void or a quiet procedural studio floor in stereo modes. Passthrough replaces "
+      "the studio with your actual room. No camera frames are read or recorded by the application.",
+      "Choisis un fond sombre ou un sol de studio procédural discret dans les modes stéréo. Le "
+      "passthrough remplace le studio par ta pièce réelle. L’application ne lit ni n’enregistre "
+      "les images des caméras.",
+      "Elige vacío oscuro o suelo de estudio procedural en modos estéreo. Passthrough sustituye el "
+      "estudio por tu habitación. La aplicación no lee ni graba imágenes de cámara.",
+      "立体モードで暗い空間か静かな手続き型スタジオの床を選びます。パススルーはスタジオを実際の部屋"
+      "に置き換えます。アプリはカメラ映像を取得・録画しません。"),
     H("questmode", Wall,
-      "Spatial screen keeps normal cinema and camera choices. Wall fit stays inside a scanned "
-      "wall. Mural keeps the full stage at its natural shape, even beyond the wall. Floor atlas "
-      "lays it horizontally. Native-only scenes retain their original image.",
-      "Écran spatial garde les caméras normales. Ajuster au mur respecte ses limites. Le mural "
-      "garde tout le niveau et ses proportions, même au-delà du mur. Atlas au sol le pose à "
-      "l’horizontale. Les scènes natives gardent leur image originale.",
-      "Pantalla espacial conserva las cámaras normales. Ajustar a pared respeta sus límites. Mural "
-      "mantiene todo el nivel y su forma, incluso fuera de la pared. Atlas lo coloca horizontal. "
-      "Las escenas nativas conservan su imagen.",
-      "空間スクリーンは通常のカメラを使います。壁に合わせるモードは壁の範囲内に表示します。壁画は実"
-      "際の壁を越えてもステージ全体の比率を保ちます。床の地図は水平です。未対応の場面は元の画面を表"
-      "示します。"),
+      "Choose a normal spatial screen, scanned wall, full-stage mural, floor atlas, 3D pinball cabinet, 3D CRT with surrounding terrain, or curved stage gallery. The complete current stage keeps fixed framing in map modes. Unsupported scenes keep their native viewport. Furniture modes always keep options nearby.",
+      "Choisis écran spatial, mur scanné, mural complet, atlas au sol, flipper 3D, CRT 3D avec terrain autour ou galerie incurvée. Le niveau actuel entier reste fixe dans les modes carte. Les scènes non compatibles gardent leur vue native. Le mobilier garde toujours les options à proximité.",
+      "Elige pantalla espacial, pared capturada, mural completo, atlas de suelo, pinball 3D, CRT 3D con terreno alrededor o galería curva. El nivel completo mantiene encuadre fijo en modos mapa. Las escenas no compatibles usan su vista nativa. Los muebles mantienen las opciones cerca.",
+      "空間スクリーン、スキャンした壁、全ステージ壁画、床の地図、3Dピンボール筐体、周囲に地形を表示する3Dブラウン管、湾曲ギャラリーを選びます。地図モードは全ステージを固定表示。未対応場面は元の画面を使い、家具モードの設定は常に近くに表示します。"),
     H("questwallheight", Wall,
       "Default 200 cm: the mural rises two metres from the floor. Width follows the stage aspect "
       "ratio. Wall-fit mode caps height to the available wall. On a floor atlas this sets its "
@@ -65,16 +191,16 @@ static const SettingHelp entries[] = {
       "壁モードで保存済みの部屋を読み込みます。Questが空間データの許可を求めます。正面付近の近い壁"
       "を選び、その選択を維持します。モデルがない場合は屋外でも手動配置を使えます。"),
     H("questwalllock", Wall,
-      "Enabled by default. Head movement and recentering leave the wall in place. Unlock to move "
-      "and scale it with both grips; lock again afterward. The full-stage framing stays fixed in "
-      "either case.",
-      "Activé par défaut. Les mouvements de tête et le recentrage laissent le mur en place. "
-      "Déverrouille pour le déplacer et l’agrandir avec les deux prises, puis reverrouille. Le "
-      "cadrage du niveau reste fixe.",
-      "Activado por defecto. La cabeza y el recentrado no mueven la pared. Desbloquea para mover y "
-      "escalar con ambos agarres y vuelve a bloquear. El encuadre del nivel sigue fijo.",
-      "初期設定では固定されています。頭を動かしたり再センタリングしても壁は動きません。両グリップで"
-      "移動・拡大するには解除し、調整後に再び固定してください。地図の範囲は固定のままです。"),
+      "Keep the wall or furniture in place while looking around or recentering. Both grips always "
+      "resize it. Unlock only when you want both grips to translate it too. Full-stage framing "
+      "remains fixed.",
+      "Garde le mur ou le meuble en place pendant les mouvements de tête et le recentrage. Les "
+      "deux prises redimensionnent toujours. Déverrouille pour qu’elles déplacent aussi l’objet. "
+      "Le cadrage du niveau reste fixe.",
+      "Mantén pared o mueble fijo al mirar y recentrar. Ambos agarres siempre redimensionan. "
+      "Desbloquea solo para que también muevan el objeto. El encuadre completo permanece fijo.",
+      "頭を動かしたり再センタリングしても壁や筐体の位置を保ちます。両グリップの拡縮は常に可能。移動"
+      "も行う場合だけ解除します。全ステージの範囲は固定したままです。"),
     H("questpauselost", Wall,
       "Pause play if the attached wall anchor or head pose becomes unavailable. The mural is "
       "hidden instead of attaching to another wall. With head tracking restored, Y and the "
@@ -1111,6 +1237,23 @@ static const SettingHelp entries[] = {
 };
 #undef H
 const SettingHelp *settingHelp(const char *key) {
+    for (auto alias : {"desktopframescale", "desktopcabinetangle", "desktopcrtstrength",
+                       "desktopcrtmask", "desktopsurround"})
+        if (!std::strcmp(key, alias))
+            return settingHelp("desktoppresentation");
+    for (auto alias : {"questhalf", "questdouble", "questscalereset", "questresizespeed"})
+        if (!std::strcmp(key, alias))
+            return settingHelp("questscale");
+    for (auto alias : {"questcabinetheight", "questcabinettilt", "questpinballpreset"})
+        if (!std::strcmp(key, alias))
+            return settingHelp("questcabinetwidth");
+    for (auto alias : {"questcrtmask", "questcrtstrength", "questcrtcurve", "questcrtpreset"})
+        if (!std::strcmp(key, alias))
+            return settingHelp("questcrt");
+    if (!std::strcmp(key, "questsurroundbrightness"))
+        return settingHelp("questsurround");
+    if (!std::strcmp(key, "questcurvedpreset"))
+        return settingHelp("questcurve");
     if (std::strncmp(key, "slot", 4) == 0 && key[4] >= '1' && key[4] <= '9' && !key[5])
         return settingHelp("save");
     for (auto &entry : entries)

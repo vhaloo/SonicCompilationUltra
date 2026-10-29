@@ -35,6 +35,7 @@ class Core {
     std::vector<uint32_t> native;
     int nativeW = 320, nativeH = 224;
     bool loaded = false, headless = false;
+    bool executionDisabled = false;
     std::string currentId, status;
     std::string saveKey;
     uint32_t runningCrc = 0;

@@ -2,6 +2,8 @@
 #ifdef SCU_QUEST
 #include "ui.h"
 #include "quest_scene.h"
+#include "xr_stage.h"
+#include "xr_gl_state.h"
 #include <SDL_system.h>
 #include <jni.h>
 #include <EGL/egl.h>
@@ -117,6 +119,9 @@ struct QuestPresentation::Impl {
     JavaVM *vm = nullptr;
     jmethodID permissionMethod = nullptr, requestPermissionMethod = nullptr;
     std::unique_ptr<QuestScene> scene;
+    std::unique_ptr<XrStageRenderer> stage;
+    uint64_t diagnosticAt = 0, submittedFrames = 0, captureAfter = 0;
+    bool menuCaptured = false;
     bool sceneSupported = false, storageSupported = false, captureSupported = false;
     bool refreshSupported = false, localFloorSupported = false;
     bool permissionAsked = false, permissionGranted = false, queriedScene = false, restored = false,
@@ -233,9 +238,9 @@ struct QuestPresentation::Impl {
         XrInstanceCreateInfo info{XR_TYPE_INSTANCE_CREATE_INFO};
         info.next = &android;
         std::strcpy(info.applicationInfo.applicationName, "Sonic Compilation Ultra XR");
-        info.applicationInfo.applicationVersion = 500;
+        info.applicationInfo.applicationVersion = 600;
         std::strcpy(info.applicationInfo.engineName, "SCU / Genesis Plus GX");
-        info.applicationInfo.apiVersion = XR_MAKE_VERSION(1, 0, 0);
+        info.applicationInfo.apiVersion = XR_MAKE_VERSION(1, 0, 45);
         info.enabledExtensionCount = uint32_t(enabled.size());
         info.enabledExtensionNames = enabled.data();
         check(xrCreateInstance(&info, &instance), "Create OpenXR instance");
@@ -327,6 +332,9 @@ struct QuestPresentation::Impl {
                 passthroughSupported = false;
         }
         glGenFramebuffers(1, &framebuffer);
+        stage = std::make_unique<XrStageRenderer>();
+        stage->initialise(instance, system, session);
+        captureAfter = SDL_GetTicks64() + 2000;
     }
     void createActions() {
         hands = {path("/user/hand/left"), path("/user/hand/right")};
@@ -492,11 +500,19 @@ struct QuestPresentation::Impl {
         screen.requestedWidth = desiredWidth;
         screen.requestedHeight = desiredHeight;
     }
+    int mode() const {
+        return app.core.loaded && app.core.currentId == "spinball" && app.settings.questSpinballAuto
+                   ? 4
+                   : app.settings.questMode;
+    }
+    bool stereo() const {
+        return mode() >= 4;
+    }
     bool fixed() const {
-        return app.settings.questMode != 0;
+        return mode() != 0;
     }
     bool companion() const {
-        return fixed() && (app.settings.questCompanion || menuRecovery) && app.menu;
+        return fixed() && (stereo() || app.settings.questCompanion || menuRecovery) && app.menu;
     }
     XrQuaternionf yawOrientation() const {
         auto forward = rotate(head.orientation, {0, 0, -1});
@@ -514,29 +530,36 @@ struct QuestPresentation::Impl {
     }
     float floorGap() const {
         float gap = app.settings.questWallGap * .01f;
-        return app.settings.questMode == 1 ? std::min(gap, std::max(0.f, wallPhysicalHeight - .5f))
-                                           : gap;
+        return mode() == 1 ? std::min(gap, std::max(0.f, wallPhysicalHeight - .5f)) : gap;
     }
     float muralHeight() const {
         float h = app.settings.questWallHeight * .01f;
-        if (app.settings.questMode == 1)
+        if (mode() == 1)
             h = std::min(h, std::max(.5f, wallPhysicalHeight - floorGap()));
         return h;
     }
     float aspect() const {
-        if (app.settings.questMode == 1)
+        if (mode() == 1)
             return std::clamp(wallPhysicalWidth / muralHeight(), .25f, 128.f);
         return mapWidth && mapHeight ? float(mapWidth) / mapHeight : 16.f / 9;
     }
     XrExtent2Df physicalSize() const {
+        float scale = app.settings.questScale * .01f;
         if (fixed()) {
-            float h = muralHeight();
+            float h = muralHeight() * scale;
+            if (mode() == 1) {
+                float fit = std::min({1.f, wallPhysicalWidth / std::max(.01f, h * aspect()),
+                                      std::max(.5f, wallPhysicalHeight - floorGap()) / h});
+                h *= fit;
+            }
             return {h * aspect(), h};
         }
-        float w = app.settings.questWidth * .01f;
+        float w = app.settings.questWidth * .01f * scale;
         return {w, w * gameScreen.height / std::max(1, gameScreen.width)};
     }
     XrPosef worldPose() const {
+        if (stereo())
+            return wallBase;
         if (!fixed()) {
             if (!app.settings.questAnchor)
                 return panel;
@@ -547,8 +570,8 @@ struct QuestPresentation::Impl {
             return transform(head, offset);
         }
         auto base = wallBase;
-        const float h = muralHeight(), gap = floorGap();
-        if (app.settings.questMode == 3) {
+        const float h = physicalSize().height, gap = floorGap();
+        if (mode() == 3) {
             XrPosef offset{{-std::sqrt(.5f), 0, 0, std::sqrt(.5f)}, {0, .015f + gap, -h / 2}};
             return transform(base, offset);
         }
@@ -588,12 +611,14 @@ struct QuestPresentation::Impl {
             mapStage = -1;
             mapFamily = -1;
         }
-        if (app.settings.questMode != lastMode) {
+        if (mode() != lastMode) {
             if (fixed() && !wallPlaced)
                 manualWall(false);
+            if (mode() == 4 || mode() == 5)
+                manualWall();
             automaticPlaced = false;
             gameScreen.valid = false;
-            lastMode = app.settings.questMode;
+            lastMode = mode();
             menuPlaced = false;
         }
     }
@@ -633,6 +658,16 @@ struct QuestPresentation::Impl {
         height = activeScreen->height;
         if (SDL_SetRenderTarget(app.renderer, activeScreen->canvas))
             throw std::runtime_error(SDL_GetError());
+        if (app.menuVerificationOnly && submittedFrames < 3) {
+            GLint draw = 0, texture = 0;
+            GLfloat clear[4]{};
+            glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw);
+            glGetFramebufferAttachmentParameteriv(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                                  GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &texture);
+            glGetFloatv(GL_COLOR_CLEAR_VALUE, clear);
+            SDL_Log("SCU XR before SDL: FBO=%d attachment=%d copyFBO=%u clear=%.3f,%.3f,%.3f", draw,
+                    texture, framebuffer, clear[0], clear[1], clear[2]);
+        }
     }
     void refreshRate() {
         if (!refreshSupported || (rates.empty() && lastRefresh != -999))
@@ -813,7 +848,8 @@ struct QuestPresentation::Impl {
             scene->restoreAnchor();
             restored = true;
         }
-        if (app.settings.questAutoWall && app.settings.questMode != 3 && scene->supported()) {
+        if (app.settings.questAutoWall && mode() != 3 && mode() != 4 && mode() != 5 &&
+            scene->supported()) {
             const auto now = SDL_GetTicks64();
             if (!permissionPoll || now - permissionPoll >= 1000) {
                 permissionPoll = now;
@@ -1032,9 +1068,8 @@ struct QuestPresentation::Impl {
         leftGripValid = valid(l);
         if (leftGripValid)
             leftGrip = l.pose;
-        if (app.settings.questTouch && (fixed() || !app.settings.questAnchor) &&
-            (!fixed() || !app.settings.questWallLocked) && lg > .75f && rg > .75f && valid(l) &&
-            valid(r)) {
+        if (app.settings.questTouch && (fixed() || !app.settings.questAnchor) && lg > .75f &&
+            rg > .75f && valid(l) && valid(r)) {
             auto midpoint = mul(add(l.pose.position, r.pose.position), .5f);
             float separation = length(sub(l.pose.position, r.pose.position));
             if (!grabbing) {
@@ -1043,23 +1078,27 @@ struct QuestPresentation::Impl {
                 grabPanel = panel;
                 grabBase = wallBase;
                 grabSeparation = std::max(.15f, separation);
-                grabWidth =
-                    (fixed() ? app.settings.questWallHeight : app.settings.questWidth) * .01f;
-                if (fixed()) {
+                grabWidth = app.settings.questScale * .01f;
+                if (fixed() && !app.settings.questWallLocked) {
                     selectedWall = useSavedAnchor = false;
                     automaticPlaced = true;
                 }
             }
+            // Clutch repeatedly for unlimited reach. While both grips are held,
+            // the right stick also zooms exponentially, without moving the wall.
+            float dt = std::min(.05f, float(frame.predictedDisplayPeriod) * 1e-9f);
+            if (std::abs(right.y) > .2f)
+                grabWidth *= std::exp(right.y * dt * app.settings.questResizeSpeed * .015f);
+            app.settings.questScale =
+                int(std::clamp(grabWidth * separation / grabSeparation, .05f, 200.f) * 100);
             if (fixed()) {
-                wallBase.position = add(grabBase.position, sub(midpoint, grabMid));
-                wallBase.position.y = grabBase.position.y;
-                app.settings.questWallHeight =
-                    int(std::clamp(grabWidth * separation / grabSeparation, .5f, 5.f) * 100);
+                if (!app.settings.questWallLocked) {
+                    wallBase.position = add(grabBase.position, sub(midpoint, grabMid));
+                    wallBase.position.y = grabBase.position.y;
+                }
                 wallTracked = !referenceLost;
             } else {
                 panel.position = add(grabPanel.position, sub(midpoint, grabMid));
-                app.settings.questWidth =
-                    int(std::clamp(grabWidth * separation / grabSeparation, .8f, 8.f) * 100);
                 app.settings.questDistance =
                     int(std::clamp(length(sub(panel.position, head.position)), .8f, 6.f) * 100);
             }
@@ -1091,7 +1130,7 @@ struct QuestPresentation::Impl {
             if (pointerClick && !previousClick)
                 feedback();
             previousClick = pointerClick;
-            wheel = app.menu && std::abs(right.y) > .2f
+            wheel = app.menu && !grabbing && std::abs(right.y) > .2f
                         ? right.y * float(frame.predictedDisplayPeriod) * 1e-9f * 12.f
                         : 0;
         }
@@ -1103,19 +1142,21 @@ struct QuestPresentation::Impl {
             auto button = [&](int button, bool down) {
                 SDL_JoystickSetVirtualButton(joystick, button, down ? 1 : 0);
             };
-            axis(SDL_CONTROLLER_AXIS_LEFTX, left.x);
-            axis(SDL_CONTROLLER_AXIS_LEFTY, -left.y);
-            axis(SDL_CONTROLLER_AXIS_RIGHTX, app.menu ? 0 : right.x);
-            axis(SDL_CONTROLLER_AXIS_RIGHTY, app.menu ? 0 : -right.y);
-            axis(SDL_CONTROLLER_AXIS_TRIGGERLEFT, app.menu ? -1 : lt * 2 - 1);
+            axis(SDL_CONTROLLER_AXIS_LEFTX, grabbing ? 0 : left.x);
+            axis(SDL_CONTROLLER_AXIS_LEFTY, grabbing ? 0 : -left.y);
+            axis(SDL_CONTROLLER_AXIS_RIGHTX, app.menu || grabbing ? 0 : right.x);
+            axis(SDL_CONTROLLER_AXIS_RIGHTY, app.menu || grabbing ? 0 : -right.y);
+            axis(SDL_CONTROLLER_AXIS_TRIGGERLEFT, app.menu || grabbing ? -1 : lt * 2 - 1);
             axis(SDL_CONTROLLER_AXIS_TRIGGERRIGHT, -1);
-            button(SDL_CONTROLLER_BUTTON_A, a || (!app.menu && rt > .55f));
+            button(SDL_CONTROLLER_BUTTON_A, !grabbing && (a || (!app.menu && rt > .55f)));
             button(SDL_CONTROLLER_BUTTON_B, bForMenu && b);
             button(SDL_CONTROLLER_BUTTON_START, !bForMenu && b);
             button(SDL_CONTROLLER_BUTTON_BACK, y);
             button(SDL_CONTROLLER_BUTTON_Y, app.menu && x);
-            button(SDL_CONTROLLER_BUTTON_LEFTSHOULDER, app.menu && lg > .7f && rg < .2f);
-            button(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, app.menu && rg > .7f && lg < .2f);
+            button(SDL_CONTROLLER_BUTTON_LEFTSHOULDER,
+                   app.menu && !grabbing && lg > .7f && rg < .2f);
+            button(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,
+                   app.menu && !grabbing && rg > .7f && lg < .2f);
             SDL_JoystickUpdate();
         }
     }
@@ -1124,6 +1165,7 @@ struct QuestPresentation::Impl {
         app.focused = state == XR_SESSION_STATE_FOCUSED;
         if (!running || !app.running)
             return false;
+        GlState restoreGraphics;
         XrFrameWaitInfo wait{XR_TYPE_FRAME_WAIT_INFO};
         check(xrWaitFrame(session, &wait, &frame), "Wait for headset frame");
         XrFrameBeginInfo begin{XR_TYPE_FRAME_BEGIN_INFO};
@@ -1204,7 +1246,11 @@ struct QuestPresentation::Impl {
     void end() {
         if (!frameOpen)
             return;
-        std::array<const XrCompositionLayerBaseHeader *, 3> layers{};
+        // The runtime can use GL during acquire/release and frame submission.
+        // Preserve SDL's cached state across the complete XR call sequence.
+        SDL_RenderFlush(app.renderer);
+        GlState restoreGraphics;
+        std::array<const XrCompositionLayerBaseHeader *, 4> layers{};
         uint32_t layerCount = 0;
         XrCompositionLayerPassthroughFB room{XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB};
         XrCompositionLayerQuad screen{XR_TYPE_COMPOSITION_LAYER_QUAD};
@@ -1216,6 +1262,27 @@ struct QuestPresentation::Impl {
         if (frame.shouldRender && wasDrawn && activeScreen) {
             auto &target = *activeScreen;
             SDL_RenderFlush(app.renderer);
+            GLint sourceFramebuffer = 0, sourceRead = 0;
+            glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &sourceFramebuffer);
+            glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &sourceRead);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, GLuint(sourceFramebuffer));
+            if (app.menuVerificationOnly && submittedFrames < 3) {
+                uint8_t pixel[4]{};
+                glReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+                auto data = ImGui::GetDrawData();
+                SDL_Log("SCU XR SDL canvas: read=%d draw=%d menuVertices=%d corner=%u,%u,%u,%u",
+                        sourceRead, sourceFramebuffer, data ? data->TotalVtxCount : 0, pixel[0],
+                        pixel[1], pixel[2], pixel[3]);
+            }
+            if (app.menuVerificationOnly && app.menu && !menuCaptured &&
+                !app.xrMenuCapture.empty() && SDL_GetTicks64() > captureAfter) {
+                auto path = fs::u8path(app.xrMenuCapture);
+                path.replace_filename("menu-options.bmp");
+                app.screenshot(path);
+                menuCaptured = true;
+                SDL_Log("SCU XR options captured; coreLoaded=%d coreFrame=%llu", app.core.loaded,
+                        (unsigned long long)app.core.frame);
+            }
             XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
             uint32_t index = 0;
             check(xrAcquireSwapchainImage(target.swapchain, &acquire, &index),
@@ -1223,9 +1290,8 @@ struct QuestPresentation::Impl {
             XrSwapchainImageWaitInfo wait{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
             wait.timeout = XR_INFINITE_DURATION;
             check(xrWaitSwapchainImage(target.swapchain, &wait), "Wait for screen image");
-            GLint read = 0, draw = 0;
-            glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &read);
-            glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw);
+            GLint read = sourceFramebuffer, draw = sourceFramebuffer;
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, GLuint(sourceFramebuffer));
             GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
             glDisable(GL_SCISSOR_TEST);
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
@@ -1247,10 +1313,54 @@ struct QuestPresentation::Impl {
             check(xrReleaseSwapchainImage(target.swapchain, &release), "Release screen image");
             target.valid = true;
             target.imageVersion = app.core.imageVersion;
-            target.mode = app.settings.questMode;
+            target.mode = mode();
         }
-        if (frame.shouldRender && haveHead && gameScreen.valid &&
-            gameScreen.mode == app.settings.questMode && (!fixed() || wallTracked)) {
+        if (frame.shouldRender && haveHead && stereo() && wallTracked) {
+            SDL_RenderFlush(app.renderer);
+            XrStageContent content;
+            content.loaded = app.core.loaded;
+            content.expanded = gameScreen.valid && gameScreen.mode == mode() && app.core.loaded
+                                   ? gameScreen.canvas
+                                   : nullptr;
+            content.native = &app.core.native;
+            content.nativeWidth = app.core.nativeW;
+            content.nativeHeight = app.core.nativeH;
+            content.version = app.core.imageVersion;
+            content.scene = app.core.world.inspect(app.core.snapshot, app.core.game);
+            auto &canvas = app.core.world.canvas;
+            content.left = canvas.left;
+            content.top = canvas.top;
+            content.coverageWidth = canvas.coverageW;
+            content.coverageHeight = canvas.coverageH;
+            if (content.scene.ready && !gameScreen.valid) {
+                content.coverageWidth = content.scene.width;
+                content.coverageHeight = content.scene.height;
+            }
+            std::string capture;
+            if (app.menuVerificationOnly && SDL_GetTicks64() > captureAfter)
+                capture = app.xrMenuCapture;
+            // An empty, guarded library preview faces the viewer even when the
+            // headset rests at an angle. Play always uses the room origin.
+            auto scenePose = app.menuVerificationOnly
+                                 ? transform(head, {{0, 0, 0, 1}, {0, -1.65f, -2.6f}})
+                                 : worldPose();
+            auto projection =
+                stage->render(local, frame.predictedDisplayTime, scenePose, app.settings, mode(),
+                              content, passthroughActive, capture);
+            if (projection) {
+                layers[layerCount++] =
+                    reinterpret_cast<const XrCompositionLayerBaseHeader *>(projection);
+                if (!capture.empty())
+                    app.xrMenuCapture.clear();
+            }
+            if (submittedFrames < 3) {
+                auto error = glGetError();
+                if (error != GL_NO_ERROR)
+                    SDL_LogError(SDL_LOG_CATEGORY_RENDER, "SCU XR GL error: 0x%x", error);
+            }
+        }
+        if (!stereo() && frame.shouldRender && haveHead && gameScreen.valid &&
+            gameScreen.mode == mode() && (!fixed() || wallTracked)) {
             screen.space = local;
             screen.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
             screen.pose = worldPose();
@@ -1277,6 +1387,20 @@ struct QuestPresentation::Impl {
         end.layerCount = layerCount;
         end.layers = layers.data();
         check(xrEndFrame(session, &end), "Submit headset frame");
+        ++submittedFrames;
+        auto now = SDL_GetTicks64();
+        if ((layerCount && submittedFrames <= 3) || now - diagnosticAt >= 5000) {
+            diagnosticAt = now;
+            SDL_Log("SCU XR frame: submitted=%llu stereo=%llu layers=%u mode=%d menu=%d "
+                    "coreLoaded=%d coreFrame=%llu displayHz=%.0f verification=%d",
+                    (unsigned long long)submittedFrames, (unsigned long long)stage->frames(),
+                    layerCount, mode(), app.menu, app.core.loaded,
+                    (unsigned long long)app.core.frame, displayHz, app.menuVerificationOnly);
+            if (app.menuVerificationOnly)
+                SDL_Log("SCU XR tracking: headY=%.3f floorY=%.3f orientation=%.3f,%.3f,%.3f,%.3f",
+                        head.position.y, floorY, head.orientation.x, head.orientation.y,
+                        head.orientation.z, head.orientation.w);
+        }
         frameOpen = false;
         SDL_SetRenderTarget(app.renderer, nullptr);
         if (wasDrawn && activeScreen == &gameScreen && fixed() && !app.menu &&
@@ -1309,6 +1433,7 @@ struct QuestPresentation::Impl {
         SDL_SetRenderTarget(app.renderer, nullptr);
         destroy(menuScreen);
         destroy(gameScreen);
+        stage.reset();
         if (framebuffer)
             glDeleteFramebuffers(1, &framebuffer);
         if (passthroughLayer && destroyPassthroughLayer)
@@ -1360,7 +1485,7 @@ bool QuestPresentation::needsRedraw() const {
         return false;
     auto &target = p.companion() ? p.menuScreen : p.gameScreen;
     auto size = p.canvasSize(p.companion());
-    return p.app.menu || !target.valid || target.mode != p.app.settings.questMode ||
+    return p.app.menu || !target.valid || target.mode != p.mode() ||
            target.imageVersion != p.app.core.imageVersion || p.app.dirty ||
            p.app.screenshotRequested || target.requestedWidth != size.first ||
            target.requestedHeight != size.second;
@@ -1388,6 +1513,7 @@ void QuestPresentation::configureRender(Settings &settings) const {
         settings.fixedMapWidth = p.mapWidth;
         settings.fixedMapHeight = p.mapHeight;
         settings.quality = std::clamp(settings.questWallDetail, 0, 2);
+        settings.projectionCleanScene = p.stereo();
         if (p.height < 240) {
             settings.playerInset = false;
             settings.hud = 3;
@@ -1440,13 +1566,68 @@ void QuestPresentation::options() {
     auto &s = a.settings;
     bool changed = false;
     ImGui::TextWrapped("%s", tr("questintro", a.language));
-    if (a.choice("questmode", s.questMode,
-                 {"questscreenmode", "questwallfit", "questmural", "questflooratlas"})) {
-        if (s.questMode) {
+    int selectedMode = impl->mode();
+    if (a.choice("questmode", selectedMode,
+                 {"questscreenmode", "questwallfit", "questmural", "questflooratlas",
+                  "questpinball", "questcrtroom", "questcurved"})) {
+        s.questMode = selectedMode;
+        if (a.core.loaded && a.core.currentId == "spinball")
+            s.questSpinballAuto = false;
+        if (s.questMode > 0 && s.questMode < 4) {
             s.questPassthrough = true;
             s.questWallLocked = true;
         }
         changed = true;
+    }
+    changed |= a.tick("questspinballauto", s.questSpinballAuto);
+    ImGui::TextWrapped("%s", tr("questscale", a.language));
+    float scalePercent = float(s.questScale);
+    ImGui::SetNextItemWidth(-1);
+    if (ImGui::SliderFloat("##questscale", &scalePercent, 5.f, 20000.f, "%.0f%%",
+                           ImGuiSliderFlags_Logarithmic)) {
+        s.questScale = std::clamp(int(std::lround(scalePercent)), 5, 20000);
+        changed = true;
+    }
+    a.control("questscale");
+    if (a.button("questhalf")) {
+        s.questScale = std::max(5, s.questScale / 2);
+        changed = true;
+    }
+    a.nextButton("questdouble");
+    if (a.button("questdouble")) {
+        s.questScale = std::min(20000, s.questScale * 2);
+        changed = true;
+    }
+    a.nextButton("questscalereset");
+    if (a.button("questscalereset")) {
+        s.questScale = 100;
+        changed = true;
+    }
+    changed |= a.slider("questresizespeed", s.questResizeSpeed, 25, 300, "%d%%");
+    ImGui::TextWrapped("%s", tr("questresizehint", a.language));
+    if (impl->mode() == 4 || s.questSpinballAuto) {
+        changed |= a.slider("questcabinetwidth", s.questCabinetWidth, 40, 600, "%d cm");
+        changed |= a.slider("questcabinetheight", s.questCabinetHeight, 30, 160, "%d cm");
+        changed |= a.slider("questcabinettilt", s.questCabinetTilt, 0, 40, "%d°");
+        changed |= a.slider("questglass", s.questGlass, 0, 100, "%d%%");
+        ImGui::TextWrapped("%s", tr("questpinballnote", a.language));
+    }
+    if (impl->mode() == 5) {
+        changed |= a.slider("questtvwidth", s.questTvWidth, 40, 800, "%d cm");
+        changed |= a.choice("questcrt", s.questCrt,
+                            {"questcrtoff", "questcrtclean", "questcrtconsumer", "questcrtarcade"});
+        changed |= a.choice("questcrtmask", s.questCrtMask,
+                            {"questcrtoff", "questmasklight", "questmaskstrong"});
+        changed |= a.slider("questcrtstrength", s.questCrtStrength, 0, 100, "%d%%");
+        changed |= a.slider("questcrtcurve", s.questCrtCurve, 0, 100, "%d%%");
+        changed |= a.tick("questsurround", s.questSurround);
+        changed |= a.slider("questsurroundbrightness", s.questSurroundBrightness, 0, 100, "%d%%");
+    }
+    if (impl->mode() == 6)
+        changed |= a.slider("questcurve", s.questCurve, 10, 220, "%d°");
+    if (impl->stereo()) {
+        changed |= a.choice("questenvironment", s.questEnvironment, {"questvoid", "questlounge"});
+        ImGui::TextWrapped("%s", tr("queststereonote", a.language));
     }
     if (impl->fixed()) {
         changed |= a.slider("questwallheight", s.questWallHeight, 50, 500, "%d cm");
@@ -1569,6 +1750,8 @@ void QuestPresentation::options() {
     a.nextButton("questcinema");
     if (a.button("questcinema")) {
         s.questMode = 0;
+        s.questScale = 100;
+        s.questSpinballAuto = false;
         s.questPassthrough = false;
         s.questWidth = 320;
         s.questDistance = 240;
@@ -1580,6 +1763,8 @@ void QuestPresentation::options() {
     a.nextButton("questtabletop");
     if (a.button("questtabletop")) {
         s.questMode = 0;
+        s.questScale = 100;
+        s.questSpinballAuto = false;
         s.questWidth = 220;
         s.questDistance = 140;
         s.questHeight = -60;
@@ -1591,10 +1776,42 @@ void QuestPresentation::options() {
     a.nextButton("questpersonal");
     if (a.button("questpersonal")) {
         s.questMode = 0;
+        s.questScale = 100;
+        s.questSpinballAuto = false;
         s.questAnchor = 1;
         s.questWidth = 140;
         s.questDistance = 100;
         s.questHeight = s.questTilt = 0;
+        changed = true;
+    }
+    if (a.button("questpinballpreset")) {
+        s.questMode = 4;
+        s.questSpinballAuto = true;
+        s.questAnchor = 0;
+        s.questScale = 100;
+        s.questDistance = 260;
+        impl->manualWall();
+        changed = true;
+    }
+    a.nextButton("questcrtpreset");
+    if (a.button("questcrtpreset")) {
+        s.questMode = 5;
+        s.questSpinballAuto = false;
+        s.questPassthrough = false;
+        s.questScale = 100;
+        s.questDistance = 240;
+        s.questSurround = true;
+        s.questCrt = 2;
+        impl->manualWall();
+        changed = true;
+    }
+    a.nextButton("questcurvedpreset");
+    if (a.button("questcurvedpreset")) {
+        s.questMode = 6;
+        s.questSpinballAuto = false;
+        s.questScale = 100;
+        s.questCurve = 90;
+        impl->manualWall();
         changed = true;
     }
     ImGui::TextWrapped("%s", tr("questgrab", a.language));

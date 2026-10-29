@@ -14,12 +14,21 @@ import java.io.*;
 /** Local-only storage and Android's document picker. No camera frames or network access. */
 public final class QuestActivity extends SDLActivity {
     private File root;
+    private String preparationError;
     private static final int IMPORT_ROM = 73;
 
     @Override protected void onCreate(Bundle state) {
-        root = getExternalFilesDir(null);
-        if (root == null) root = getFilesDir();
+        // Runtime files belong to the app UID. Android 14 scoped-storage rules can
+        // reject native stat/open on an external directory populated by ADB.
+        root = getFilesDir();
         try {
+            File old = getExternalFilesDir(null);
+            File migration = new File(root, "external-data-migration-0600.done");
+            if (!migration.exists() && old != null && !old.equals(root)) {
+                copyExisting(new File(old, "UserData"), new File(root, "UserData"));
+                copyExisting(new File(old, "ROMs"), new File(root, "ROMs"));
+                try (Writer marker = new FileWriter(migration)) { marker.write("Existing readable external data preserved.\n"); }
+            }
             copyTree("scu", root);
             File data = new File(root, "UserData");
             ensureDirectory(data);
@@ -29,14 +38,35 @@ public final class QuestActivity extends SDLActivity {
                 try (Writer out = new OutputStreamWriter(new FileOutputStream(settings), "UTF-8")) {
                     out.write("language=-1\nview=2\nquality=0\nbackground=0\nblur=3\n"
                         + "renderer=0\nfullscreen=0\nvsync=0\nrewind=1\nrewindMemory=0\n"
-                        + "lastDirectory=ROMs\nquestResolution=1\n");
+                        + "lastDirectory=ROMs\nquestResolution=1\nquestMode=2\nquestPassthrough=1\n"
+                        + "questWallHeight=200\nquestScale=100\nquestRefresh=0\nquestSpinballAuto=1\n"
+                        + "questWallLocked=1\nquestCompanion=1\n");
                 }
             }
         } catch (IOException failure) {
             // SDL still owns Activity initialization; native startup will report inaccessible data.
             android.util.Log.e("SCU", "Could not prepare local data", failure);
+            preparationError = "Could not prepare private app storage: " + failure.getMessage();
         }
         super.onCreate(state);
+    }
+    private void copyExisting(File source, File destination) {
+        if (!source.canRead()) return;
+        try {
+            if (source.isDirectory()) {
+                ensureDirectory(destination);
+                File[] children = source.listFiles();
+                if (children != null) for (File child : children)
+                    copyExisting(child, new File(destination, child.getName()));
+            } else if (!destination.exists() && source.length() <= 64L * 1024 * 1024) {
+                try (InputStream in = new FileInputStream(source); OutputStream out = new FileOutputStream(destination)) {
+                    byte[] buffer = new byte[65536]; int count;
+                    while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                }
+            }
+        } catch (IOException failure) {
+            android.util.Log.w("SCU", "External data kept in place; APK assets remain available", failure);
+        }
     }
     private static void ensureDirectory(File path) throws IOException {
         if (!path.isDirectory() && !path.mkdirs()) throw new IOException("Cannot create " + path.getName());
@@ -61,7 +91,29 @@ public final class QuestActivity extends SDLActivity {
         }
     }
     @Override protected String[] getLibraries() { return new String[]{"c++_shared", "openxr_loader", "SDL2", "main"}; }
-    @Override protected String[] getArguments() { return new String[]{"--data-dir", new File(root, "UserData").getAbsolutePath()}; }
+    @Override protected String[] getArguments() {
+        java.util.ArrayList<String> args = new java.util.ArrayList<>();
+        args.add("--data-dir"); args.add(new File(root, "UserData").getAbsolutePath());
+        if (getIntent().getBooleanExtra("scu_menu_only", false)) {
+            args.add("--menu-only");
+            if (getIntent().hasExtra("scu_preview_mode")) {
+                args.add("--xr-preview"); args.add(Integer.toString(getIntent().getIntExtra("scu_preview_mode", 2)));
+            }
+            if (getIntent().getBooleanExtra("scu_options", false)) args.add("--xr-options");
+            String language = getIntent().getStringExtra("scu_language");
+            if ("en".equals(language) || "fr".equals(language) || "es".equals(language) || "ja".equals(language)) {
+                args.add("--language"); args.add(language);
+            }
+            if (getIntent().getBooleanExtra("scu_capture", false)) {
+                File folder = getExternalFilesDir("diagnostics");
+                if (folder != null) {
+                    args.add("--xr-capture"); args.add(new File(folder, "menu-scene.bmp").getAbsolutePath());
+                }
+            }
+        }
+        if (preparationError != null) { args.add("--startup-error"); args.add(preparationError); }
+        return args.toArray(new String[0]);
+    }
 
     public void chooseRom() {
         runOnUiThread(() -> {

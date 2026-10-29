@@ -171,6 +171,11 @@ void Core::updateOptions() {
     changed = true;
 }
 bool Core::load(const std::string &id) {
+    if (executionDisabled) {
+        SDL_Log("SCU verification guard blocked cartridge load");
+        status = "Cartridge execution is disabled during menu verification.";
+        return false;
+    }
     unload();
     status.clear();
     auto entry = library.find(id);

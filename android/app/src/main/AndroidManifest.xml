@@ -17,6 +17,7 @@
         android:allowBackup="false" android:hasCode="true" android:extractNativeLibs="true"
         android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
         <meta-data android:name="com.oculus.supportedDevices" android:value="quest2|questpro|quest3|quest3s"/>
+        <meta-data android:name="com.samsung.android.vr.application.mode" android:value="vr_only"/>
         <activity android:name=".QuestActivity" android:exported="true" android:launchMode="singleTask"
             android:screenOrientation="landscape" android:resizeableActivity="false"
             android:configChanges="screenSize|screenLayout|orientation|keyboardHidden|keyboard|navigation|uiMode|density">

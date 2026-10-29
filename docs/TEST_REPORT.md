@@ -2,7 +2,17 @@
 
 This report separates successful checks from coverage that has not been measured. A boot test or source build is not a full-game completion certificate.
 
-## Standalone Quest preview — build and static checks only
+## 0.6 XR preview — physical frontend checks, no gameplay
+
+- On a USB-connected Quest 3, the library/options and original-pattern pinball/CRT/curved previews reach native SDL/OpenXR startup and submit stereo projection plus an independent menu quad. Actual eye-buffer and options captures were visually inspected. The earlier partial-UI cleanup crash, window-placement failure and black menu transfer were reproduced from evidence and repaired.
+- Menu verification locks `Core::load`. Diagnostic frames record `coreLoaded=0` and `coreFrame=0`; cartridge file checks report **12 entries, 12 readable, cartridgeExecution=0**. Those checks decode/check files, not game instructions. No ROM was launched or played.
+- The runtime reports a **120 Hz display target** with maximum refresh selected. Short empty-preview observations include startup/capture stalls; they do not establish sustained 120 FPS, gameplay performance, thermal behavior or battery life.
+- Android compilation, lint and static signature/dependency/manifest/data-boundary inspection apply to both ordinary and personal APKs. The ordinary APK/source package exclude ROMs and private data. The local personal APK is not uploaded.
+- Windows companion code is compiled locally. The dedicated 0.6 desktop workflow compiles/packages Windows, Linux and experimental macOS with `BUILD_TESTING=OFF`; no application/game execution is included. Historical runtime results below apply to their stated earlier versions.
+- Font inspection checks every character used by the four-language labels and setting explanations against the regenerated OFL font subset. Runtime glyph ranges include the actual translation and guide text.
+- Not qualified: complete gameplay, cartridge-to-cabinet visual alignment during play, all controller operations, saved-room alignment/relocalization, passthrough behavior, full-stage dynamic object coverage, comfort, every GPU/PC or physical Mac. The furniture is a 3D presentation of original 2D games, not replacement 3D physics.
+
+## Historical 0.4–0.5 Quest previews — build and static checks only
 
 - The 0.5 wall update adds optional Scene/anchor services, fixed stage bounds, wall-fit/mural/floor-atlas presentation, local persistence, a separate companion menu and a maximum-available refresh preference. Source review covers permission refusal, manual fallback, stale/distant surfaces, reference-space changes, tracking-loss recovery, bounded textures and avoiding duplicate game-image rendering. These are implemented paths, not physical headset observations.
 - The Android ARM64 release target compiles with SDL 2.32.10, OpenXR Android loader 1.1.65, NDK 29.0.14206865 and Android Gradle Plugin 9.4.0. Android lint reports zero errors with narrowly scoped exceptions for the pinned SDL library's optional Bluetooth/capture methods; upstream warnings remain documented.
