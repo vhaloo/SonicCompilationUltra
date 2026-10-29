@@ -72,13 +72,14 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(camera)
     SET(hud)
     SET(hudScale)
-    SET(background) SET(blur) SET(brightness) SET(parallax) SET(minimap) SET(locator) SET(spindash)
-        SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top)
-            SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen) SET(span) SET(vsync)
-                SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot) SET(menuLayout) SET(display)
-                    SET(padLabels) SET(jumpLayout) SET(quickControls) SET(confirmActions) SET(
-                        confirmQuit) SET(highContrast) SET(readyOnly) SET(playerInset) SET(quality)
-                        SET(overviewStyle) SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle)
+    SET(background)
+    SET(blur) SET(brightness) SET(parallax) SET(minimap) SET(locator) SET(spindash) SET(invincible)
+        SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top) SET(volume)
+            SET(language) SET(help) SET(workers) SET(fullscreen) SET(span) SET(vsync) SET(uiScale)
+                SET(scanlines) SET(lockon) SET(fastBoot) SET(menuLayout) SET(display) SET(padLabels)
+                    SET(jumpLayout) SET(quickControls) SET(confirmActions) SET(confirmQuit)
+                        SET(highContrast) SET(readyOnly) SET(playerInset) SET(quality) SET(
+                            overviewStyle) SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle)
                             SET(bossPreview) SET(scriptPreview) SET(spawnTint) SET(spawnLabels)
                                 SET(fitSpawns) SET(rewindAudio) SET(rewindButton) SET(rewindMemory)
                                     SET(hintCorner) SET(hintScale) SET(hintOpacity) SET(hintMargin)
@@ -290,6 +291,35 @@ int main(int argc, char **argv) {
 #endif
         a.initialise(baseDir, a.headless);
 #ifdef SCU_QUEST
+        // Only personal APKs opt into this one-time profile, including on upgrade.
+        const auto personalFlag = baseDir / "personal-wall-preset-0500.txt";
+        const auto personalMarker = dir / "personal-wall-preset-0500.applied";
+        if (fs::is_regular_file(personalFlag) && !fs::exists(personalMarker)) {
+            const auto backup = dir / "settings-before-personal-wall-0500.ini";
+            if (fs::is_regular_file(dir / "settings.ini") && !fs::exists(backup))
+                writeBytesAtomic(backup, readBytes(dir / "settings.ini"));
+            a.settings.questMode = 2;
+            a.settings.questPassthrough = true;
+            a.settings.questWallHeight = 200;
+            a.settings.questWallGap = 0;
+            a.settings.questRefresh = 0;
+            a.settings.questAutoWall = true;
+            a.settings.questWallLocked = true;
+            a.settings.questCompanion = true;
+            a.settings.questMenuDistance = 100;
+            a.settings.questWallDetail = 1;
+            a.settings.questAdaptive = true;
+            a.settings.questPauseLost = true;
+            a.settings.view = 2;
+            a.settings.camera = 4;
+            a.settings.fitSpawns = false;
+            a.settings.mapExtension = true;
+            a.settings.menuLayout = 0;
+            a.settings.save(dir);
+            const std::string note =
+                "Personal wall profile 0500 applied; later choices are kept.\n";
+            writeBytesAtomic(personalMarker, std::vector<uint8_t>(note.begin(), note.end()));
+        }
         auto headset = std::make_unique<QuestPresentation>(a);
         a.quest = headset.get();
         headset->initialise();

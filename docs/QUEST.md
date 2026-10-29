@@ -18,6 +18,8 @@ The ordinary APK contains no ROMs. **Choose ROM…** opens Android's document pi
 
 A separately prepared **private personal APK** can contain the owner's cartridges. Its first launch copies those files into local app storage. Subsequent launches and APK updates preserve files that already exist. Private ROM-containing APKs and archives stay outside the public repository and public releases.
 
+The personal 0.5 test APK opts into a one-time wall profile, including on upgrade: two-metre AR mural, whole-stage framing, locked placement, nearby options, adaptive Balanced detail and maximum-available refresh preference. Existing settings are backed up before this change; later user choices are retained. The ROM-free APK has no opt-in flag.
+
 ## Touch controls
 
 | Action | Quest Touch |

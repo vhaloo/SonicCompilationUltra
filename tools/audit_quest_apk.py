@@ -67,7 +67,12 @@ with zipfile.ZipFile(a.apk) as z, tempfile.TemporaryDirectory(prefix='scu-quest-
     private=[n for n in names if n.startswith(prefix+'ROMs/') or n.startswith(prefix+'UserData/')]
     if not a.allow_private:
         assert not private,'Private cartridges/user data included in ROM-free APK'
+        assert prefix+'personal-wall-preset-0500.txt' not in names,'Personal preset in ROM-free APK'
     else:
+        assert prefix+'personal-wall-preset-0500.txt' in names,'Personal wall profile flag missing'
+        settings=dict(line.split('=',1) for line in z.read(prefix+'UserData/settings.ini').decode().splitlines() if '=' in line)
+        for key,value in {'questMode':'2','questPassthrough':'1','questWallHeight':'200','questRefresh':'0','questWallLocked':'1','questCompanion':'1'}.items():
+            assert settings.get(key)==value,(key,settings.get(key))
         lines=z.read(prefix+'UserData/library.tsv').decode().splitlines()
         for line in lines:
             game,crc,path,member=line.split('\t')

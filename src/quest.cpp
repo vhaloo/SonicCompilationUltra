@@ -129,7 +129,7 @@ struct QuestPresentation::Impl {
     float floorY = 0, wallPhysicalWidth = 3.2f, wallPhysicalHeight = 2.f;
     float displayHz = 0, requestedHz = 0;
     int lastRefresh = -999, lastMode = -1, mapWidth = 0, mapHeight = 0, mapStage = -1,
-        mapFamily = -1;
+        mapFamily = -1, lastMenuDistance = 0;
     int adaptiveStep = 0, overBudget = 0, underBudget = 0;
     uint64_t permissionPoll = 0, ratePoll = 0, adaptiveAt = 0, renderStarted = 0;
     std::string mapGame;
@@ -621,8 +621,10 @@ struct QuestPresentation::Impl {
     }
     void prepareRender() {
         bool menu = companion();
-        if (menu && (!companionLast || !menuPlaced))
+        if (menu &&
+            (!companionLast || !menuPlaced || lastMenuDistance != app.settings.questMenuDistance))
             placeMenu();
+        lastMenuDistance = app.settings.questMenuDistance;
         companionLast = menu;
         activeScreen = menu ? &menuScreen : &gameScreen;
         auto size = canvasSize(menu);
