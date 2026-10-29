@@ -38,6 +38,8 @@ The system Meta button remains the headset's control. A connected Bluetooth game
 
 The right-controller menu pointer and Y menu access stay available when Touch gameplay is switched off, so you can turn it back on. Touch is routed to player one when enabled, including when a Bluetooth pad was connected first. Headset session suspension resets the game-loop time reference instead of accumulating a catch-up burst.
 
+Touch always uses its left trigger for rewind. The ordinary gamepad rewind binding is retained for Bluetooth-pad mode, so changing it does not leave Touch without rewind.
+
 ## Make the screen yours
 
 The **Quest VR / AR** section includes passthrough, room/head anchoring, width (80–800 cm), distance (80–600 cm), vertical offset, tabletop tilt, resolution, Touch input, pointer-click vibration, an orientation compatibility switch, recentering and cinema/tabletop presets. Each control has an original diagram and explanations in English, French, Spanish and Japanese.

@@ -1,6 +1,6 @@
 """Fetch the pinned SDL Android sources. Does not build or run the application."""
 from pathlib import Path
-import argparse, hashlib, tarfile, urllib.request
+import argparse, hashlib, shutil, tarfile, urllib.request
 
 p=argparse.ArgumentParser()
 p.add_argument('--out',type=Path,default=Path(__file__).resolve().parents[1]/'android/.deps')
@@ -8,7 +8,11 @@ a=p.parse_args();a.out.mkdir(parents=True,exist_ok=True)
 archive=a.out/'SDL2-2.32.10.tar.gz'
 expected='5f5993c530f084535c65a6879e9b26ad441169b3e25d789d83287040a9ca5165'
 if not archive.exists():
-    urllib.request.urlretrieve('https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.tar.gz',archive)
+    bundled=Path(__file__).resolve().parents[1]/'vendor'/archive.name
+    if bundled.exists():
+        shutil.copyfile(bundled,archive)
+    else:
+        urllib.request.urlretrieve('https://github.com/libsdl-org/SDL/releases/download/release-2.32.10/SDL2-2.32.10.tar.gz',archive)
 if hashlib.sha256(archive.read_bytes()).hexdigest()!=expected:
     raise SystemExit('SDL source checksum mismatch')
 source=a.out/'SDL2-2.32.10'

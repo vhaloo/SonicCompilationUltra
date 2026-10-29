@@ -798,13 +798,18 @@ void App::pollInput() {
     }
     if (settings.rewind) {
         bool padRewind = false;
+        int rewindBinding = settings.rewindButton;
+#ifdef SCU_QUEST
+        if (settings.questTouch)
+            rewindBinding = 0;
+#endif
         if (pads[0]) {
-            if (settings.rewindButton == 1)
+            if (rewindBinding == 1)
                 padRewind =
                     SDL_GameControllerGetButton(pads[0], SDL_CONTROLLER_BUTTON_LEFTSHOULDER);
             else {
-                const auto axis = settings.rewindButton == 2 ? SDL_CONTROLLER_AXIS_TRIGGERRIGHT
-                                                             : SDL_CONTROLLER_AXIS_TRIGGERLEFT;
+                const auto axis = rewindBinding == 2 ? SDL_CONTROLLER_AXIS_TRIGGERRIGHT
+                                                     : SDL_CONTROLLER_AXIS_TRIGGERLEFT;
                 const int value = SDL_GameControllerGetAxis(pads[0], axis);
                 rewindTrigger = value > (rewindTrigger ? 4096 : 8192);
                 padRewind = rewindTrigger;
@@ -985,7 +990,8 @@ void App::prepareOverlays() {
                           : settings.rewindButton == 2 ? "R2 / RT"
                                                        : "L2 / LT";
 #ifdef SCU_QUEST
-    binding = tr("questtrigger", language);
+    if (settings.questTouch)
+        binding = tr("questtrigger", language);
 #endif
     auto rewindText = [&](bool active) {
         char text[256];
@@ -2067,7 +2073,14 @@ void App::optionsUi(int section) {
             choice("padlabels", settings.padLabels, {"auto", "Xbox", "PlayStation", "Nintendo"});
         changed |=
             choice("jumpbuttons", settings.jumpLayout, {"jumpclassic", "jumpabc", "jumpbac"});
-        changed |= choice("rewindbutton", settings.rewindButton, {"L2 / LT", "L1 / LB", "R2 / RT"});
+#ifdef SCU_QUEST
+        if (settings.questTouch)
+            ImGui::TextWrapped("%s: %s", tr("rewindbutton", language),
+                               tr("questtrigger", language));
+        else
+#endif
+            changed |=
+                choice("rewindbutton", settings.rewindButton, {"L2 / LT", "L1 / LB", "R2 / RT"});
         check("quickcontrols", settings.quickControls);
         slide("deadzone", settings.deadzone, 3000, 28000);
         ImGui::TextWrapped("%s", tr("controllers", language));
