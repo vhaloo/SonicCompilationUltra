@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0 Quest preview — Standalone VR and passthrough AR
+
+- Add an Android ARM64 OpenXR edition that runs on Meta Quest without PC streaming. Play on a room-pinned cinema, tilted tabletop or head-following screen; optionally show the room through runtime passthrough.
+- Add Quest Touch gameplay, pointing and clicking, menu navigation, recentering, two-hand screen movement/scaling and left-trigger rewind with reverse sound. Bluetooth gamepads remain available.
+- Add spatial-screen size, distance, height, tilt, resolution, input, vibration and orientation preferences with illustrated English, French, Spanish and Japanese guides.
+- Import personally supplied cartridges through Android's document picker. The public APK contains no ROMs, saves or signing keys.
+- Validation is compilation, lint and static APK inspection only. No game or headset session was executed. Tracking, visuals, input, passthrough, comfort and performance remain unverified; this is an experimental sideload preview.
+
 ## 0.3.1 — Compact corner controls
 
 - Replace the large bottom menu bar with a small, clickable bottom-right options badge. Its default 14-pixel text stays small independently of menu scaling, including 48:9 displays.

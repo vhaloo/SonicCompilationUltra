@@ -99,7 +99,6 @@ struct QuestPresentation::Impl {
     SDL_Texture *canvas = nullptr;
     GLuint framebuffer = 0;
     SDL_Joystick *joystick = nullptr;
-    int virtualIndex = -1;
     jobject activity = nullptr;
     JavaVM *vm = nullptr;
     XrPassthroughFB passthrough = XR_NULL_HANDLE;
@@ -292,6 +291,19 @@ struct QuestPresentation::Impl {
             check(xrCreateActionSpace(session, &space, &gripSpaces[i]), "Create controller grip");
         }
     }
+    void detachController() {
+        if (!joystick)
+            return;
+        const auto instance = SDL_JoystickInstanceID(joystick);
+        SDL_JoystickClose(joystick);
+        joystick = nullptr;
+        // SDL device indices move when another controller is unplugged.
+        for (int i = 0; i < SDL_NumJoysticks(); ++i)
+            if (SDL_JoystickGetDeviceInstanceID(i) == instance) {
+                SDL_JoystickDetachVirtual(i);
+                break;
+            }
+    }
     void controller(bool enabled) {
         if (enabled && !joystick) {
             SDL_VirtualJoystickDesc desc{};
@@ -302,7 +314,7 @@ struct QuestPresentation::Impl {
             desc.axis_mask = (1u << SDL_CONTROLLER_AXIS_MAX) - 1;
             desc.button_mask = (1u << SDL_CONTROLLER_BUTTON_MAX) - 1;
             desc.name = "SCU Quest Touch";
-            virtualIndex = SDL_JoystickAttachVirtualEx(&desc);
+            const int virtualIndex = SDL_JoystickAttachVirtualEx(&desc);
             if (virtualIndex < 0)
                 throw std::runtime_error(SDL_GetError());
             joystick = SDL_JoystickOpen(virtualIndex);
@@ -312,10 +324,7 @@ struct QuestPresentation::Impl {
             SDL_JoystickSetVirtualAxis(joystick, SDL_CONTROLLER_AXIS_TRIGGERRIGHT, -32768);
             app.refreshControllers();
         } else if (!enabled && joystick) {
-            SDL_JoystickClose(joystick);
-            joystick = nullptr;
-            SDL_JoystickDetachVirtual(virtualIndex);
-            virtualIndex = -1;
+            detachController();
             app.refreshControllers();
         }
     }
@@ -708,10 +717,7 @@ struct QuestPresentation::Impl {
             end.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
             xrEndFrame(session, &end);
         }
-        if (joystick) {
-            SDL_JoystickClose(joystick);
-            SDL_JoystickDetachVirtual(virtualIndex);
-        }
+        detachController();
         SDL_SetRenderTarget(app.renderer, nullptr);
         if (canvas)
             SDL_DestroyTexture(canvas);

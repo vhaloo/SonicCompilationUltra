@@ -6,7 +6,7 @@ This report separates successful checks from coverage that has not been measured
 
 - The Android ARM64 release target compiles with SDL 2.32.10, OpenXR Android loader 1.1.65, NDK 29.0.14206865 and Android Gradle Plugin 9.4.0. Android lint reports zero errors with narrowly scoped exceptions for the pinned SDL library's optional Bluetooth/capture methods; upstream warnings remain documented.
 - Static APK checks verify the signing certificate, package/activity/immersive manifest, ARM64 ELF libraries, their bundled/system dependencies, exported SDL entry point, interface font and OpenXR licence. The default APK contains no cartridges or user data. A personal asset build is kept outside the repository and checked separately.
-- The existing Windows target also compiles with the Android integration excluded. The installed desktop app and private Windows portable archive are retained.
+- The existing Windows target also compiles with the Android integration excluded. The installed desktop executable and the owner's original cartridge/save data are unchanged.
 - This delivery does **not** execute the game, launcher, installer, headset session, emulator or game/runtime tests. It provides no physical evidence for display orientation/color, tracking, input, passthrough, comfort, frame rate, thermal behavior or native save compatibility. The Quest edition is experimental; see [scope and installation](QUEST.md).
 
 ## 0.3.1 compact corner controls
