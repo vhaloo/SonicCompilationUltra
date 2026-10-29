@@ -11,17 +11,11 @@
 
 Windows and Linux · **macOS: experimental** · English, French, Spanish and Japanese · Keyboard and gamepads
 
-**[Standalone Quest XR preview 0.6](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/quest-preview-0.6.0):** giant AR murals, automatic full-board Spinball cabinets, a 3D CRT with the level around it, curved galleries and tabletop/cinema views. Resize with both grips, even with placement locked; Y opens the nearby illustrated options. Maximum available headset refresh is the default. [Install and choose a mode](docs/QUEST.md).
+**[Standalone Quest XR preview 0.7](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/quest-preview-0.7.0):** 90 Hz by default, transparent AR scenery, movable spatial buttons, nine direct view presets, an optional hand joystick, independent native CRT and trigger flippers in Spinball. [Controls in pictures](docs/XR_CONTROLS.md) · [Quest installation](docs/QUEST.md).
 
-Quest 3 **library/options and empty stereo previews were verified with all cartridge execution blocked**. Gameplay and sustained performance remain untested for this preview. Windows companion frames use portable 2D rendering; Quest furniture uses stereo 3D. **macOS remains experimental**; 0.6 desktop validation is compilation/packaging only.
+![Spatial remote design diagram, not a headset capture](docs/illustrations/spatial-remote.svg)
 
-<table><tr>
-<td width="50%"><img src="docs/screenshots/quest-pinball-preview.png" alt="Quest 3 stereo cabinet preview with an original test pattern"><br><em>3D pinball cabinet · empty library preview</em></td>
-<td width="50%"><img src="docs/screenshots/quest-crt-preview.png" alt="Quest 3 stereo CRT preview with an original test pattern"><br><em>3D CRT · empty library preview</em></td>
-</tr></table>
-
-*On-device eye-buffer captures, with an original pattern and a viewer-aligned preview. No ROM was running. [Verification scope](docs/TEST_REPORT.md).*
-
+**0.7 is a development preview, not tested on Quest.** It is compiled/linted and statically inspected; pure interaction checks do not start the application or load cartridges. Hand/controller ergonomics, visual alignment and sustained performance await a later hardware pass. Windows companion frames use portable 2D rendering; Quest furniture uses stereo 3D. **macOS remains experimental.**
 
 ## Start playing
 

@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.20)
+project(SpatialInteractionChecks LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+add_executable(spatial_interaction_checks interaction.cpp ../../src/spatial_controls.cpp)
+target_include_directories(spatial_interaction_checks PRIVATE ../../src)
+enable_testing()
+add_test(NAME pure_spatial_interaction COMMAND spatial_interaction_checks)

@@ -4,6 +4,8 @@
 #include "quest_scene.h"
 #include "xr_stage.h"
 #include "xr_gl_state.h"
+#include "spatial_controls.h"
+#include "imgui_impl_sdlrenderer2.h"
 #include <SDL_system.h>
 #include <jni.h>
 #include <EGL/egl.h>
@@ -159,6 +161,8 @@ struct QuestPresentation::Impl {
     PFN_xrPassthroughLayerResumeFB resumePassthroughLayer = nullptr;
     PFN_xrPassthroughLayerPauseFB pausePassthroughLayer = nullptr;
 
+#include "quest_interaction.inl"
+
     explicit Impl(App &a) : app(a) {}
     XrPath path(const char *name) {
         XrPath out = XR_NULL_PATH;
@@ -229,6 +233,12 @@ struct QuestPresentation::Impl {
         refreshSupported = supports(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
         if (refreshSupported)
             enabled.push_back(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
+        handsSupported = supports(XR_EXT_HAND_TRACKING_EXTENSION_NAME);
+        handAimSupported = handsSupported && supports(XR_FB_HAND_TRACKING_AIM_EXTENSION_NAME);
+        if (handsSupported)
+            enabled.push_back(XR_EXT_HAND_TRACKING_EXTENSION_NAME);
+        if (handAimSupported)
+            enabled.push_back(XR_FB_HAND_TRACKING_AIM_EXTENSION_NAME);
         localFloorSupported = supports(XR_EXT_LOCAL_FLOOR_EXTENSION_NAME);
         if (localFloorSupported)
             enabled.push_back(XR_EXT_LOCAL_FLOOR_EXTENSION_NAME);
@@ -238,7 +248,7 @@ struct QuestPresentation::Impl {
         XrInstanceCreateInfo info{XR_TYPE_INSTANCE_CREATE_INFO};
         info.next = &android;
         std::strcpy(info.applicationInfo.applicationName, "Sonic Compilation Ultra XR");
-        info.applicationInfo.applicationVersion = 601;
+        info.applicationInfo.applicationVersion = 700;
         std::strcpy(info.applicationInfo.engineName, "SCU / Genesis Plus GX");
         info.applicationInfo.apiVersion = XR_MAKE_VERSION(1, 0, 45);
         info.enabledExtensionCount = uint32_t(enabled.size());
@@ -312,6 +322,7 @@ struct QuestPresentation::Impl {
             }
         }
         createActions();
+        initialiseHands();
         if (passthroughSupported) {
             function("xrCreatePassthroughFB", createPassthrough);
             function("xrDestroyPassthroughFB", destroyPassthrough);
@@ -333,7 +344,7 @@ struct QuestPresentation::Impl {
         }
         glGenFramebuffers(1, &framebuffer);
         stage = std::make_unique<XrStageRenderer>();
-        stage->initialise(instance, system, session);
+        stage->initialise(instance, system, session, app.settings.questEyeDetail);
         captureAfter = SDL_GetTicks64() + 2000;
     }
     void createActions() {
@@ -447,7 +458,9 @@ struct QuestPresentation::Impl {
         screen = {};
     }
     void resize(Screen &screen, int desiredWidth, int desiredHeight) {
-        if (screen.requestedWidth == desiredWidth && screen.requestedHeight == desiredHeight)
+        bool compositorImage = &screen != &gameScreen || !stereo();
+        if (screen.requestedWidth == desiredWidth && screen.requestedHeight == desiredHeight &&
+            bool(screen.swapchain) == compositorImage)
             return;
         destroy(screen);
         XrSystemProperties properties{XR_TYPE_SYSTEM_PROPERTIES};
@@ -459,36 +472,38 @@ struct QuestPresentation::Impl {
              float(properties.graphicsProperties.maxSwapchainImageHeight) / desiredHeight,
              float(limit) / std::max(desiredWidth, desiredHeight)});
         int w = std::max(1, int(desiredWidth * scale)), h = std::max(1, int(desiredHeight * scale));
-        uint32_t count = 0;
-        check(xrEnumerateSwapchainFormats(session, 0, &count, nullptr),
-              "Read screen texture formats");
-        std::vector<int64_t> formats(count);
-        check(xrEnumerateSwapchainFormats(session, count, &count, formats.data()),
-              "Read screen texture formats");
-        int64_t format = GL_RGBA8;
-        if (std::find(formats.begin(), formats.end(), format) == formats.end()) {
-            format = GL_SRGB8_ALPHA8;
-            if (std::find(formats.begin(), formats.end(), format) == formats.end())
-                throw std::runtime_error("The headset has no supported RGBA screen format");
+        if (compositorImage) {
+            uint32_t count = 0;
+            check(xrEnumerateSwapchainFormats(session, 0, &count, nullptr),
+                  "Read screen texture formats");
+            std::vector<int64_t> formats(count);
+            check(xrEnumerateSwapchainFormats(session, count, &count, formats.data()),
+                  "Read screen texture formats");
+            int64_t format = GL_RGBA8;
+            if (std::find(formats.begin(), formats.end(), format) == formats.end()) {
+                format = GL_SRGB8_ALPHA8;
+                if (std::find(formats.begin(), formats.end(), format) == formats.end())
+                    throw std::runtime_error("The headset has no supported RGBA screen format");
+            }
+            XrSwapchainCreateInfo create{XR_TYPE_SWAPCHAIN_CREATE_INFO};
+            create.usageFlags =
+                XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+            create.format = format;
+            create.sampleCount = 1;
+            create.width = w;
+            create.height = h;
+            create.faceCount = 1;
+            create.arraySize = 1;
+            create.mipCount = 1;
+            check(xrCreateSwapchain(session, &create, &screen.swapchain), "Create spatial screen");
+            check(xrEnumerateSwapchainImages(screen.swapchain, 0, &count, nullptr),
+                  "Read screen images");
+            screen.images.assign(count, {XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR});
+            check(xrEnumerateSwapchainImages(
+                      screen.swapchain, count, &count,
+                      reinterpret_cast<XrSwapchainImageBaseHeader *>(screen.images.data())),
+                  "Read screen images");
         }
-        XrSwapchainCreateInfo create{XR_TYPE_SWAPCHAIN_CREATE_INFO};
-        create.usageFlags =
-            XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-        create.format = format;
-        create.sampleCount = 1;
-        create.width = w;
-        create.height = h;
-        create.faceCount = 1;
-        create.arraySize = 1;
-        create.mipCount = 1;
-        check(xrCreateSwapchain(session, &create, &screen.swapchain), "Create spatial screen");
-        check(xrEnumerateSwapchainImages(screen.swapchain, 0, &count, nullptr),
-              "Read screen images");
-        screen.images.assign(count, {XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR});
-        check(xrEnumerateSwapchainImages(
-                  screen.swapchain, count, &count,
-                  reinterpret_cast<XrSwapchainImageBaseHeader *>(screen.images.data())),
-              "Read screen images");
         screen.canvas = SDL_CreateTexture(app.renderer, SDL_PIXELFORMAT_RGBA8888,
                                           SDL_TEXTUREACCESS_TARGET, w, h);
         if (!screen.canvas)
@@ -512,7 +527,7 @@ struct QuestPresentation::Impl {
         return mode() != 0;
     }
     bool companion() const {
-        return fixed() && (stereo() || app.settings.questCompanion || menuRecovery) && app.menu;
+        return app.menu; // Always keep options at a separate, reachable physical size.
     }
     XrQuaternionf yawOrientation() const {
         auto forward = rotate(head.orientation, {0, 0, -1});
@@ -525,7 +540,8 @@ struct QuestPresentation::Impl {
         menuPanel.orientation = yawOrientation();
         menuPanel.position =
             add(head.position,
-                rotate(menuPanel.orientation, {0, -.06f, -app.settings.questMenuDistance * .01f}));
+                rotate(menuPanel.orientation, {app.settings.questRemote ? -.70f : 0.f, -.06f,
+                                               -app.settings.questMenuDistance * .01f}));
         menuPlaced = true;
     }
     float floorGap() const {
@@ -632,7 +648,7 @@ struct QuestPresentation::Impl {
             return sizes[resolution];
         int detail = std::clamp(app.settings.questWallDetail, 0, 2);
         int capWidth = detail == 0 ? 4096 : detail == 1 ? 8192 : 12288;
-        double pixels = detail == 0 ? 2097152. : detail == 1 ? 4194304. : 8388608.;
+        double pixels = detail == 0 ? 1048576. : detail == 1 ? 2097152. : 4194304.;
         int step = app.settings.questAdaptive ? adaptiveStep : 0;
         pixels /= double(1 << step);
         float ratio = aspect();
@@ -701,7 +717,9 @@ struct QuestPresentation::Impl {
                                              : float(lastRefresh);
             if (wanted && std::none_of(rates.begin(), rates.end(),
                                        [&](float n) { return std::abs(n - wanted) < .1f; }))
-                wanted = rates.back();
+                wanted = *std::min_element(rates.begin(), rates.end(), [&](float a, float b) {
+                    return std::abs(a - wanted) < std::abs(b - wanted);
+                });
             if (XR_SUCCEEDED(requestRate(session, wanted)))
                 requestedHz = wanted;
             else {
@@ -949,6 +967,7 @@ struct QuestPresentation::Impl {
                 if (value.referenceSpaceType == XR_REFERENCE_SPACE_TYPE_LOCAL) {
                     referenceChanges.push_back(value);
                     menuPlaced = false;
+                    deckPlaced = nativePlaced = false;
                     if (!fixed())
                         needRecenter = true;
                 }
@@ -996,7 +1015,8 @@ struct QuestPresentation::Impl {
         xrApplyHapticFeedback(session, &info, reinterpret_cast<XrHapticBaseHeader *>(&vibration));
     }
     void input() {
-        controller(app.settings.questTouch);
+        app.spatialButtons = 0;
+        app.spatialRewind = false;
         pointerHit = pointerClick = false;
         wheel = 0;
         XrActiveActionSet active{actions, XR_NULL_PATH};
@@ -1014,11 +1034,24 @@ struct QuestPresentation::Impl {
                 SDL_JoystickUpdate();
             }
             grabbing = false;
+            singleGrabHand = -1;
+            capturedButton = {{-1, -1}};
+            spatial.hover = spatial.pressed = {{-1, -1}};
+            spatial.rayLength = {};
+            spatial.fingerVisible = {};
+            spatial.stick = {};
+            spatialRearm = true;
+            wasSpatialPress = {};
+            wasGrasp = {};
+            uiConsumed = {};
             previousClick = false;
             leftGripValid = false;
             return;
         }
         check(result, "Read Quest controls");
+        // Do not leave an idle virtual Touch pad in player one's slot when the
+        // user switches to hands or an external Bluetooth controller.
+        controller(app.settings.questTouch && (actionPoseActive(0) || actionPoseActive(1)));
         bool x = boolean(buttonX), a = boolean(buttonA), b = boolean(buttonB), y = boolean(buttonY),
              clicked = boolean(thumb);
         // Disabling Touch gameplay must leave a way back into its settings.
@@ -1037,6 +1070,10 @@ struct QuestPresentation::Impl {
         auto left = axes(0), right = axes(1);
         float lt = scalar(trigger, 0), rt = scalar(trigger, 1), lg = scalar(squeeze, 0),
               rg = scalar(squeeze, 1);
+        updateSpatial(lt, rt, lg, rg);
+        bool spinball = app.core.currentId == "spinball" && app.settings.spinballTriggers;
+        if (spinball && !app.menu)
+            app.spatialRewind |= x;
         if (b && !previousB)
             bForMenu = app.menu;
         previousB = b;
@@ -1046,6 +1083,9 @@ struct QuestPresentation::Impl {
             blockPointerTrigger = false;
         lastMenu = app.menu;
         if (clicked && !previousThumb) {
+            app.settings.questRemote = true;
+            app.dirty = true;
+            placeDeck(true);
             if (fixed() && (app.settings.questWallLocked || app.menu)) {
                 if (app.menu)
                     menuRecovery = true;
@@ -1056,20 +1096,29 @@ struct QuestPresentation::Impl {
                 needRecenter = true;
         }
         previousThumb = clicked;
-        if (app.settings.questTouch && x && !previousX && !app.menu && !fixed()) {
-            app.settings.view = app.settings.view == 2 ? 0 : 2;
-            app.dirty = true;
-        } else if (app.settings.questTouch && x && !previousX && !app.menu && fixed()) {
-            app.settings.playerInset = !app.settings.playerInset;
+        if (app.settings.questTouch && !spinball && x && !previousX && !app.menu) {
+            app.settings.questInsetCrt = !app.settings.questInsetCrt;
             app.dirty = true;
         }
         previousX = x;
         auto l = locate(gripSpaces[0]), r = locate(gripSpaces[1]);
+        constexpr auto poseFlags =
+            XR_SPACE_LOCATION_POSITION_VALID_BIT | XR_SPACE_LOCATION_ORIENTATION_VALID_BIT;
+        if (spatialPointers[0].hand) {
+            l.pose = spatialPointers[0].gripPose;
+            l.locationFlags = spatialPointers[0].gripValid ? poseFlags : 0;
+        }
+        if (spatialPointers[1].hand) {
+            r.pose = spatialPointers[1].gripPose;
+            r.locationFlags = spatialPointers[1].gripValid ? poseFlags : 0;
+        }
         leftGripValid = valid(l);
         if (leftGripValid)
             leftGrip = l.pose;
-        if (app.settings.questTouch && (fixed() || !app.settings.questAnchor) && lg > .75f &&
-            rg > .75f && valid(l) && valid(r)) {
+        if (moveTarget == 0 && singleGrabHand < 0 &&
+            (app.settings.questTouch || app.settings.questHandTracking) &&
+            (fixed() || !app.settings.questAnchor) && lg > .75f && rg > .75f && valid(l) &&
+            valid(r)) {
             auto midpoint = mul(add(l.pose.position, r.pose.position), .5f);
             float separation = length(sub(l.pose.position, r.pose.position));
             if (!grabbing) {
@@ -1094,7 +1143,7 @@ struct QuestPresentation::Impl {
             if (fixed()) {
                 if (!app.settings.questWallLocked) {
                     wallBase.position = add(grabBase.position, sub(midpoint, grabMid));
-                    wallBase.position.y = grabBase.position.y;
+                    // Free vertical motion uses the same grab transform as the hands.
                 }
                 wallTracked = !referenceLost;
             } else {
@@ -1105,34 +1154,16 @@ struct QuestPresentation::Impl {
             app.dirty = true;
         } else
             grabbing = false;
-        if (app.settings.questTouch || app.menu) {
-            auto pointer = locate(aimSpaces[1]);
-            if (valid(pointer)) {
-                auto pose = panelPose();
-                auto q = inverse(pose.orientation);
-                auto origin = rotate(q, sub(pointer.pose.position, pose.position));
-                auto direction = rotate(q, rotate(pointer.pose.orientation, {0, 0, -1}));
-                if (direction.z < -.0001f) {
-                    float distance = -origin.z / direction.z;
-                    auto hit = add(origin, mul(direction, distance));
-                    auto size = physicalSize();
-                    float w = companion() ? app.settings.questMenuDistance * .014f : size.width;
-                    float h = companion() ? w * 9 / 16 : size.height;
-                    pointerHit =
-                        distance > 0 && std::abs(hit.x) <= w * .5f && std::abs(hit.y) <= h * .5f;
-                    if (pointerHit) {
-                        pointerX = (hit.x / w + .5f) * width;
-                        pointerY = (.5f - hit.y / h) * height;
-                    }
-                }
-            }
-            pointerClick = app.menu && pointerHit && rt > .55f && !grabbing && !blockPointerTrigger;
-            if (pointerClick && !previousClick)
-                feedback();
-            previousClick = pointerClick;
-            wheel = app.menu && !grabbing && std::abs(right.y) > .2f
-                        ? right.y * float(frame.predictedDisplayPeriod) * 1e-9f * 12.f
-                        : 0;
+        menuPointer();
+        if (pointerClick && !previousClick)
+            feedback();
+        previousClick = pointerClick;
+        if (app.menu && !grabbing && std::abs(right.y) > .2f)
+            wheel = right.y * float(frame.predictedDisplayPeriod) * 1e-9f * 12.f;
+        bool manipulating = grabbing || singleGrabHand >= 0;
+        if (manipulating) {
+            app.spatialButtons = 0;
+            app.spatialRewind = false;
         }
         if (joystick) {
             auto axis = [&](int axis, float value) {
@@ -1142,21 +1173,25 @@ struct QuestPresentation::Impl {
             auto button = [&](int button, bool down) {
                 SDL_JoystickSetVirtualButton(joystick, button, down ? 1 : 0);
             };
-            axis(SDL_CONTROLLER_AXIS_LEFTX, grabbing ? 0 : left.x);
-            axis(SDL_CONTROLLER_AXIS_LEFTY, grabbing ? 0 : -left.y);
-            axis(SDL_CONTROLLER_AXIS_RIGHTX, app.menu || grabbing ? 0 : right.x);
-            axis(SDL_CONTROLLER_AXIS_RIGHTY, app.menu || grabbing ? 0 : -right.y);
-            axis(SDL_CONTROLLER_AXIS_TRIGGERLEFT, app.menu || grabbing ? -1 : lt * 2 - 1);
-            axis(SDL_CONTROLLER_AXIS_TRIGGERRIGHT, -1);
-            button(SDL_CONTROLLER_BUTTON_A, !grabbing && (a || (!app.menu && rt > .55f)));
+            axis(SDL_CONTROLLER_AXIS_LEFTX, manipulating ? 0 : left.x);
+            axis(SDL_CONTROLLER_AXIS_LEFTY, manipulating ? 0 : -left.y);
+            axis(SDL_CONTROLLER_AXIS_RIGHTX, app.menu || manipulating ? 0 : right.x);
+            axis(SDL_CONTROLLER_AXIS_RIGHTY, app.menu || manipulating ? 0 : -right.y);
+            axis(SDL_CONTROLLER_AXIS_TRIGGERLEFT,
+                 app.menu || manipulating || uiConsumed[0] ? -1 : lt * 2 - 1);
+            axis(SDL_CONTROLLER_AXIS_TRIGGERRIGHT, app.menu || manipulating || uiConsumed[1] ? -1
+                                                   : spinball ? rt * 2 - 1
+                                                              : -1);
+            button(SDL_CONTROLLER_BUTTON_A,
+                   !manipulating && (a || (!app.menu && !uiConsumed[1] && !spinball && rt > .55f)));
             button(SDL_CONTROLLER_BUTTON_B, bForMenu && b);
             button(SDL_CONTROLLER_BUTTON_START, !bForMenu && b);
             button(SDL_CONTROLLER_BUTTON_BACK, y);
             button(SDL_CONTROLLER_BUTTON_Y, app.menu && x);
             button(SDL_CONTROLLER_BUTTON_LEFTSHOULDER,
-                   app.menu && !grabbing && lg > .7f && rg < .2f);
+                   app.menu && !manipulating && lg > .7f && rg < .2f);
             button(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER,
-                   app.menu && !grabbing && rg > .7f && lg < .2f);
+                   app.menu && !manipulating && rg > .7f && lg < .2f);
             SDL_JoystickUpdate();
         }
     }
@@ -1187,12 +1222,18 @@ struct QuestPresentation::Impl {
             if (change.poseValid) {
                 wallBase = untransform(change.poseInPreviousSpace, wallBase);
                 panel = untransform(change.poseInPreviousSpace, panel);
+                spatial.pose = untransform(change.poseInPreviousSpace, spatial.pose);
+                spatial.nativePose = untransform(change.poseInPreviousSpace, spatial.nativePose);
                 if (manualFloor)
                     floorY = untransform(change.poseInPreviousSpace, {{0, 0, 0, 1}, {0, floorY, 0}})
                                  .position.y;
             } else if (fixed() && !selectedWall && !(useSavedAnchor && scene->anchor()))
                 referenceLost = true;
             menuPlaced = false;
+            singleGrabHand = -1;
+            grabbing = false;
+            if (!change.poseValid)
+                deckPlaced = nativePlaced = false;
         }
         layout();
         updateWall();
@@ -1248,6 +1289,7 @@ struct QuestPresentation::Impl {
             return;
         // The runtime can use GL during acquire/release and frame submission.
         // Preserve SDL's cached state across the complete XR call sequence.
+        renderDeckLabels();
         SDL_RenderFlush(app.renderer);
         GlState restoreGraphics;
         std::array<const XrCompositionLayerBaseHeader *, 4> layers{};
@@ -1255,6 +1297,7 @@ struct QuestPresentation::Impl {
         XrCompositionLayerPassthroughFB room{XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB};
         XrCompositionLayerQuad screen{XR_TYPE_COMPOSITION_LAYER_QUAD};
         XrCompositionLayerQuad controls{XR_TYPE_COMPOSITION_LAYER_QUAD};
+        const XrCompositionLayerBaseHeader *overlayProjection = nullptr;
         if (frame.shouldRender && passthroughActive) {
             room.layerHandle = passthroughLayer;
             layers[layerCount++] = reinterpret_cast<XrCompositionLayerBaseHeader *>(&room);
@@ -1283,39 +1326,45 @@ struct QuestPresentation::Impl {
                 SDL_Log("SCU XR options captured; coreLoaded=%d coreFrame=%llu", app.core.loaded,
                         (unsigned long long)app.core.frame);
             }
-            XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
-            uint32_t index = 0;
-            check(xrAcquireSwapchainImage(target.swapchain, &acquire, &index),
-                  "Acquire screen image");
-            XrSwapchainImageWaitInfo wait{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
-            wait.timeout = XR_INFINITE_DURATION;
-            check(xrWaitSwapchainImage(target.swapchain, &wait), "Wait for screen image");
-            GLint read = sourceFramebuffer, draw = sourceFramebuffer;
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, GLuint(sourceFramebuffer));
-            GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
-            glDisable(GL_SCISSOR_TEST);
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
-            glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                                   target.images[index].image, 0);
-            if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-                throw std::runtime_error("The headset screen framebuffer is incomplete");
-            // SDL target textures use a top-at-zero convention. OpenXR GL images use bottom-left.
-            glBlitFramebuffer(0, 0, target.width, target.height, 0,
-                              app.settings.questFlip ? 0 : target.height, target.width,
-                              app.settings.questFlip ? target.height : 0, GL_COLOR_BUFFER_BIT,
-                              GL_NEAREST);
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, GLuint(read));
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, GLuint(draw));
-            if (scissor)
-                glEnable(GL_SCISSOR_TEST);
-            glFlush();
-            XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
-            check(xrReleaseSwapchainImage(target.swapchain, &release), "Release screen image");
+            // Stereo scenes consume the SDL canvas directly; do not allocate/copy
+            // an unused compositor image on every game frame.
+            if (target.swapchain) {
+                XrSwapchainImageAcquireInfo acquire{XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO};
+                uint32_t index = 0;
+                check(xrAcquireSwapchainImage(target.swapchain, &acquire, &index),
+                      "Acquire screen image");
+                XrSwapchainImageWaitInfo wait{XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO};
+                wait.timeout = XR_INFINITE_DURATION;
+                check(xrWaitSwapchainImage(target.swapchain, &wait), "Wait for screen image");
+                GLint read = sourceFramebuffer, draw = sourceFramebuffer;
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, GLuint(sourceFramebuffer));
+                GLboolean scissor = glIsEnabled(GL_SCISSOR_TEST);
+                glDisable(GL_SCISSOR_TEST);
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
+                glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                                       target.images[index].image, 0);
+                if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+                    throw std::runtime_error("The headset screen framebuffer is incomplete");
+                // SDL target textures use a top-at-zero convention. OpenXR GL images use
+                // bottom-left.
+                glBlitFramebuffer(0, 0, target.width, target.height, 0,
+                                  app.settings.questFlip ? 0 : target.height, target.width,
+                                  app.settings.questFlip ? target.height : 0, GL_COLOR_BUFFER_BIT,
+                                  GL_NEAREST);
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, GLuint(read));
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, GLuint(draw));
+                if (scissor)
+                    glEnable(GL_SCISSOR_TEST);
+                glFlush();
+                XrSwapchainImageReleaseInfo release{XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
+                check(xrReleaseSwapchainImage(target.swapchain, &release), "Release screen image");
+            }
             target.valid = true;
             target.imageVersion = app.core.imageVersion;
             target.mode = mode();
         }
-        if (frame.shouldRender && haveHead && stereo() && wallTracked) {
+        if (frame.shouldRender && haveHead &&
+            (stereo() || spatial.visible || spatial.nativeVisible) && (!stereo() || wallTracked)) {
             SDL_RenderFlush(app.renderer);
             XrStageContent content;
             content.loaded = app.core.loaded;
@@ -1349,10 +1398,14 @@ struct QuestPresentation::Impl {
                                  : worldPose();
             auto projection =
                 stage->render(local, frame.predictedDisplayTime, scenePose, app.settings, mode(),
-                              content, passthroughActive, capture);
+                              content, spatial, passthroughActive, capture);
             if (projection) {
-                layers[layerCount++] =
-                    reinterpret_cast<const XrCompositionLayerBaseHeader *>(projection);
+                if (stereo())
+                    layers[layerCount++] =
+                        reinterpret_cast<const XrCompositionLayerBaseHeader *>(projection);
+                else
+                    overlayProjection =
+                        reinterpret_cast<const XrCompositionLayerBaseHeader *>(projection);
                 if (!capture.empty())
                     app.xrMenuCapture.clear();
             }
@@ -1364,6 +1417,8 @@ struct QuestPresentation::Impl {
         }
         if (!stereo() && frame.shouldRender && haveHead && gameScreen.valid &&
             gameScreen.mode == mode() && (!fixed() || wallTracked)) {
+            screen.layerFlags =
+                passthroughActive ? XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT : 0;
             screen.space = local;
             screen.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
             screen.pose = worldPose();
@@ -1372,13 +1427,18 @@ struct QuestPresentation::Impl {
             screen.size = physicalSize();
             layers[layerCount++] = reinterpret_cast<XrCompositionLayerBaseHeader *>(&screen);
         }
+        if (overlayProjection)
+            layers[layerCount++] = overlayProjection;
         if (frame.shouldRender && haveHead && companion() && menuScreen.valid && menuPlaced) {
+            controls.layerFlags =
+                passthroughActive ? XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT : 0;
             controls.space = local;
             controls.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
             controls.pose = menuPanel;
             controls.subImage.swapchain = menuScreen.swapchain;
             controls.subImage.imageRect = {{0, 0}, {menuScreen.width, menuScreen.height}};
-            controls.size.width = app.settings.questMenuDistance * .014f;
+            controls.size.width =
+                app.settings.questMenuDistance * .014f * app.settings.questOptionsScale * .01f;
             controls.size.height = controls.size.width * 9 / 16;
             layers[layerCount++] = reinterpret_cast<XrCompositionLayerBaseHeader *>(&controls);
         }
@@ -1434,6 +1494,11 @@ struct QuestPresentation::Impl {
             xrEndFrame(session, &end);
         }
         detachController();
+        for (auto tracker : handTrackers)
+            if (tracker && destroyHandTracker)
+                destroyHandTracker(tracker);
+        if (deckLabels)
+            SDL_DestroyTexture(deckLabels);
         SDL_SetRenderTarget(app.renderer, nullptr);
         destroy(menuScreen);
         destroy(gameScreen);
@@ -1502,6 +1567,10 @@ void QuestPresentation::rendered() {
 }
 void QuestPresentation::configureRender(Settings &settings) const {
     auto &p = *impl;
+    settings.projectionTransparent = p.passthroughActive && settings.questTransparent;
+    if (settings.projectionTransparent)
+        settings.background = 6;
+
     if (p.companion()) {
         settings.view = 4;
         settings.projectionUiOnly = true;
@@ -1514,10 +1583,12 @@ void QuestPresentation::configureRender(Settings &settings) const {
         settings.fitSpawns = false;
         settings.parallax = false;
         settings.reduceMotion = true;
+        if (settings.questInsetCrt)
+            settings.playerInset = false;
         settings.fixedMapWidth = p.mapWidth;
         settings.fixedMapHeight = p.mapHeight;
         settings.quality = std::clamp(settings.questWallDetail, 0, 2);
-        settings.projectionCleanScene = p.stereo();
+        settings.projectionCleanScene = p.stereo() || settings.questInsetCrt;
         if (p.height < 240) {
             settings.playerInset = false;
             settings.hud = 3;
@@ -1570,6 +1641,22 @@ void QuestPresentation::options() {
     auto &s = a.settings;
     bool changed = false;
     ImGui::TextWrapped("%s", tr("questintro", a.language));
+    changed |= a.tick("questremote", s.questRemote);
+    changed |= a.tick("questtransparent", s.questTransparent);
+    changed |= a.tick("questhandtracking", s.questHandTracking);
+    changed |= a.choice("questhandjoystick", s.questHandJoystick, {"auto", "enabled", "disabled"});
+    changed |= a.slider("questremotescale", s.questRemoteScale, 50, 180, "%d%%");
+    changed |= a.slider("questoptionsscale", s.questOptionsScale, 50, 180, "%d%%");
+    changed |= a.tick("questmoverotate", s.questMoveRotate);
+    changed |= a.tick("questcontrolhints", s.questControlHints);
+    changed |= a.tick("questinsetcrt", s.questInsetCrt);
+    changed |= a.slider("questinsetwidth", s.questInsetWidth, 25, 160, "%d cm");
+    changed |= a.choice("questeyedetail", s.questEyeDetail, {"light", "balanced", "ultra"});
+    if (a.button("remote_recover")) {
+        impl->placeDeck(true);
+        impl->placeMenu();
+    }
+    ImGui::TextWrapped("%s", tr("remote_hint", a.language));
     int selectedMode = impl->mode();
     if (a.choice("questmode", selectedMode,
                  {"questscreenmode", "questwallfit", "questmural", "questflooratlas",
@@ -1616,7 +1703,10 @@ void QuestPresentation::options() {
         changed |= a.slider("questglass", s.questGlass, 0, 100, "%d%%");
         ImGui::TextWrapped("%s", tr("questpinballnote", a.language));
     }
-    if (impl->mode() == 5) {
+    if (impl->mode() == 5 || s.questInsetCrt) {
+        changed |= a.choice("questtvmodel", s.questTvModel,
+                            {"questtvconsumer", "questtvcompact", "questtvstudio"});
+        changed |= a.tick("questcoplanar", s.questCrtCoplanar);
         changed |= a.slider("questtvwidth", s.questTvWidth, 40, 800, "%d cm");
         changed |= a.choice("questcrt", s.questCrt,
                             {"questcrtoff", "questcrtclean", "questcrtconsumer", "questcrtarcade"});

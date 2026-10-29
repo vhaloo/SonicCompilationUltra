@@ -16,13 +16,22 @@ struct Settings {
     bool rewindIndicator = true;
     int questWidth = 320, questDistance = 220, questHeight = 0, questTilt = 0;
     int questResolution = 1, questAnchor = 0, questHaptics = 30;
-    int questMode = 0, questWallHeight = 200, questWallGap = 0, questRefresh = 0;
+    int questMode = 0, questWallHeight = 200, questWallGap = 0, questRefresh = 90;
     int questWallDetail = 1, questMenuDistance = 100;
     int questScale = 100, questResizeSpeed = 100;
     int questCabinetWidth = 140, questCabinetHeight = 85, questCabinetTilt = 12;
     int questTvWidth = 160, questCurve = 90;
     int questCrt = 2, questCrtMask = 1, questCrtStrength = 80, questCrtCurve = 35;
-    int questGlass = 60, questSurroundBrightness = 45, questEnvironment = 1;
+    int questGlass = 35, questSurroundBrightness = 100, questEnvironment = 1;
+    int questDefaultsRevision = 7, questEyeDetail = 1, questRemoteScale = 100,
+        questOptionsScale = 100;
+    int questInsetWidth = 60, questHandJoystick = 0, questTvModel = 0;
+    bool questTransparent = true, questRemote = true, questHandTracking = true;
+    bool questInsetCrt = true, questCrtCoplanar = true, spinballTriggers = true;
+    bool questMoveRotate = true, questControlHints = true;
+    bool objectPreview = true, objectOrigins = true, frozenPreviews = true;
+    // Frame-only alpha mode; never persisted and never edits native game pixels.
+    bool projectionTransparent = false;
     int desktopPresentation = 0, desktopFrameScale = 100, desktopCrtStrength = 40,
         desktopCabinetAngle = 35;
     bool desktopSurround = true, desktopCrtMask = true;

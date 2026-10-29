@@ -87,6 +87,8 @@ class App {
   public:
 #ifdef SCU_QUEST
     QuestPresentation *quest = nullptr;
+    uint16_t spatialButtons = 0;
+    bool spatialRewind = false;
 #endif
     static constexpr int sectionCount() {
 #ifdef SCU_QUEST

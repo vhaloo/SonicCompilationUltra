@@ -39,6 +39,34 @@ bool enemy(int family, bool originalS3, bool skSet, unsigned id) {
                      163, 164, 165, 168, 169, 173, 174, 190, 191, 192, 193, 194},
                     id);
 }
+// Known moving platforms, collapsing bridges and mobile hazards in the supported
+// unmodified object tables. Unknown scripts stay markers; no object is spawned.
+bool movingObject(int family, bool originalS3, bool skSet, unsigned id) {
+    // Named object-table metadata: see docs/MOVING_OBJECTS.csv and XR_DEVELOPMENT.md.
+    if (family == 1)
+        return contains({0x11, 0x15, 0x17, 0x18, 0x2F, 0x30, 0x31, 0x33, 0x36, 0x45,
+                         0x48, 0x51, 0x52, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x5B, 0x61,
+                         0x63, 0x68, 0x69, 0x6B, 0x6C, 0x6F, 0x70, 0x76, 0x7B},
+                        id);
+    if (family == 2)
+        return contains({0x11, 0x15, 0x16, 0x18, 0x19, 0x1A, 0x1C, 0x1F, 0x23, 0x2A, 0x2B,
+                         0x32, 0x33, 0x36, 0x3D, 0x43, 0x64, 0x65, 0x68, 0x6A, 0x6B, 0x6C,
+                         0x6D, 0x6E, 0x71, 0x72, 0x76, 0x77, 0x78, 0x7A, 0x81, 0x82, 0x83,
+                         0x86, 0xB6, 0xBD, 0xBE, 0xD2, 0xD4, 0xD5, 0xD8},
+                        id);
+    if (!originalS3 && skSet)
+        return contains({0x04, 0x08, 0x0F, 0x10, 0x11, 0x14, 0x18, 0x19, 0x20, 0x2B, 0x2C, 0x2E,
+                         0x32, 0x3E, 0x3F, 0x40, 0x43, 0x44, 0x51, 0x52, 0x53, 0x56, 0x57, 0x58,
+                         0x5B, 0x5E, 0x60, 0x67, 0x6C, 0x71, 0x73, 0x74, 0x75, 0x77, 0x79, 0x7E,
+                         0xAF, 0xB0, 0xB4, 0xB7, 0xBA, 0xBB, 0xC8, 0xE2, 0xE7, 0xEA},
+                        id);
+    if (!originalS3)
+        return contains({0x04, 0x08, 0x0F, 0x10, 0x11, 0x14, 0x18, 0x19, 0x20, 0x2B, 0x2C, 0x2E,
+                         0x32, 0x3E, 0x3F, 0x40, 0x43, 0x44, 0x51, 0x52, 0x53, 0x56, 0x57, 0x58,
+                         0x5B, 0x5E, 0x60, 0x67, 0x6C, 0xB8, 0xB9, 0xBD, 0xC0, 0xC3, 0xC8, 0xD3},
+                        id);
+    return false; // Other placed origins can be enabled without guessing their art.
+}
 unsigned callTarget(const Reader &r, unsigned p) {
     if (r.word(p) == 0x4EBA || r.word(p) == 0x6100)
         return r.relative(p + 2);
@@ -97,7 +125,8 @@ void EnemyPreviews::reset() {
     supported = false;
 }
 void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vector<uint8_t> &rom,
-                           int stage, int cameraX, int cameraY, bool bosses, bool scripts) {
+                           int stage, int cameraX, int cameraY, bool bosses, bool scripts,
+                           bool objects, bool freezeImages, bool otherOrigins) {
     visible.clear();
     supported =
         g &&
@@ -150,17 +179,24 @@ void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vecto
             point.flags = (y >> (family == 3 ? 13 : 14)) & 3;
             point.state = st;
             point.function = objectFunction(r, index, family, id);
+            if (!point.function || !r.valid(point.function, 2))
+                continue;
             point.sourceId = id;
             point.sourceFunction = point.function;
             point.sourceState = family == 3 ? 0xEB00 + st : st ? 0xFC02 + st : 0;
             bool boss = isBoss(family, originalS3, skSet, id);
-            point.kind = boss ? SpawnKind::Boss : SpawnKind::Enemy;
+            bool knownScenery = movingObject(family, originalS3, skSet, id);
+            bool scenery = !boss && !enemy(family, originalS3, skSet, id);
+            point.originOnly = scenery && !knownScenery;
+            point.kind = boss      ? SpawnKind::Boss
+                         : scenery ? SpawnKind::MovingObject
+                                   : SpawnKind::Enemy;
             if (boss) {
                 point.bossOrigin = id;
                 point.bossOriginFunction = point.function;
             }
             roots.push_back(point);
-            if (boss || enemy(family, originalS3, skSet, id))
+            if (boss || scenery || enemy(family, originalS3, skSet, id))
                 placements.push_back(point);
         }
         size_t old = placements.size();
@@ -198,7 +234,8 @@ void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vecto
         return at->second;
     };
     for (auto p : placements) {
-        if ((p.kind == SpawnKind::Boss && !bosses) || (p.kind == SpawnKind::Scripted && !scripts))
+        if ((p.kind == SpawnKind::Boss && !bosses) || (p.kind == SpawnKind::Scripted && !scripts) ||
+            (p.kind == SpawnKind::MovingObject && !objects))
             continue;
         bool child = p.parentFunction != 0;
         unsigned stateAddr = p.event || child ? 0
@@ -289,7 +326,9 @@ void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vecto
                 (p.bossOrigin == 0xC7 && s.ram[0xF7AA] >= 10))
                 continue;
         }
-        if (p.variable) {
+        if (p.originOnly && !otherOrigins)
+            continue;
+        if (p.variable || p.originOnly) {
             visible.push_back({p.x, p.y, p.flags, nullptr, p.kind, p.relative, true});
             continue;
         }
@@ -301,6 +340,10 @@ void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vecto
         }
         auto found = appearances.find(key);
         if (found == appearances.end()) {
+            if (appearances.size() >= 512) {
+                visible.push_back({p.x, p.y, p.flags, nullptr, p.kind, p.relative, p.variable});
+                continue;
+            }
             Appearance a;
             unsigned fn = p.function, dplc = 0;
             unsigned end = std::min(objectEnd(r, index, family, fn),
@@ -400,11 +443,14 @@ void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vecto
                 auto install = [&](unsigned art, unsigned destination, bool kos) {
                     unsigned key = (r.address(art) << 1) | unsigned(kos);
                     auto found = decodedArt.find(key);
-                    if (found == decodedArt.end())
+                    if (found == decodedArt.end()) {
+                        if (decodedArt.size() >= 128)
+                            return;
                         found = decodedArt
                                     .emplace(key, kos ? decodeKosinskiModules(rom, r.address(art))
                                                       : decodeNemesis(rom, r.address(art)))
                                     .first;
+                    }
                     auto &bytes = found->second;
                     if (bytes.empty() || destination >= 65536 || bytes.size() > 65536 - destination)
                         return;
@@ -513,6 +559,10 @@ void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vecto
             found = appearances.emplace(key, std::move(a)).first;
         }
         auto &a = found->second;
+        if (freezeImages && a.frozen) {
+            visible.push_back({p.x, p.y, p.flags, &a.image, p.kind, p.relative, p.variable});
+            continue;
+        }
         auto shape = pieces(r, family, a.map, a.frame);
         auto &image = a.image;
         image = {};
@@ -553,6 +603,19 @@ void EnemyPreviews::update(const SCUSnapshot &s, const Game *g, const std::vecto
         if (std::none_of(image.pixels.begin(), image.pixels.end(),
                          [](uint8_t pixel) { return pixel != 0; }))
             image.pixels.clear();
+        if (family == 1 && p.id == 0x11 && !image.pixels.empty() && image.width <= 32 &&
+            p.subtype >= 2 && p.subtype <= 32) {
+            auto log = image;
+            int count = p.subtype;
+            image.left = log.left - (count / 2) * 16;
+            image.width = (count - 1) * 16 + log.width;
+            image.pixels.assign(size_t(image.width) * image.height, 0);
+            for (int n = 0; n < count; ++n)
+                for (int y = 0; y < log.height; ++y)
+                    std::copy_n(log.pixels.begin() + y * log.width, log.width,
+                                image.pixels.begin() + y * image.width + n * 16);
+        }
+        a.frozen = freezeImages && !image.pixels.empty() && !p.variable;
         visible.push_back(
             {p.x, p.y, p.flags,
              image.pixels.empty() || p.variable || (family == 2 && child && p.id == 0xC7) ? nullptr

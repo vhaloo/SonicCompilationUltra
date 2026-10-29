@@ -906,6 +906,9 @@ void App::pollInput() {
         if (settings.questTouch)
             rewindBinding = 0;
 #endif
+        bool pinballTriggers = core.currentId == "spinball" && settings.spinballTriggers;
+        if (pinballTriggers)
+            rewindBinding = 1;
         if (pads[0]) {
             if (rewindBinding == 1)
                 padRewind =
@@ -978,6 +981,18 @@ void App::pollInput() {
                 SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER))
                 core.buttons[p] = 0;
         }
+    if (core.currentId == "spinball" && settings.spinballTriggers)
+        for (int p = 0; p < 2; ++p)
+            if (pads[p]) {
+                set(p, SDL_GameControllerGetAxis(pads[p], SDL_CONTROLLER_AXIS_TRIGGERLEFT) > 8192,
+                    RETRO_DEVICE_ID_JOYPAD_Y);
+                set(p, SDL_GameControllerGetAxis(pads[p], SDL_CONTROLLER_AXIS_TRIGGERRIGHT) > 8192,
+                    RETRO_DEVICE_ID_JOYPAD_B);
+            }
+#ifdef SCU_QUEST
+    core.buttons[0] |= spatialButtons;
+    rewindHeld |= settings.rewind && spatialRewind;
+#endif
     if (releaseInput) {
         if (!(core.buttons[0] | core.buttons[1]) && !rewindHeld)
             releaseInput = false;
@@ -1100,6 +1115,12 @@ void App::prepareOverlays() {
     if (settings.questTouch)
         binding = tr("questtrigger", language);
 #endif
+    if (core.currentId == "spinball" && settings.spinballTriggers)
+        binding = "L1 / LB";
+#ifdef SCU_QUEST
+    if (core.currentId == "spinball" && settings.spinballTriggers)
+        binding = "X";
+#endif
     auto rewindText = [&](bool active) {
         char text[256];
         std::snprintf(text, sizeof text, tr(active ? "rewinding" : "rewindhint", language), binding,
@@ -1118,6 +1139,12 @@ void App::prepareOverlays() {
                   : labels == 3                ? "hintnintendo"
                                                : "hintxbox";
         }
+#endif
+        if (core.currentId == "spinball" && settings.spinballTriggers)
+            key = pads[activePad] ? "spinballpadhint" : "spinballkeyhint";
+#ifdef SCU_QUEST
+        if (core.currentId == "spinball" && settings.spinballTriggers && settings.questTouch)
+            key = "remote_spinball_hint";
 #endif
         std::string text = tr(key, language);
         if (detailed && settings.rewind)
@@ -1248,7 +1275,9 @@ void App::present(bool capture) {
         return;
     prepareOverlays();
     nativeBounds = insetBounds = {};
-    SDL_SetRenderDrawColor(renderer, 6, 12, 24, 255);
+    bool transparentCanvas = renderSettings.background == 6 || renderSettings.projectionTransparent;
+    SDL_SetRenderDrawColor(renderer, transparentCanvas ? 0 : 6, transparentCanvas ? 0 : 12,
+                           transparentCanvas ? 0 : 24, transparentCanvas ? 0 : 255);
     SDL_RenderClear(renderer);
     Scene scene = core.world.inspect(core.snapshot, core.game);
     uint64_t hash = 1469598103934665603ull;
@@ -1281,6 +1310,10 @@ void App::present(bool capture) {
                   renderSettings.enemyStyle,
                   (int)renderSettings.bossPreview,
                   (int)renderSettings.scriptPreview,
+                  int(renderSettings.objectPreview),
+                  int(renderSettings.frozenPreviews),
+                  int(renderSettings.objectOrigins),
+                  int(renderSettings.projectionTransparent),
                   (int)renderSettings.spawnTint,
                   (int)renderSettings.fitSpawns}) {
         hash ^= (uint32_t)v;
@@ -1297,45 +1330,49 @@ void App::present(bool capture) {
     }
     bool expanded = core.loaded && cachedExpanded;
     if (core.loaded && !renderSettings.projectionUiOnly) {
-        bool fixed = !renderSettings.parallax || renderSettings.reduceMotion ||
-                     (scene.ready && (renderSettings.camera == 2 || renderSettings.camera == 4 ||
-                                      renderSettings.view == 2));
-        uint64_t backdropHash = 1469598103934665603ull;
-        for (int value :
-             {renderSettings.background, renderSettings.blur, renderSettings.brightness}) {
-            backdropHash ^= uint32_t(value);
-            backdropHash *= 1099511628211ull;
+        if (!transparentCanvas) {
+            bool fixed = !renderSettings.parallax || renderSettings.reduceMotion ||
+                         (scene.ready && (renderSettings.camera == 2 ||
+                                          renderSettings.camera == 4 || renderSettings.view == 2));
+            uint64_t backdropHash = 1469598103934665603ull;
+            for (int value :
+                 {renderSettings.background, renderSettings.blur, renderSettings.brightness}) {
+                backdropHash ^= uint32_t(value);
+                backdropHash *= 1099511628211ull;
+            }
+            bool retainBackground = fixed && backgroundFrozen && backgroundStage == scene.stage &&
+                                    backdropSettingsHash == backdropHash;
+            if (refresh && !retainBackground)
+                core.world.makeBackdrop(core.snapshot, scene, renderSettings, core.native,
+                                        core.nativeW, core.nativeH);
+            if (retainBackground)
+                core.world.backdrop = frozenBackground;
+            else {
+                frozenBackground = core.world.backdrop;
+                backgroundFrozen = fixed;
+                backgroundStage = scene.stage;
+                backdropSettingsHash = backdropHash;
+            }
+            if (!bgTexture) {
+                bgTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+                                              SDL_TEXTUREACCESS_STREAMING, 320, 224);
+                SDL_SetTextureScaleMode(bgTexture, SDL_ScaleModeLinear);
+            }
+            if (refresh && !retainBackground)
+                SDL_UpdateTexture(bgTexture, nullptr, core.world.backdrop.data(), 320 * 4);
+            if (renderSettings.background == 6 || renderSettings.projectionTransparent) {
+                // Leave alpha zero behind terrain, actors and interface.
+            } else if (renderSettings.background == 2 && expanded) {
+                int scale = std::max(1, (int)core.world.canvas.scale), tw = 320 * scale,
+                    th = 224 * scale;
+                for (int y = 0; y < drawableH; y += th)
+                    for (int x = 0; x < drawableW; x += tw) {
+                        SDL_Rect d{x, y, tw, th};
+                        SDL_RenderCopy(renderer, bgTexture, nullptr, &d);
+                    }
+            } else
+                SDL_RenderCopy(renderer, bgTexture, nullptr, nullptr);
         }
-        bool retainBackground = fixed && backgroundFrozen && backgroundStage == scene.stage &&
-                                backdropSettingsHash == backdropHash;
-        if (refresh && !retainBackground)
-            core.world.makeBackdrop(core.snapshot, scene, renderSettings, core.native, core.nativeW,
-                                    core.nativeH);
-        if (retainBackground)
-            core.world.backdrop = frozenBackground;
-        else {
-            frozenBackground = core.world.backdrop;
-            backgroundFrozen = fixed;
-            backgroundStage = scene.stage;
-            backdropSettingsHash = backdropHash;
-        }
-        if (!bgTexture) {
-            bgTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
-                                          SDL_TEXTUREACCESS_STREAMING, 320, 224);
-            SDL_SetTextureScaleMode(bgTexture, SDL_ScaleModeLinear);
-        }
-        if (refresh && !retainBackground)
-            SDL_UpdateTexture(bgTexture, nullptr, core.world.backdrop.data(), 320 * 4);
-        if (renderSettings.background == 2 && expanded) {
-            int scale = std::max(1, (int)core.world.canvas.scale), tw = 320 * scale,
-                th = 224 * scale;
-            for (int y = 0; y < drawableH; y += th)
-                for (int x = 0; x < drawableW; x += tw) {
-                    SDL_Rect d{x, y, tw, th};
-                    SDL_RenderCopy(renderer, bgTexture, nullptr, &d);
-                }
-        } else
-            SDL_RenderCopy(renderer, bgTexture, nullptr, nullptr);
         if (expanded) {
             auto &c = core.world.canvas;
             if (!worldTexture || textureW != c.width || textureH != c.height) {
@@ -2191,6 +2228,9 @@ void App::optionsUi(int section) {
         ImGui::BeginDisabled(!settings.enemyPreview);
         check("bosspreview", settings.bossPreview);
         check("scriptpreview", settings.scriptPreview);
+        check("objectpreview", settings.objectPreview);
+        check("objectorigins", settings.objectOrigins);
+        check("frozenpreviews", settings.frozenPreviews);
         changed |= choice("enemystyle", settings.enemyStyle,
                           {"enemyspritesmarkers", "enemysprites", "enemymarkers"});
         slide("enemyopacity", settings.enemyOpacity, 10, 80, "%d%%");
@@ -2236,8 +2276,9 @@ void App::optionsUi(int section) {
         check("rewindindicator", settings.rewindIndicator);
         break;
     case 3:
-        changed |= choice("backgroundstyle", settings.background,
-                          {"blurred", "sharpbg", "parallaxbg", "gradient", "dark", "black"});
+        changed |= choice(
+            "backgroundstyle", settings.background,
+            {"blurred", "sharpbg", "parallaxbg", "gradient", "dark", "black", "transparentbg"});
         slide("blur", settings.blur, 0, 16);
         slide("brightness", settings.brightness, 10, 100, "%d%%");
         check("parallax", settings.parallax);
@@ -2255,16 +2296,26 @@ void App::optionsUi(int section) {
     case 5: {
         changed |=
             choice("padlabels", settings.padLabels, {"auto", "Xbox", "PlayStation", "Nintendo"});
+        changed |= tick("spinballtriggers", settings.spinballTriggers);
         changed |=
             choice("jumpbuttons", settings.jumpLayout, {"jumpclassic", "jumpabc", "jumpbac"});
+        if (core.currentId == "spinball" && settings.spinballTriggers) {
+            const char *binding = "L1 / LB";
 #ifdef SCU_QUEST
-        if (settings.questTouch)
-            ImGui::TextWrapped("%s: %s", tr("rewindbutton", language),
-                               tr("questtrigger", language));
-        else
+            if (settings.questTouch)
+                binding = "X";
 #endif
-            changed |=
-                choice("rewindbutton", settings.rewindButton, {"L2 / LT", "L1 / LB", "R2 / RT"});
+            ImGui::TextWrapped("%s: %s", tr("rewindbutton", language), binding);
+        } else {
+#ifdef SCU_QUEST
+            if (settings.questTouch)
+                ImGui::TextWrapped("%s: %s", tr("rewindbutton", language),
+                                   tr("questtrigger", language));
+            else
+#endif
+                changed |= choice("rewindbutton", settings.rewindButton,
+                                  {"L2 / LT", "L1 / LB", "R2 / RT"});
+        }
         check("quickcontrols", settings.quickControls);
         slide("deadzone", settings.deadzone, 3000, 28000);
         ImGui::TextWrapped("%s", tr("controllers", language));

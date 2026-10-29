@@ -39,7 +39,7 @@ public final class QuestActivity extends SDLActivity {
                     out.write("language=-1\nview=2\nquality=0\nbackground=0\nblur=3\n"
                         + "renderer=0\nfullscreen=0\nvsync=0\nrewind=1\nrewindMemory=0\n"
                         + "lastDirectory=ROMs\nquestResolution=1\nquestMode=2\nquestPassthrough=1\n"
-                        + "questWallHeight=200\nquestScale=100\nquestRefresh=0\nquestSpinballAuto=1\n"
+                        + "questWallHeight=200\nquestScale=100\nquestRefresh=90\nquestTransparent=1\nquestDefaultsRevision=7\nquestSpinballAuto=1\n"
                         + "questWallLocked=1\nquestCompanion=1\n");
                 }
             }

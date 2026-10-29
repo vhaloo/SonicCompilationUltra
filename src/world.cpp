@@ -408,8 +408,8 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
         v.height = cfg.fixedMapHeight;
     }
     if (cfg.enemyPreview && g->family && v.family <= 3) {
-        enemies.update(s, g, rom, v.stage, v.cameraX, v.cameraY, cfg.bossPreview,
-                       cfg.scriptPreview);
+        enemies.update(s, g, rom, v.stage, v.cameraX, v.cameraY, cfg.bossPreview, cfg.scriptPreview,
+                       cfg.objectPreview, cfg.frozenPreviews, cfg.objectOrigins);
         if (overview && cfg.fitSpawns)
             for (const auto &p : enemies.visible) {
                 v.width = std::min(32768, std::max(v.width, p.x + 96));
@@ -516,7 +516,7 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
     bool terrainCached = signature == terrainSignature && terrainPixels.size() == size_t(w) * h;
     if (terrainCached) {
         canvas.pixels = terrainPixels;
-        priority = terrainPriority;
+        // The cached priority buffer is read-only after terrain generation.
         ++terrainCacheHits;
     } else {
         canvas.pixels.assign(size_t(w) * h, 0);
@@ -624,7 +624,7 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
             }
         }
         terrainPixels = canvas.pixels;
-        terrainPriority = priority;
+        // Retain one priority buffer instead of copying it every game frame.
         terrainSignature = signature;
     }
     captureActors(v, g);
@@ -717,9 +717,10 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
             destination = out;
         };
         for (auto &p : enemies.visible) {
-            uint32_t tint = p.kind == SpawnKind::Boss       ? 0xFFFF8194
-                            : p.kind == SpawnKind::Scripted ? 0xFFC18CFF
-                                                            : 0xFFFFCA75;
+            uint32_t tint = p.kind == SpawnKind::Boss           ? 0xFFFF8194
+                            : p.kind == SpawnKind::MovingObject ? 0xFF84E1CB
+                            : p.kind == SpawnKind::Scripted     ? 0xFFC18CFF
+                                                                : 0xFFFFCA75;
             bool drawn = false;
             if (p.image && cfg.enemyStyle != 2) {
                 auto &image = *p.image;
@@ -814,6 +815,10 @@ static void blurImage(std::array<uint32_t, 320 * 224> &img, int r) {
 }
 void World::makeBackdrop(const SCUSnapshot &s, const Scene &v, const Settings &cfg,
                          const std::vector<uint32_t> &native, int nw, int nh) {
+    if (cfg.background == 6 || cfg.projectionTransparent) {
+        backdrop.fill(0);
+        return;
+    }
     if (v.ready) {
         std::memcpy(backdrop.data(), s.background, 320 * 224 * sizeof(uint32_t));
     } else if (!native.empty()) {

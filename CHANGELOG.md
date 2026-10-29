@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.0 XR development preview — 2026-10-29
+
+- 90 Hz default with one-time backed-up migration; transparent AR scenery by default.
+- Movable 3D remote with seven pages, nine direct view presets, large ray/poke/pinch buttons, every advanced setting section and fine placement buttons.
+- One middle-finger grip moves/rotates stage, native CRT, options or remote; two grips resize the stage. Optional hand tracking and automatic large virtual game controller.
+- Independent native CRT, three original enclosure styles, and flat coplanar TV/world composition with a native-viewport cutout.
+- Shared fixed transparent previews for 152 named scenery types; other placed origins can use markers. Spinball trigger flippers and distinct rewind bindings/hints.
+- Smaller stereo/terrain budgets, direct stereo canvas sampling, reusable image uploads, retained priority buffer, cached geometry/text and bounded preview caches.
+- Compile/lint, pure helper and static package checks only. No 0.7 Quest or application launch; hardware and gameplay qualification deferred. macOS remains experimental.
+
+
 ## 0.6.0 XR preview — Stereo furniture and startup repair
 
 - Repair partial UI shutdown, use app-owned internal storage with external-data migration, identify the app as immersive and preserve SDL graphics state around the full OpenXR frame sequence.

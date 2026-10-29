@@ -23,7 +23,7 @@ class EnemyPreviews {
         unsigned map = 0, gfx = 0, frame = 0;
         std::vector<uint8_t> tiles;
         std::vector<uint8_t> knownTiles;
-        bool sheet = false;
+        bool sheet = false, frozen = false;
         EnemyImage image;
     };
     std::vector<SpawnPlacement> placements;
@@ -40,6 +40,7 @@ class EnemyPreviews {
     std::vector<EnemyPreview> visible;
     void reset();
     void update(const SCUSnapshot &s, const Game *game, const std::vector<uint8_t> &rom, int stage,
-                int cameraX, int cameraY, bool bosses = true, bool scripts = true);
+                int cameraX, int cameraY, bool bosses = true, bool scripts = true,
+                bool objects = true, bool freezeImages = true, bool otherOrigins = true);
 };
 } // namespace scu

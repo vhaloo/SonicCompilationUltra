@@ -1,0 +1,153 @@
+profile,object_id_hex,metadata_name
+Sonic1,11,Bridge
+Sonic1,15,Swinging Platforms
+Sonic1,17,Spiked Pole Helix
+Sonic1,18,Platforms
+Sonic1,2F,MZ Large Grassy Platforms
+Sonic1,30,MZ Large Green Glass Blocks
+Sonic1,31,Chained Stompers
+Sonic1,33,Pushable Blocks
+Sonic1,36,Spikes
+Sonic1,45,Sideways Stomper
+Sonic1,48,Eggman's Swinging Ball
+Sonic1,51,Smashable Green Block
+Sonic1,52,Moving Blocks
+Sonic1,56,Floating Blocks and Doors
+Sonic1,57,Spiked Ball and Chain
+Sonic1,58,Big Spiked Ball
+Sonic1,59,SLZ Elevators
+Sonic1,5A,SLZ Circling Platform
+Sonic1,5B,Staircase
+Sonic1,61,LZ Blocks
+Sonic1,63,LZ Conveyor
+Sonic1,68,Conveyor Belt
+Sonic1,69,SBZ Spinning Platforms
+Sonic1,6B,SBZ Stomper and Door
+Sonic1,6C,SBZ Vanishing Platforms
+Sonic1,6F,SBZ Spin Platform Conveyor
+Sonic1,70,Girder Block
+Sonic1,76,SYZ Boss Blocks
+Sonic1,7B,SLZ Boss Spikeball
+Sonic2,11,Bridge in Emerald Hill Zone and Hidden Palace Zone
+Sonic2,15,Swinging platform from Aquatic Ruin Zone
+Sonic2,16,Diagonally moving lift from HTZ
+Sonic2,18,"Stationary floating platform from ARZ, EHZ and HTZ"
+Sonic2,19,"Platform from CPZ, OOZ and WFZ"
+Sonic2,1A,Collapsing platform from HPZ (and GHZ)
+Sonic2,1C,"Bridge stake in Emerald Hill Zone and Hill Top Zone, falling oil in Oil Ocean Zone"
+Sonic2,1F,"Collapsing platform from ARZ, MCZ and OOZ (and MZ, SLZ and SBZ)"
+Sonic2,23,Pillar that drops its lower part from ARZ
+Sonic2,2A,Stomper from MCZ
+Sonic2,2B,Rising pillar from ARZ
+Sonic2,32,Breakable block/rock from CPZ and HTZ
+Sonic2,33,Green platform from OOZ
+Sonic2,36,Spikes
+Sonic2,3D,Block thingy in OOZ that launches you into the round ball things
+Sonic2,43,Sliding spike obstacle thing from OOZ
+Sonic2,64,Twin stompers from MTZ
+Sonic2,65,Long moving platform from MTZ
+Sonic2,68,Block with a spike that comes out of each side sequentially from MTZ
+Sonic2,6A,"Platform that moves when you walk off of it, from MTZ"
+Sonic2,6B,Immobile platform from MTZ
+Sonic2,6C,Small platform on pulleys (like at the start of MTZ2)
+Sonic2,6D,Floor spike from MTZ
+Sonic2,6E,Platform moving in a circle (like at the start of MTZ3)
+Sonic2,71,Bridge stake and pulsing orb from Hidden Palace Zone
+Sonic2,72,Conveyor belt from CNZ
+Sonic2,76,Spike block that slides out of the wall from MCZ
+Sonic2,77,Bridge from MCZ
+Sonic2,78,Stairs from CPZ that move down to open the way
+Sonic2,7A,Platform that moves back and forth on top of water in CPZ
+Sonic2,81,Drawbridge (MCZ)
+Sonic2,82,"Platform that is usually swinging, from ARZ"
+Sonic2,83,3 adjoined platforms from ARZ that rotate in a circle
+Sonic2,86,Flipper from CNZ
+Sonic2,B6,Tilting platform from WFZ
+Sonic2,BD,Ascending/descending metal platforms from WFZ
+Sonic2,BE,Lateral cannon (temporary platform that pops in/out) from WFZ
+Sonic2,D2,"Flashing blocks that appear and disappear in a rectangular shape that you can walk across, from CNZ"
+Sonic2,D4,Big block from CNZ that moves back and forth
+Sonic2,D5,Elevator from CNZ
+Sonic2,D8,Block thingy from CNZ that disappears after 3 hits (UFO saucer-shaped)
+Sonic3K_S3,04,CollapsingPlatform
+Sonic3K_S3,08,Spikes
+Sonic3K_S3,0F,CollapsingBridge
+Sonic3K_S3,10,LBZTubeElevator
+Sonic3K_S3,11,LBZMovingPlatform
+Sonic3K_S3,14,LBZTriggerBridge
+Sonic3K_S3,18,LBZCupElevator
+Sonic3K_S3,19,LBZCupElevatorPole
+Sonic3K_S3,20,MGZLBZSmashingPillar
+Sonic3K_S3,2B,AIZFlippingBridge
+Sonic3K_S3,2C,AIZCollapsingLogBridge
+Sonic3K_S3,2E,AIZSpikedLog
+Sonic3K_S3,32,AIZDrawBridge
+Sonic3K_S3,3E,HCZConveyorBelt
+Sonic3K_S3,3F,HCZConveryorSpike
+Sonic3K_S3,40,HCZBlock
+Sonic3K_S3,43,CNZRisingPlatform
+Sonic3K_S3,44,CNZTrapDoor
+Sonic3K_S3,51,FloatingPlatform
+Sonic3K_S3,52,MGZLBZSmashingPillar
+Sonic3K_S3,53,MGZSwingingPlatform
+Sonic3K_S3,56,MGZMovingSpikePlatform
+Sonic3K_S3,57,MGZTriggerPlatform
+Sonic3K_S3,58,MGZSwingingSpikeBall
+Sonic3K_S3,5B,MGZTopPlatform
+Sonic3K_S3,5E,CGZBladePlatform
+Sonic3K_S3,60,BPZElephantBlock
+Sonic3K_S3,67,HCZSnakeBlocks
+Sonic3K_S3,6C,TensionBridge
+Sonic3K_S3,B8,ICZCrushingColumn
+Sonic3K_S3,B9,ICZPathFollowPlatform
+Sonic3K_S3,BD,ICZSwingingPlatform
+Sonic3K_S3,C0,ICZIceSpikes
+Sonic3K_S3,C3,ICZTensionPlatform
+Sonic3K_S3,C8,ICZIceBlock
+Sonic3K_S3,D3,LBZKnuxPillar
+Sonic3K_SK,04,CollapsingPlatform
+Sonic3K_SK,08,Spikes
+Sonic3K_SK,0F,CollapsingBridge
+Sonic3K_SK,10,LBZTubeElevator
+Sonic3K_SK,11,LBZMovingPlatform
+Sonic3K_SK,14,LBZTriggerBridge
+Sonic3K_SK,18,LBZCupElevator
+Sonic3K_SK,19,LBZCupElevatorPole
+Sonic3K_SK,20,MGZLBZSmashingPillar
+Sonic3K_SK,2B,AIZFlippingBridge
+Sonic3K_SK,2C,AIZCollapsingLogBridge
+Sonic3K_SK,2E,AIZSpikedLog
+Sonic3K_SK,32,AIZDrawBridge
+Sonic3K_SK,3E,HCZConveyorBelt
+Sonic3K_SK,3F,HCZConveryorSpike
+Sonic3K_SK,40,HCZBlock
+Sonic3K_SK,43,CNZRisingPlatform
+Sonic3K_SK,44,CNZTrapDoor
+Sonic3K_SK,51,FloatingPlatform
+Sonic3K_SK,52,MGZLBZSmashingPillar
+Sonic3K_SK,53,MGZSwingingPlatform
+Sonic3K_SK,56,MGZMovingSpikePlatform
+Sonic3K_SK,57,MGZTriggerPlatform
+Sonic3K_SK,58,MGZSwingingSpikeBall
+Sonic3K_SK,5B,MGZTopPlatform
+Sonic3K_SK,5E,CGZBladePlatform
+Sonic3K_SK,60,BPZElephantBlock
+Sonic3K_SK,67,HCZSnakeBlocks
+Sonic3K_SK,6C,TensionBridge
+Sonic3K_SK,71,FBZFloatingPlatform
+Sonic3K_SK,73,FBZMagneticSpikeBall
+Sonic3K_SK,74,FBZMagneticPlatform
+Sonic3K_SK,75,FBZSnakePlatform
+Sonic3K_SK,77,FBZRotatingPlatform
+Sonic3K_SK,79,FBZDisappearingPlatform
+Sonic3K_SK,7E,FBZPlatformBlocks
+Sonic3K_SK,AF,ICZCrushingColumn
+Sonic3K_SK,B0,ICZPathFollowPlatform
+Sonic3K_SK,B4,ICZSwingingPlatform
+Sonic3K_SK,B7,ICZIceSpikes
+Sonic3K_SK,BA,ICZTensionPlatform
+Sonic3K_SK,BB,ICZIceBlock
+Sonic3K_SK,C8,LBZKnuxPillar
+Sonic3K_SK,E2,FBZElevator
+Sonic3K_SK,E7,PachinkoFlipper
+Sonic3K_SK,EA,Pachinko_Platform

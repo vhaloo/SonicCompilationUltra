@@ -27,6 +27,7 @@ jobs:
       - name: Audit public source and prepare SDL
         run: |
           python tools/audit_public.py
+          python tools/audit_xr_development.py
           python tools/prepare_quest.py
       - name: Compile and lint without application execution
         working-directory: android

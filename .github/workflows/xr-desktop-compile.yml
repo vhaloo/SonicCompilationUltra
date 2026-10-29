@@ -37,7 +37,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ninja-build libasound2-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxfixes-dev libxkbcommon-dev libwayland-dev libegl1-mesa-dev libgl1-mesa-dev
       - name: Audit source
-        run: python tools/audit_public.py
+        run: |
+          python tools/audit_public.py
+          python tools/audit_xr_development.py
       - name: Configure Windows
         if: runner.os == 'Windows'
         run: cmake -S . -B build -A x64 -DBUILD_TESTING=OFF -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON
@@ -49,6 +51,11 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=${{ matrix.deployment }}
       - name: Compile without starting the application
         run: cmake --build build --config Release --parallel 3 --target SonicCompilationUltra
+      - name: Pure spatial checks without SDL or a game
+        run: |
+          cmake -S tests/spatial -B build-spatial
+          cmake --build build-spatial --config Release
+          ctest --test-dir build-spatial -C Release --output-on-failure
       - name: Package ROM-free software
         run: python tools/package.py --build build --platform ${{ matrix.platform }} --arch ${{ matrix.arch }} --out dist --source
       - uses: actions/upload-artifact@v4

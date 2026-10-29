@@ -318,7 +318,7 @@ int main(int argc, char **argv) {
             a.settings.questPassthrough = true;
             a.settings.questWallHeight = 200;
             a.settings.questWallGap = 0;
-            a.settings.questRefresh = 0;
+            a.settings.questRefresh = 90;
             a.settings.questAutoWall = true;
             a.settings.questWallLocked = true;
             a.settings.questCompanion = true;
@@ -348,7 +348,7 @@ int main(int argc, char **argv) {
             a.settings.questScale = 100;
             a.settings.questWallHeight = 200;
             a.settings.questWallGap = 0;
-            a.settings.questRefresh = 0;
+            a.settings.questRefresh = 90;
             a.settings.questWallLocked = true;
             a.settings.questCompanion = true;
             a.settings.questCabinetWidth = 140;

@@ -29,3 +29,10 @@ The pinned, separately licensed [Musashi disassembler](https://github.com/kstene
 ![Both future Death Egg boss locations and script origins](screenshots/boss-spawns-0.2.1.png)
 
 ![Gamepad-accessible boss and script preview controls](screenshots/camera-options-0.2.1.png)
+
+
+## 0.7 shared scenery additions
+
+The common compositor now includes 152 named platform/bridge/hazard types from the supported Sonic 1, Sonic 2 and Sonic 3 & Knuckles object tables. See [the metadata inventory](MOVING_OBJECTS.csv). Frozen images avoid animation churn; Sonic 1 log bridges expand from their authored length. These are previews of spawn placements, not a simulation of their full movement path.
+
+**Mark other placed object origins** also covers unclassified objects (including the original S3 table) with a transparent marker; static scenery can be included. Disable it for a quieter view. Missing/unknown art remains a marker, and unknown computed script destinations remain omitted. Native-only/non-platform games retain their existing behavior. The same implementation is built for Windows, Linux, experimental Mac and Quest. This extension is compiled and statically reviewed; no 0.7 cartridge has been executed.

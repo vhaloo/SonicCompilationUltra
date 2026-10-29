@@ -32,7 +32,7 @@ class World {
     bool patternsValid = false;
     std::array<bool, 2048> terrainUsed{};
     std::vector<uint32_t> terrainPixels;
-    std::vector<uint8_t> terrainPriority;
+
     uint64_t shapeSignature = 0, terrainSignature = 0;
     std::vector<uint8_t> priority;
     std::vector<Sprite> sprites;
@@ -61,7 +61,7 @@ class World {
         patternsValid = false;
         shapeSignature = terrainSignature = 0;
         terrainPixels.clear();
-        terrainPriority.clear();
+        priority.clear();
         reset();
     }
     void reset() {

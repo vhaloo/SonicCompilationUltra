@@ -7,7 +7,7 @@ command=['git','diff','--cached','--name-only','-z'] if a.staged else ['git','ls
 files=[x for x in subprocess.check_output(command,cwd=root).decode().split('\0') if x]
 bad=[]
 banned={'.bin','.gen','.smd','.rom','.rsdk','.srm','.state','.ram','.wav','.mp3','.ogg','.tga','.bmp','.exe','.dll','.pdb','.obj','.lib','.apk','.aab','.jks','.keystore'}
-texttypes={'.md','.txt','.json','.py','.cpp','.c','.h','.yml','.cmake','.in','.svg','.csv','.gradle','.java','.xml','.properties'}
+texttypes={'.md','.txt','.json','.py','.cpp','.c','.h','.yml','.cmake','.in','.svg','.csv','.gradle','.java','.xml','.properties','.inl'}
 rows=[]
 for name in files:
     path=root/name

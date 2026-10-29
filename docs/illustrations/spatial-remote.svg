@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="980" viewBox="0 0 1400 980" role="img" aria-label="Spatial remote layout diagram, not a headset capture">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#08182a"/><stop offset="1" stop-color="#102f42"/></linearGradient><linearGradient id="key" x2="0" y2="1"><stop stop-color="#173e69"/><stop offset="1" stop-color="#102e51"/></linearGradient></defs>
+<rect width="1400" height="980" rx="28" fill="#0b1e30"/>
+<g font-family="sans-serif" fill="#f4f9ff"><text x="70" y="76" font-size="23" fill="#67dcdf" letter-spacing="3">SCU XR / 0.7</text><text x="70" y="135" font-size="42" font-weight="700">Your controls stay within reach.</text><text x="70" y="178" font-size="21" fill="#bad1df">Spatial remote · modes · grips · fine placement · virtual controller</text>
+<rect x="55" y="235" width="890" height="650" rx="35" fill="#030d1b" stroke="#49778d" stroke-width="2"/>
+<rect x="242" y="251" width="500" height="48" rx="18" fill="#4d6879"/><text x="492" y="283" font-size="20" text-anchor="middle">MIDDLE-FINGER GRIP: MOVE THIS REMOTE</text>
+
+<rect x="78" y="321" width="109" height="48" rx="9" fill="#125b53"/><text x="132.5" y="351" text-anchor="middle" font-size="16">Modes</text>
+<rect x="197" y="321" width="109" height="48" rx="9" fill="#173656"/><text x="251.5" y="351" text-anchor="middle" font-size="16">Move</text>
+<rect x="316" y="321" width="109" height="48" rx="9" fill="#173656"/><text x="370.5" y="351" text-anchor="middle" font-size="16">Play</text>
+<rect x="435" y="321" width="109" height="48" rx="9" fill="#173656"/><text x="489.5" y="351" text-anchor="middle" font-size="16">Picture</text>
+<rect x="554" y="321" width="109" height="48" rx="9" fill="#173656"/><text x="608.5" y="351" text-anchor="middle" font-size="16">Speed</text>
+<rect x="673" y="321" width="109" height="48" rx="9" fill="#173656"/><text x="727.5" y="351" text-anchor="middle" font-size="16">All settings</text>
+<rect x="792" y="321" width="109" height="48" rx="9" fill="#173656"/><text x="846.5" y="351" text-anchor="middle" font-size="16">Fine move</text>
+<rect x="83" y="408" width="258" height="83" rx="13" fill="#010812"/><rect x="83" y="402" width="258" height="79" rx="13" fill="#153c62" stroke="#326683"/><text x="212" y="448" text-anchor="middle" font-size="23">Wall fit</text>
+<rect x="363" y="408" width="258" height="83" rx="13" fill="#010812"/><rect x="363" y="402" width="258" height="79" rx="13" fill="#153c62" stroke="#326683"/><text x="492" y="448" text-anchor="middle" font-size="23">Giant mural</text>
+<rect x="643" y="408" width="258" height="83" rx="13" fill="#010812"/><rect x="643" y="402" width="258" height="79" rx="13" fill="#153c62" stroke="#326683"/><text x="772" y="448" text-anchor="middle" font-size="23">Floor atlas</text>
+<rect x="83" y="512" width="258" height="83" rx="13" fill="#010812"/><rect x="83" y="506" width="258" height="79" rx="13" fill="#153c62" stroke="#326683"/><text x="212" y="552" text-anchor="middle" font-size="23">Pinball cabinet</text>
+<rect x="363" y="512" width="258" height="83" rx="13" fill="#010812"/><rect x="363" y="506" width="258" height="79" rx="13" fill="#153c62" stroke="#326683"/><text x="492" y="552" text-anchor="middle" font-size="23">3D CRT + world</text>
+<rect x="643" y="512" width="258" height="83" rx="13" fill="#010812"/><rect x="643" y="506" width="258" height="79" rx="13" fill="#153c62" stroke="#326683"/><text x="772" y="552" text-anchor="middle" font-size="23">Curved gallery</text>
+<rect x="83" y="616" width="258" height="83" rx="13" fill="#010812"/><rect x="83" y="610" width="258" height="79" rx="13" fill="#153c62" stroke="#326683"/><text x="212" y="656" text-anchor="middle" font-size="23">Cinema</text>
+<rect x="363" y="616" width="258" height="83" rx="13" fill="#010812"/><rect x="363" y="610" width="258" height="79" rx="13" fill="#153c62" stroke="#326683"/><text x="492" y="656" text-anchor="middle" font-size="23">Tabletop</text>
+<rect x="643" y="616" width="258" height="83" rx="13" fill="#010812"/><rect x="643" y="610" width="258" height="79" rx="13" fill="#153c62" stroke="#326683"/><text x="772" y="656" text-anchor="middle" font-size="23">Head following</text>
+<rect x="83" y="720" width="258" height="83" rx="13" fill="#010812"/><rect x="83" y="714" width="258" height="79" rx="13" fill="#153c62" stroke="#326683"/><text x="212" y="760" text-anchor="middle" font-size="23">Recover controls</text>
+<rect x="363" y="720" width="258" height="83" rx="13" fill="#010812"/><rect x="363" y="714" width="258" height="79" rx="13" fill="#153c62" stroke="#326683"/><text x="492" y="760" text-anchor="middle" font-size="23">Pause / resume</text>
+<rect x="643" y="720" width="258" height="83" rx="13" fill="#010812"/><rect x="643" y="714" width="258" height="79" rx="13" fill="#153c62" stroke="#326683"/><text x="772" y="760" text-anchor="middle" font-size="23">Advanced options</text>
+<text x="500" y="851" text-anchor="middle" font-size="19" fill="#a7ccd8">Aim + trigger / pinch / nearby poke · One grip moves · Two grips resize</text>
+<text x="1005" y="274" font-size="22" font-weight="700" fill="#67dcdf">PLAY WITHOUT PADS</text>
+<rect x="994" y="301" width="340" height="244" rx="24" fill="#071324" stroke="#47738b"/>
+<circle cx="1085" cy="422" r="65" fill="#173656" stroke="#65ced5" stroke-width="3"/><circle cx="1094" cy="411" r="24" fill="#e4a953"/>
+<g fill="#22646f"><circle cx="1210" cy="391" r="27"/><circle cx="1282" cy="391" r="27"/><circle cx="1210" cy="463" r="27"/><circle cx="1282" cy="463" r="27"/></g>
+<g font-size="22" text-anchor="middle"><text x="1210" y="399">A</text><text x="1282" y="399">B</text><text x="1210" y="471">C</text><text x="1282" y="471" text-anchor="middle" font-size="16">Start</text></g>
+<text x="1005" y="583" font-size="21" fill="#bad1df">Pinch + drag with one hand.</text><text x="1005" y="614" font-size="21" fill="#bad1df">Other hand: action buttons.</text>
+<text x="1005" y="677" font-size="22" font-weight="700" fill="#67dcdf">SPINBALL</text>
+<text x="1005" y="718" font-size="21">LT / RT: left / right flipper</text><text x="1005" y="751" font-size="21">X: rewind (Quest Touch)</text><text x="1005" y="784" font-size="21">B: Start · Y: options</text><text x="1005" y="836" font-size="18" fill="#bad1df">90 Hz · Transparent AR by default</text>
+<text x="70" y="939" font-size="19" fill="#9cb9c9">Design diagram, not a headset capture. 0.7 is compiled and statically checked; physical interaction remains untested.</text>
+</g></svg>

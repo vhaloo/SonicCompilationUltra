@@ -3,12 +3,13 @@
 #include "observer.h"
 #include <vector>
 namespace scu {
-enum class SpawnKind { Enemy, Boss, Scripted };
+enum class SpawnKind { Enemy, Boss, Scripted, MovingObject };
 struct SpawnPlacement {
     int x = 0, y = 0;
     unsigned id = 0, subtype = 0, flags = 0, state = 0;
     unsigned function = 0, attributes = 0, frame = 0, codeEnd = 0;
     SpawnKind kind = SpawnKind::Enemy;
+    bool originOnly = false;
     bool event = false, relative = false, relativeX = false, relativeY = false, variable = false;
     int dx = 0, dy = 0;
     unsigned parentId = 0, parentFunction = 0, parentState = 0;

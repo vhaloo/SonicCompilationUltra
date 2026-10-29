@@ -4,6 +4,8 @@
     <uses-feature android:name="android.hardware.vr.headtracking" android:version="1" android:required="true"/>
     <uses-feature android:name="com.oculus.feature.PASSTHROUGH" android:required="true"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="com.oculus.permission.HAND_TRACKING"/>
+    <uses-feature android:name="oculus.software.handtracking" android:required="false"/>
     <uses-permission android:name="com.oculus.permission.USE_ANCHOR_API"/>
     <uses-permission android:name="com.oculus.permission.USE_SCENE"/>
     <uses-permission android:name="org.khronos.openxr.permission.OPENXR"/>
@@ -16,6 +18,7 @@
     <application android:label="Sonic Compilation Ultra XR" android:icon="@drawable/scu_icon"
         android:allowBackup="false" android:hasCode="true" android:extractNativeLibs="true"
         android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+        <meta-data android:name="com.oculus.handtracking.version" android:value="V2.0"/>
         <meta-data android:name="com.oculus.supportedDevices" android:value="quest2|questpro|quest3|quest3s"/>
         <meta-data android:name="com.samsung.android.vr.application.mode" android:value="vr_only"/>
         <activity android:name=".QuestActivity" android:exported="true" android:launchMode="singleTask"

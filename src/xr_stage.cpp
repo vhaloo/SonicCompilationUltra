@@ -243,6 +243,8 @@ uniform sampler2D image;
 uniform vec3 eye;
 uniform int kind,crt,maskMode;
 uniform vec2 raster;
+uniform vec4 nativeHole;
+uniform bool clipNative;
 uniform float intensity,glassStrength,surroundBrightness;
 uniform bool flipImage,srgbTarget;
 out vec4 result;
@@ -251,7 +253,12 @@ void main(){
  vec3 n=normalize(worldNormal);vec3 v=normalize(eye-worldPosition);float facing=max(dot(n,v),0.0);
  vec3 c=tint.rgb;float a=tint.a;
  if(kind==1||kind==2||kind==3){
-  vec2 uv=texcoord; c=displayColor(uv);
+  vec2 uv=texcoord;
+  if(kind==3&&clipNative&&all(greaterThanEqual(uv,nativeHole.xy))&&all(lessThan(uv,nativeHole.xy+nativeHole.zw)))discard;
+  vec4 sampleColor=texture(image,vec2(uv.x,flipImage?1.0-uv.y:uv.y));
+  a=sampleColor.a;
+  if(a<.002)discard;
+  c=(kind==1||kind==3)?sampleColor.rgb/max(a,.001):sampleColor.rgb;
   if(kind==2&&crt>0){
    float scan=.5+.5*cos(uv.y*raster.y*6.2831853);
    float scanAA=1.0-smoothstep(.5,1.25,fwidth(uv.y*raster.y));
@@ -340,14 +347,23 @@ struct XrStageRenderer::Impl {
     std::array<XrCompositionLayerProjectionView, 2> projectionViews{};
     XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
     GLuint program = 0, framebuffer = 0, nativeTexture = 0, demoTexture = 0, backdropTexture = 0;
-    int nativeW = 0, nativeH = 0;
+    int nativeW = 0, nativeH = 0, eyeDetail = -1;
+    std::array<XrViewConfigurationView, 2> eyeSizes{};
+    int64_t eyeFormat = GL_RGBA8;
+    std::vector<uint32_t> rgbaScratch;
+    bool backdropAllocated = false;
+    uint64_t remoteHash = 0, insetHash = 0;
+    Mesh remoteMesh, insetFurniture, insetScreen, cube, joystickPlate, joystickHandle;
+    int imageUniform = -1, crtUniform = -1, maskUniform = -1, rasterUniform = -1,
+        intensityUniform = -1, glassUniform = -1, brightnessUniform = -1, srgbUniform = -1,
+        flipUniform = -1, holeUniform = -1, clipUniform = -1;
     uint64_t nativeVersion = ~uint64_t(0), backdropVersion = ~uint64_t(0), frameCount = 0,
              meshHash = 0;
     bool srgb = false;
     Mesh furniture, screen, glass, plain, surroundings;
     Matrix screenLocal = Matrix::identity(), glassLocal = Matrix::identity();
     int vp = -1, model = -1, kind = -1, eyePosition = -1;
-    void initialise(XrInstance instance, XrSystemId system, XrSession xrSession) {
+    void initialise(XrInstance instance, XrSystemId system, XrSession xrSession, int detail) {
         GlState restore;
         session = xrSession;
         GLuint vert = compile(GL_VERTEX_SHADER, vertexSource),
@@ -369,6 +385,17 @@ struct XrStageRenderer::Impl {
         model = glGetUniformLocation(program, "model");
         kind = glGetUniformLocation(program, "kind");
         eyePosition = glGetUniformLocation(program, "eye");
+        imageUniform = glGetUniformLocation(program, "image");
+        crtUniform = glGetUniformLocation(program, "crt");
+        maskUniform = glGetUniformLocation(program, "maskMode");
+        rasterUniform = glGetUniformLocation(program, "raster");
+        intensityUniform = glGetUniformLocation(program, "intensity");
+        glassUniform = glGetUniformLocation(program, "glassStrength");
+        brightnessUniform = glGetUniformLocation(program, "surroundBrightness");
+        srgbUniform = glGetUniformLocation(program, "srgbTarget");
+        flipUniform = glGetUniformLocation(program, "flipImage");
+        holeUniform = glGetUniformLocation(program, "nativeHole");
+        clipUniform = glGetUniformLocation(program, "clipNative");
         glGenFramebuffers(1, &framebuffer);
         uint32_t count = 0;
         xrCheck(xrEnumerateViewConfigurationViews(instance, system,
@@ -390,37 +417,35 @@ struct XrStageRenderer::Impl {
         srgb = std::find(formats.begin(), formats.end(), GL_SRGB8_ALPHA8) != formats.end();
         if (!srgb && std::find(formats.begin(), formats.end(), GL_RGBA8) == formats.end())
             throw std::runtime_error("No supported stereo color format");
-        for (int i = 0; i < 2; ++i) {
-            auto &e = eyes[i];
-            // A bounded eye buffer preserves 120 Hz headroom; mural textures have
-            // a separate detail budget and sharp options stay in a quad layer.
-            float scale = std::min(1.f, 1600.f / std::max(sizes[i].recommendedImageRectWidth,
-                                                          sizes[i].recommendedImageRectHeight));
-            e.width = std::max(256, int(sizes[i].recommendedImageRectWidth * scale));
-            e.height = std::max(256, int(sizes[i].recommendedImageRectHeight * scale));
-            XrSwapchainCreateInfo info{XR_TYPE_SWAPCHAIN_CREATE_INFO};
-            info.usageFlags =
-                XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
-            info.format = srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8;
-            info.sampleCount = 1;
-            info.width = e.width;
-            info.height = e.height;
-            info.faceCount = info.arraySize = info.mipCount = 1;
-            xrCheck(xrCreateSwapchain(session, &info, &e.chain), "Create stereo image");
-            xrCheck(xrEnumerateSwapchainImages(e.chain, 0, &count, nullptr), "Read stereo images");
-            e.images.assign(count, {XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR});
-            xrCheck(xrEnumerateSwapchainImages(
-                        e.chain, count, &count,
-                        reinterpret_cast<XrSwapchainImageBaseHeader *>(e.images.data())),
-                    "Read stereo images");
-            glGenRenderbuffers(1, &e.depth);
-            glBindRenderbuffer(GL_RENDERBUFFER, e.depth);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, e.width, e.height);
-        }
+        eyeSizes = sizes;
+        eyeFormat = srgb ? GL_SRGB8_ALPHA8 : GL_RGBA8;
+        configureEyes(detail);
         Vertices q;
         quad(q, Matrix::identity(), {-.5f, -.5f, 0}, {.5f, -.5f, 0}, {.5f, .5f, 0}, {-.5f, .5f, 0},
              {0, 0, 1}, white);
         plain.upload(q);
+        Vertices unitCube;
+        box(unitCube, {0, 0, 0}, {1, 1, 1}, cyan, .28f);
+        cube.upload(unitCube);
+        Vertices plate, handle;
+        cylinder(plate, {0, 0, 0}, .205f, .018f, ink);
+        cylinder(handle, {0, 0, .045f}, .015f, .09f, metal);
+        // Original ball-top joystick, built once; no external model or texture.
+        for (int latitude = 0; latitude < 8; ++latitude)
+            for (int longitude = 0; longitude < 16; ++longitude) {
+                auto vertex = [&](int x, int y) {
+                    float a = x * 2 * pi / 16, b = y * pi / 8;
+                    return V3{.047f * std::sin(b) * std::cos(a), .047f * std::sin(b) * std::sin(a),
+                              .115f + .047f * std::cos(b)};
+                };
+                auto a = vertex(longitude, latitude), b = vertex(longitude + 1, latitude),
+                     c = vertex(longitude + 1, latitude + 1), d = vertex(longitude, latitude + 1);
+                V3 n{(a.x + b.x + c.x + d.x) / 4, (a.y + b.y + c.y + d.y) / 4,
+                     (a.z + b.z + c.z + d.z) / 4 - .115f};
+                quad(handle, Matrix::identity(), a, b, c, d, n, gold, .25f);
+            }
+        joystickPlate.upload(plate);
+        joystickHandle.upload(handle);
         Vertices panorama;
         for (int i = 0; i < 64; ++i) {
             float u = i / 64.f, v = (i + 1) / 64.f;
@@ -459,6 +484,49 @@ struct XrStageRenderer::Impl {
         SDL_Log("SCU XR stereo ready: %dx%d per eye; independent menu quad", eyes[0].width,
                 eyes[0].height);
     }
+    void configureEyes(int detail) {
+        detail = std::clamp(detail, 0, 2);
+        if (eyeDetail == detail)
+            return;
+        eyeDetail = detail;
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, 0);
+        uint32_t count = 0;
+        for (int i = 0; i < 2; ++i) {
+            if (eyes[i].chain)
+                xrDestroySwapchain(eyes[i].chain);
+            if (eyes[i].depth)
+                glDeleteRenderbuffers(1, &eyes[i].depth);
+            eyes[i] = {};
+            auto &e = eyes[i];
+            // A bounded eye buffer preserves 120 Hz headroom; mural textures have
+            // a separate detail budget and sharp options stay in a quad layer.
+            float scale = std::min(1.f, float(std::array<int, 3>{1024, 1280, 1600}[detail]) /
+                                            std::max(eyeSizes[i].recommendedImageRectWidth,
+                                                     eyeSizes[i].recommendedImageRectHeight));
+            e.width = std::max(256, int(eyeSizes[i].recommendedImageRectWidth * scale));
+            e.height = std::max(256, int(eyeSizes[i].recommendedImageRectHeight * scale));
+            XrSwapchainCreateInfo info{XR_TYPE_SWAPCHAIN_CREATE_INFO};
+            info.usageFlags =
+                XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
+            info.format = eyeFormat;
+            info.sampleCount = 1;
+            info.width = e.width;
+            info.height = e.height;
+            info.faceCount = info.arraySize = info.mipCount = 1;
+            xrCheck(xrCreateSwapchain(session, &info, &e.chain), "Create stereo image");
+            xrCheck(xrEnumerateSwapchainImages(e.chain, 0, &count, nullptr), "Read stereo images");
+            e.images.assign(count, {XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR});
+            xrCheck(xrEnumerateSwapchainImages(
+                        e.chain, count, &count,
+                        reinterpret_cast<XrSwapchainImageBaseHeader *>(e.images.data())),
+                    "Read stereo images");
+            glGenRenderbuffers(1, &e.depth);
+            glBindRenderbuffer(GL_RENDERBUFFER, e.depth);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, e.width, e.height);
+        }
+    }
     static void textureParameters() {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -473,7 +541,8 @@ struct XrStageRenderer::Impl {
         glBindTexture(GL_TEXTURE_2D, nativeTexture);
         if (nativeW != c.nativeWidth || nativeH != c.nativeHeight || nativeVersion != c.version) {
             // Core uses 0xAARRGGBB. Convert to portable RGBA bytes explicitly.
-            std::vector<uint32_t> rgba(c.native->size());
+            rgbaScratch.resize(c.native->size());
+            auto &rgba = rgbaScratch;
             for (size_t i = 0; i < rgba.size(); ++i) {
                 uint32_t p = (*c.native)[i];
                 rgba[i] = (p & 0xff00ff00) | ((p >> 16) & 255) | ((p & 255) << 16);
@@ -499,23 +568,153 @@ struct XrStageRenderer::Impl {
             glGenTextures(1, &backdropTexture);
         glBindTexture(GL_TEXTURE_2D, backdropTexture);
         if (backdropVersion != c.version) {
-            std::vector<uint32_t> rgba(c.backdrop->size());
+            rgbaScratch.resize(c.backdrop->size());
+            auto &rgba = rgbaScratch;
             for (size_t i = 0; i < rgba.size(); ++i) {
                 uint32_t p = (*c.backdrop)[i];
                 rgba[i] = (p & 0xff00ff00) | ((p >> 16) & 255) | ((p & 255) << 16);
             }
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 320, 224, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                         rgba.data());
+            if (!backdropAllocated) {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 320, 224, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                             rgba.data());
+                backdropAllocated = true;
+            } else
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 320, 224, GL_RGBA, GL_UNSIGNED_BYTE,
+                                rgba.data());
             textureParameters();
             backdropVersion = c.version;
         }
         return backdropTexture;
     }
+    void crtGeometry(Vertices &f, Vertices &p, const Settings &s, int nw, int nh, bool inset) {
+        float w = inset ? 1.f : s.questTvWidth * .01f, h = w * nh / std::max(1, nw),
+              y = inset ? 0.f : h / 2 + .72f;
+        Color shell = s.questTvModel == 0   ? Color{.56f, .59f, .63f, 1}
+                      : s.questTvModel == 1 ? Color{.10f, .09f, .08f, 1}
+                                            : Color{.22f, .25f, .28f, 1};
+        // 4:3 consumer proportions, deep rear housing, original geometry; no brand assets.
+        float casingWidth = w * (s.questTvModel == 0 ? 1.40f : s.questTvModel == 1 ? 1.34f : 1.28f);
+        float casingDepth = w * (s.questTvModel == 0 ? .86f : s.questTvModel == 1 ? .72f : .98f);
+        bevel(f, {0, y, .15f * w - casingDepth / 2}, {casingWidth, h * 1.43f, casingDepth}, shell,
+              w * .045f, .48f);
+        bevel(f, {0, y, -w * .68f}, {w * .83f, h * .86f, w * .22f}, ink, w * .04f, .65f);
+        for (int side : {-1, 1}) {
+            for (int vent = 0; vent < 13; ++vent)
+                box(f,
+                    {side * (casingWidth / 2 - w * .067f), y + (vent - 6) * h * .047f, w * .153f},
+                    {w * .083f, h * .011f, w * .008f}, ink, .8f);
+            if (s.questTvModel == 2) {
+                box(f, {side * w * .72f, y, w * .07f}, {w * .035f, h * .72f, w * .035f}, metal,
+                    .3f);
+                for (int end : {-1, 1})
+                    box(f, {side * w * .69f, y + end * h * .35f, 0},
+                        {w * .10f, w * .035f, w * .20f}, metal, .3f);
+            }
+        }
+        for (int vent = 0; vent < 12; ++vent)
+            box(f, {(vent - 5.5f) * w * .045f, y + h * .72f, -w * .24f},
+                {w * .016f, w * .006f, w * .34f}, ink, .7f);
+        bevel(f, {0, y, w * .087f}, {w * 1.10f, h * 1.13f, w * .14f}, ink, w * .045f, .58f);
+        if (!inset)
+            box(f, {0, .34f, -.16f}, {w * .80f, .60f, w * .48f}, ink, .6f);
+        if (!inset)
+            for (int i : {-1, 1})
+                box(f, {i * w * .34f, .025f, -.13f}, {.07f, .05f, w * .53f}, metal, .18f);
+        for (int i = 0; i < 15; ++i)
+            box(f, {(i - 7) * w * .031f, y - h * .605f, w * .158f}, {w * .014f, h * .035f, .006f},
+                metal, .4f);
+        cylinder(f, {w * .45f, y - h * .60f, w * .165f}, w * .026f, .025f, metal);
+        box(f, {-w * .45f, y - h * .60f, w * .167f}, {.02f, .012f, .008f}, cyan, -1);
+        legend(f, Matrix::identity(), {-w * .46f, y - h * .63f, w * .168f}, w / 260.f, "Y MENU");
+        if (s.questTvModel == 1)
+            for (int n = 0; n < 2; ++n)
+                cylinder(f, {w * .60f, y + h * (.20f - n * .40f), w * .17f}, w * .039f, w * .03f,
+                         metal);
+        box(f, {w * .15f, y - h * .35f, -w * .80f}, {w * .31f, h * .18f, w * .035f}, ink, .6f);
+        for (int port = 0; port < 3; ++port)
+            cylinder(f, {w * (.04f + port * .09f), y - h * .35f, -w * .82f}, w * .018f, w * .03f,
+                     port == 0   ? Color{.9f, .25f, .15f, 1}
+                     : port == 1 ? Color{.85f, .85f, .82f, 1}
+                                 : gold);
+        // Curved glass is geometry, so stereo highlights follow head motion.
+        float bulge =
+            !inset && s.questCrtCoplanar && s.questSurround ? 0.f : w * s.questCrtCurve * .0006f;
+        for (int iy = 0; iy < 16; ++iy)
+            for (int ix = 0; ix < 28; ++ix) {
+                auto v = [&](int xx, int yy) {
+                    float u = xx / 28.f, v = yy / 16.f, x = (u - .5f) * w, py = (v - .5f) * h;
+                    return V3{x, y + py,
+                              w * .16f + bulge * (1 - ((u - .5f) * 2) * ((u - .5f) * 2)) *
+                                             (1 - ((v - .5f) * 2) * ((v - .5f) * 2))};
+                };
+                V3 a = v(ix, iy), b = v(ix + 1, iy), c = v(ix + 1, iy + 1), d = v(ix, iy + 1);
+                size_t start = p.size();
+                quad(p, Matrix::identity(), a, b, c, d, {0, 0, 1}, white);
+                float u0 = ix / 28.f, u1 = (ix + 1) / 28.f, v0 = 1 - iy / 16.f,
+                      v1 = 1 - (iy + 1) / 16.f;
+                const float coords[6][2]{{u0, v0}, {u1, v0}, {u1, v1},
+                                         {u0, v0}, {u1, v1}, {u0, v1}};
+                for (int j = 0; j < 6; ++j) {
+                    p[start + j].u = coords[j][0];
+                    p[start + j].v = coords[j][1];
+                }
+            }
+    }
+    void controlsGeometry(const XrSpatialControls &c, const Settings &s, int nw, int nh) {
+        uint64_t key = 0;
+        if (c.visible && c.buttons) {
+            key = 1469598103934665603ull;
+            for (auto b : *c.buttons) {
+                key ^= b.action;
+                key *= 1099511628211ull;
+            }
+            for (auto id : c.hover) {
+                key ^= uint32_t(id + 2);
+                key *= 1099511628211ull;
+            }
+            for (auto active : c.active) {
+                key ^= unsigned(active);
+                key *= 1099511628211ull;
+            }
+            for (auto id : c.pressed) {
+                key ^= uint32_t(id + 2);
+                key *= 1099511628211ull;
+            }
+            if (key != remoteHash) {
+                Vertices v;
+                bevel(v, {0, 0, -.025f}, {spatialWidth + .04f, spatialHeight + .04f, .075f}, ink,
+                      .035f, .55f);
+                bevel(v, {0, .355f, .015f}, {.74f, .075f, .035f}, metal, .025f, .35f);
+                for (size_t i = 0; i < c.buttons->size(); ++i) {
+                    auto b = (*c.buttons)[i];
+                    bool down = c.pressed[0] == int(i) || c.pressed[1] == int(i);
+                    bool hot = c.hover[0] == int(i) || c.hover[1] == int(i);
+                    bevel(v, {b.x, b.y, down ? .018f : .029f}, {b.width, b.height, .025f},
+                          down                                 ? gold
+                          : hot                                ? cyan
+                          : i < c.active.size() && c.active[i] ? Color{.04f, .28f, .20f, 1}
+                                                               : blue,
+                          .012f, .42f);
+                }
+                remoteMesh.upload(v);
+                remoteHash = key;
+            }
+        }
+        uint64_t ik =
+            uint64_t(nw) * 65537 + nh + s.questTvModel * 999999 + s.questCrtCurve * 111111;
+        if (c.nativeVisible && ik != insetHash) {
+            Vertices f, p;
+            crtGeometry(f, p, s, nw, nh, true);
+            insetFurniture.upload(f);
+            insetScreen.upload(p);
+            insetHash = ik;
+        }
+    }
     void geometry(const Settings &s, int mode, float ratio, int nw, int nh) {
         uint64_t hash = 1469598103934665603ull;
-        for (int v :
-             {mode, int(ratio * 10000), nw, nh, s.questCabinetWidth, s.questCabinetHeight,
-              s.questCabinetTilt, s.questTvWidth, s.questCrtCurve, s.questCurve, int(s.help)}) {
+        for (int v : {mode, int(ratio * 10000), nw, nh, s.questCabinetWidth, s.questCabinetHeight,
+                      s.questCabinetTilt, s.questTvWidth, s.questCrtCurve, s.questTvModel,
+                      int(s.questCrtCoplanar), int(s.questSurround), s.questCurve, int(s.help)}) {
             hash ^= uint32_t(v);
             hash *= 1099511628211ull;
         }
@@ -567,43 +766,8 @@ struct XrStageRenderer::Impl {
             quad(p, table, {-.5f, -.5f, 0}, {.5f, -.5f, 0}, {.5f, .5f, 0}, {-.5f, .5f, 0},
                  {0, 0, 1}, white);
         } else if (mode == 5) {
-            float w = s.questTvWidth * .01f, h = w * nh / std::max(1, nw), y = h / 2 + .72f;
-            bevel(f, {0, y, -.16f}, {w * 1.22f, h * 1.30f, w * .48f}, blue, w * .065f, .32f);
-            bevel(f, {0, y, w * .087f}, {w * 1.10f, h * 1.13f, w * .14f}, ink, w * .045f, .58f);
-            box(f, {0, .34f, -.16f}, {w * .80f, .60f, w * .48f}, ink, .6f);
-            for (int i : {-1, 1})
-                box(f, {i * w * .34f, .025f, -.13f}, {.07f, .05f, w * .53f}, metal, .18f);
-            for (int i = 0; i < 15; ++i)
-                box(f, {(i - 7) * w * .031f, y - h * .605f, w * .158f},
-                    {w * .014f, h * .035f, .006f}, metal, .4f);
-            cylinder(f, {w * .45f, y - h * .60f, w * .165f}, w * .026f, .025f, metal);
-            box(f, {-w * .45f, y - h * .60f, w * .167f}, {.02f, .012f, .008f}, cyan, -1);
-            legend(f, Matrix::identity(), {-w * .46f, y - h * .63f, w * .168f}, w / 260.f,
-                   "Y MENU");
-            // Curved glass is geometry, so stereo highlights follow head motion.
-            float bulge = w * s.questCrtCurve * .0006f;
-            for (int iy = 0; iy < 16; ++iy)
-                for (int ix = 0; ix < 28; ++ix) {
-                    auto v = [&](int xx, int yy) {
-                        float u = xx / 28.f, v = yy / 16.f, x = (u - .5f) * w, py = (v - .5f) * h;
-                        return V3{x, y + py,
-                                  w * .16f + bulge * (1 - ((u - .5f) * 2) * ((u - .5f) * 2)) *
-                                                 (1 - ((v - .5f) * 2) * ((v - .5f) * 2))};
-                    };
-                    V3 a = v(ix, iy), b = v(ix + 1, iy), c = v(ix + 1, iy + 1), d = v(ix, iy + 1);
-                    size_t start = p.size();
-                    quad(p, Matrix::identity(), a, b, c, d, {0, 0, 1}, white);
-                    float u0 = ix / 28.f, u1 = (ix + 1) / 28.f, v0 = 1 - iy / 16.f,
-                          v1 = 1 - (iy + 1) / 16.f;
-                    const float coords[6][2]{{u0, v0}, {u1, v0}, {u1, v1},
-                                             {u0, v0}, {u1, v1}, {u0, v1}};
-                    for (int j = 0; j < 6; ++j) {
-                        p[start + j].u = coords[j][0];
-                        p[start + j].v = coords[j][1];
-                    }
-                }
-            screenLocal = Matrix::identity();
-            glassLocal = Matrix::identity();
+            crtGeometry(f, p, s, nw, nh, false);
+            screenLocal = glassLocal = Matrix::identity();
         } else {
             float h = s.questWallHeight * .01f, w = h * ratio, angle = s.questCurve * pi / 180,
                   radius = w / std::max(.1f, angle);
@@ -652,7 +816,8 @@ struct XrStageRenderer::Impl {
     }
     const XrCompositionLayerProjection *render(XrSpace space, XrTime time, XrPosef origin,
                                                const Settings &s, int mode,
-                                               const XrStageContent &content, bool ar,
+                                               const XrStageContent &content,
+                                               const XrSpatialControls &controls, bool ar,
                                                const std::string &capture) {
         std::array<XrView, 2> views{{{XR_TYPE_VIEW}, {XR_TYPE_VIEW}}};
         XrViewLocateInfo locate{XR_TYPE_VIEW_LOCATE_INFO};
@@ -668,10 +833,12 @@ struct XrStageRenderer::Impl {
              (XR_VIEW_STATE_POSITION_VALID_BIT | XR_VIEW_STATE_ORIENTATION_VALID_BIT)) !=
                 (XR_VIEW_STATE_POSITION_VALID_BIT | XR_VIEW_STATE_ORIENTATION_VALID_BIT))
             return nullptr;
-        GlState restore;
+        // The presenter owns the complete SDL/OpenXR state guard; avoid a nested
+        // glGet* round trip on each eye frame.
+        configureEyes(s.questEyeDetail);
         glUseProgram(program);
         glActiveTexture(GL_TEXTURE0);
-        glUniform1i(glGetUniformLocation(program, "image"), 0);
+        glUniform1i(imageUniform, 0);
         glDisable(GL_SCISSOR_TEST);
         glDisable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
@@ -681,19 +848,18 @@ struct XrStageRenderer::Impl {
         glEnable(GL_BLEND);
         glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         glBlendEquation(GL_FUNC_ADD);
-        glUniform1i(glGetUniformLocation(program, "crt"), s.questCrt);
-        glUniform1i(glGetUniformLocation(program, "maskMode"), s.questCrtMask);
-        glUniform2f(glGetUniformLocation(program, "raster"), content.nativeWidth,
-                    content.nativeHeight);
-        glUniform1f(glGetUniformLocation(program, "intensity"), s.questCrtStrength * .01f);
-        glUniform1f(glGetUniformLocation(program, "glassStrength"), s.questGlass * .01f);
-        glUniform1f(glGetUniformLocation(program, "surroundBrightness"),
-                    s.questSurroundBrightness * .01f);
-        glUniform1i(glGetUniformLocation(program, "srgbTarget"), srgb);
-        glUniform1i(glGetUniformLocation(program, "flipImage"), s.questFlip);
+        glUniform1i(crtUniform, s.questCrt);
+        glUniform1i(maskUniform, s.questCrtMask);
+        glUniform2f(rasterUniform, content.nativeWidth, content.nativeHeight);
+        glUniform1f(intensityUniform, s.questCrtStrength * .01f);
+        glUniform1f(glassUniform, s.questGlass * .01f);
+        glUniform1f(brightnessUniform, s.questSurroundBrightness * .01f);
+        glUniform1i(srgbUniform, srgb);
+        glUniform1i(flipUniform, s.questFlip);
         GLuint nativeImage = native(content), expanded = demoTexture;
-        GLuint backdropImage =
-            !ar && mode == 5 && s.questWorldBackdrop ? backdrop(content) : demoTexture;
+        GLuint backdropImage = !ar && mode == 5 && s.questWorldBackdrop && s.background != 6
+                                   ? backdrop(content)
+                                   : demoTexture;
         bool bound = false;
         if (content.expanded) {
             float w = 0, h = 0;
@@ -709,8 +875,26 @@ struct XrStageRenderer::Impl {
                           : .5f;
         if (mode != 4 && !content.loaded)
             ratio = 16.f / 9;
-        geometry(s, mode, ratio, content.nativeWidth, content.nativeHeight);
+        if (mode >= 4)
+            geometry(s, mode, ratio, content.nativeWidth, content.nativeHeight);
+        controlsGeometry(controls, s, content.nativeWidth, content.nativeHeight);
+        GLuint labelsImage = 0;
+        if (controls.visible && controls.labels) {
+            float tw = 0, th = 0;
+            if (SDL_GL_BindTexture(controls.labels, &tw, &th) == 0) {
+                GLint id = 0;
+                glGetIntegerv(GL_TEXTURE_BINDING_2D, &id);
+                labelsImage = GLuint(id);
+            }
+        }
+        auto hole =
+            coplanarViewport(content.left, content.top, content.coverageWidth,
+                             content.coverageHeight, content.scene.cameraX, content.scene.cameraY,
+                             content.nativeWidth, content.nativeHeight);
+        glUniform4f(holeUniform, hole.x, hole.y, hole.width, hole.height);
+        glUniform1i(clipUniform, 0);
         Matrix root = poseMatrix(origin, s.questScale * .01f);
+        bool alphaLayer = ar || mode < 4;
         for (int i = 0; i < 2; ++i) {
             auto &e = eyes[i];
             uint32_t index = 0;
@@ -727,14 +911,15 @@ struct XrStageRenderer::Impl {
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
                 throw std::runtime_error("Incomplete XR stereo framebuffer");
             glViewport(0, 0, e.width, e.height);
-            glClearColor(ar ? 0 : .008f, ar ? 0 : .013f, ar ? 0 : .025f, ar ? 0 : 1);
+            glClearColor(alphaLayer ? 0 : .008f, alphaLayer ? 0 : .013f, alphaLayer ? 0 : .025f,
+                         alphaLayer ? 0 : 1);
             glDepthMask(GL_TRUE);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             auto vpMatrix = product(projection(views[i].fov), viewMatrix(views[i].pose));
             glUniformMatrix4fv(vp, 1, GL_FALSE, vpMatrix.v);
             glUniform3f(eyePosition, views[i].pose.position.x, views[i].pose.position.y,
                         views[i].pose.position.z);
-            if (!ar && mode == 5 && s.questWorldBackdrop && content.loaded) {
+            if (!ar && mode == 5 && s.questWorldBackdrop && s.background != 6 && content.loaded) {
                 glDepthMask(GL_FALSE);
                 XrPosef backdropPose{origin.orientation, views[i].pose.position};
                 draw(surroundings,
@@ -742,7 +927,7 @@ struct XrStageRenderer::Impl {
                      backdropImage);
                 glDepthMask(GL_TRUE);
             }
-            if (!ar && s.questEnvironment) {
+            if (mode >= 4 && !ar && s.questEnvironment) {
                 auto ground =
                     product(poseMatrix(origin), placement({0, -.01f, 0}, {1000, 1000, 1}, -pi / 2));
                 draw(plain, ground, 5);
@@ -760,15 +945,62 @@ struct XrStageRenderer::Impl {
                 float py = y + (content.scene.cameraY + content.nativeHeight / 2 - content.top -
                                 content.coverageHeight / 2) *
                                    unit;
+                glUniform1i(clipUniform, s.questCrtCoplanar);
                 draw(plain,
                      product(root,
-                             placement({x, py, -.7f}, {float(content.coverageWidth) * unit,
-                                                       float(content.coverageHeight) * unit, 1})),
+                             placement({x, py, s.questCrtCoplanar ? s.questTvWidth * .0016f : -.7f},
+                                       {float(content.coverageWidth) * unit,
+                                        float(content.coverageHeight) * unit, 1})),
                      3, expanded);
             }
-            draw(furniture, root, 0);
-            draw(screen, product(root, screenLocal), mode == 5 ? 2 : 1,
-                 mode == 5 ? nativeImage : expanded);
+            glUniform1i(clipUniform, 0);
+            if (mode >= 4) {
+                draw(furniture, root, 0);
+                draw(screen, product(root, screenLocal), mode == 5 ? 2 : 1,
+                     mode == 5 ? nativeImage : expanded);
+            }
+            if (controls.nativeVisible) {
+                auto mini = poseMatrix(controls.nativePose, s.questInsetWidth * .01f);
+                draw(insetFurniture, mini, 0);
+                draw(insetScreen, mini, 2, nativeImage);
+                draw(cube, product(mini, placement({0, -.48f, .1f}, {.52f, .035f, .035f})), 0);
+            }
+            for (int hand = 0; hand < 2; ++hand)
+                if (controls.fingerVisible[hand]) {
+                    auto tip = controls.fingerTips[hand];
+                    draw(cube, placement({tip.x, tip.y, tip.z}, {.011f, .011f, .011f}), 0);
+                }
+            for (int hand = 0; hand < 2; ++hand)
+                if (controls.rayLength[hand] > 0) {
+                    float distance = controls.rayLength[hand];
+                    auto ray = poseMatrix(controls.rays[hand]);
+                    draw(cube,
+                         product(ray, placement({0, 0, -distance / 2}, {.0015f, .0015f, distance})),
+                         0);
+                    draw(cube, product(ray, placement({0, 0, -distance}, {.009f, .009f, .009f})),
+                         0);
+                }
+            if (controls.visible) {
+                auto remote = poseMatrix(controls.pose, s.questRemoteScale * .01f);
+                draw(remoteMesh, remote, 0);
+                if (labelsImage) {
+                    glDepthMask(GL_FALSE);
+                    draw(
+                        plain,
+                        product(remote, placement({0, 0, .051f}, {spatialWidth, spatialHeight, 1})),
+                        1, labelsImage);
+                    glDepthMask(GL_TRUE);
+                }
+                if (controls.buttons)
+                    for (auto b : *controls.buttons)
+                        if (b.action == GameStick) {
+                            draw(joystickPlate, product(remote, placement({b.x, b.y, .055f})), 0);
+                            draw(joystickHandle,
+                                 product(remote, placement({b.x + controls.stick.x * .15f,
+                                                            b.y + controls.stick.y * .15f, .055f})),
+                                 0);
+                        }
+            }
             if (mode == 4) {
                 float w = s.questCabinetWidth * .01f, d = w / std::clamp(ratio, .25f, 2.f),
                       center = s.questCabinetHeight * .01f +
@@ -822,16 +1054,24 @@ struct XrStageRenderer::Impl {
             p.subImage.swapchain = e.chain;
             p.subImage.imageRect = {{0, 0}, {e.width, e.height}};
         }
+        if (labelsImage)
+            SDL_GL_UnbindTexture(controls.labels);
         if (bound)
             SDL_GL_UnbindTexture(content.expanded);
         layer.space = space;
-        layer.layerFlags = ar ? XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT : 0;
+        layer.layerFlags = alphaLayer ? XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT : 0;
         layer.viewCount = 2;
         layer.views = projectionViews.data();
         ++frameCount;
         return &layer;
     }
     ~Impl() {
+        remoteMesh.clear();
+        insetFurniture.clear();
+        insetScreen.clear();
+        cube.clear();
+        joystickPlate.clear();
+        joystickHandle.clear();
         furniture.clear();
         screen.clear();
         glass.clear();
@@ -857,14 +1097,15 @@ struct XrStageRenderer::Impl {
 };
 XrStageRenderer::XrStageRenderer() : impl(std::make_unique<Impl>()) {}
 XrStageRenderer::~XrStageRenderer() = default;
-void XrStageRenderer::initialise(XrInstance i, XrSystemId s, XrSession session) {
-    impl->initialise(i, s, session);
+void XrStageRenderer::initialise(XrInstance i, XrSystemId s, XrSession session, int detail) {
+    impl->initialise(i, s, session, detail);
 }
 const XrCompositionLayerProjection *XrStageRenderer::render(XrSpace space, XrTime time,
                                                             XrPosef origin, const Settings &s,
                                                             int mode, const XrStageContent &c,
+                                                            const XrSpatialControls &controls,
                                                             bool ar, const std::string &capture) {
-    return impl->render(space, time, origin, s, mode, c, ar, capture);
+    return impl->render(space, time, origin, s, mode, c, controls, ar, capture);
 }
 uint64_t XrStageRenderer::frames() const {
     return impl->frameCount;

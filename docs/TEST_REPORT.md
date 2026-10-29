@@ -2,6 +2,15 @@
 
 This report separates successful checks from coverage that has not been measured. A boot test or source build is not a full-game completion certificate.
 
+## 0.7 XR development — no application/headset execution
+
+- No ADB operation, headset installation/session, desktop application or cartridge gameplay was used for this development release. Prior menu captures below do not validate 0.7.
+- Android ARM64 compilation/lint and static APK inspection cover the updated manifest, optional hand support, signing, dependencies, font and public/private data boundary. Desktop targets compile/package without executing the collection.
+- The standalone pure interaction target has no SDL, OpenXR session or emulator dependency. It checks all seven remote pages' button centres/bounds, invalid hits, pinch thresholds/tracking release, joystick deadzone/unit bounds and the native viewport UV map. This does not establish physical usability.
+- Font inspection covers all four-language labels and new illustrated explanations. The source includes the 152-entry named moving-scenery metadata inventory.
+- New source paths implement source-alpha AR, coplanar TV/world cutout, one-grip relative transforms, optional hand aim/poke, a controller-absence joystick, dedicated Spinball triggers, cached allocations and lower image budgets. No runtime performance or visual guarantee follows from compilation.
+- Deferred: startup/runtime regressions, hand/controller source switching, real poke/grab/resize, every mode, opacity/CRT alignment during play, complete script destinations, wall relocalization, comfort, thermals and sustained frame rate. macOS is experimental.
+
 ## 0.6 XR preview — physical frontend checks, no gameplay
 
 - On a USB-connected Quest 3, the library/options and original-pattern pinball/CRT/curved previews reach native SDL/OpenXR startup and submit stereo projection plus an independent menu quad. Actual eye-buffer and options captures were visually inspected. The earlier partial-UI cleanup crash, window-placement failure and black menu transfer were identified in logs/captures and repaired.

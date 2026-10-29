@@ -9,6 +9,338 @@ namespace scu {
         }                                                                                          \
     }
 static const SettingHelp entries[] = {
+    H("questoptionsscale", Resize,
+      "Options size changes independently of its distance. Half/double/reset on the placement page "
+      "apply to the selected target; moving the options does not resize the stage.",
+      "La taille des options est indépendante de leur distance. Demi/double/remise à zéro "
+      "s’appliquent à la cible choisie. Déplacer les options ne redimensionne pas le niveau.",
+      "El tamaño de opciones es independiente de su distancia. Mitad/doble/reinicio se aplican al "
+      "objetivo elegido. Mover opciones no cambia tamaño del nivel.",
+      "設定パネルの大きさは距離と独立しています。半分・2倍・リセットは選択中の対象に適用。設定を移"
+      "動してもステージの大きさは変わりません。"),
+    H("questremote", Controller,
+      "The movable spatial remote has seven pages of large 3D buttons. Aim and press a trigger, "
+      "pinch a hand ray, or poke a nearby button. The top handle uses the middle-finger grip. All "
+      "settings remain in the advanced panel; the All settings page selects its sections and has "
+      "scroll buttons. R3 recovers controls. Physical interaction has not been tested in 0.7.",
+      "La télécommande déplaçable a sept pages de gros boutons 3D. Vise avec une gâchette ou une "
+      "pince des doigts, ou touche un bouton proche. La poignée haute utilise la prise du majeur. "
+      "Tous les réglages restent dans le panneau avancé ; la page Tous réglages ouvre les sections "
+      "et défile. R3 ramène les commandes. Interaction physique non testée en 0.7.",
+      "El mando móvil tiene siete páginas de botones 3D grandes. Apunta y pulsa gatillo, pellizca "
+      "el rayo o toca un botón cercano. El asa superior usa agarre del dedo medio. Todos los "
+      "ajustes siguen en el panel avanzado, con secciones y botones de desplazamiento. R3 recupera "
+      "mandos. Interacción física no probada en 0.7.",
+      "移動できる空間リモコンには大きな3Dボタンのページが7つあります。狙ってトリガー、手のピンチ、"
+      "近くのボタンへのタッチで操作。上のハンドルは中指グリップでつかみます。全設定ページで詳細パネ"
+      "ルの項目とスクロールにアクセス。R3で戻せます。0.7の実機操作は未検証です。"),
+    H("questremotescale", Controller,
+      "The movable spatial remote has seven pages of large 3D buttons. Aim and press a trigger, "
+      "pinch a hand ray, or poke a nearby button. The top handle uses the middle-finger grip. All "
+      "settings remain in the advanced panel; the All settings page selects its sections and has "
+      "scroll buttons. R3 recovers controls. Physical interaction has not been tested in 0.7.",
+      "La télécommande déplaçable a sept pages de gros boutons 3D. Vise avec une gâchette ou une "
+      "pince des doigts, ou touche un bouton proche. La poignée haute utilise la prise du majeur. "
+      "Tous les réglages restent dans le panneau avancé ; la page Tous réglages ouvre les sections "
+      "et défile. R3 ramène les commandes. Interaction physique non testée en 0.7.",
+      "El mando móvil tiene siete páginas de botones 3D grandes. Apunta y pulsa gatillo, pellizca "
+      "el rayo o toca un botón cercano. El asa superior usa agarre del dedo medio. Todos los "
+      "ajustes siguen en el panel avanzado, con secciones y botones de desplazamiento. R3 recupera "
+      "mandos. Interacción física no probada en 0.7.",
+      "移動できる空間リモコンには大きな3Dボタンのページが7つあります。狙ってトリガー、手のピンチ、"
+      "近くのボタンへのタッチで操作。上のハンドルは中指グリップでつかみます。全設定ページで詳細パネ"
+      "ルの項目とスクロールにアクセス。R3で戻せます。0.7の実機操作は未検証です。"),
+    H("remote_recover", Controller,
+      "The movable spatial remote has seven pages of large 3D buttons. Aim and press a trigger, "
+      "pinch a hand ray, or poke a nearby button. The top handle uses the middle-finger grip. All "
+      "settings remain in the advanced panel; the All settings page selects its sections and has "
+      "scroll buttons. R3 recovers controls. Physical interaction has not been tested in 0.7.",
+      "La télécommande déplaçable a sept pages de gros boutons 3D. Vise avec une gâchette ou une "
+      "pince des doigts, ou touche un bouton proche. La poignée haute utilise la prise du majeur. "
+      "Tous les réglages restent dans le panneau avancé ; la page Tous réglages ouvre les sections "
+      "et défile. R3 ramène les commandes. Interaction physique non testée en 0.7.",
+      "El mando móvil tiene siete páginas de botones 3D grandes. Apunta y pulsa gatillo, pellizca "
+      "el rayo o toca un botón cercano. El asa superior usa agarre del dedo medio. Todos los "
+      "ajustes siguen en el panel avanzado, con secciones y botones de desplazamiento. R3 recupera "
+      "mandos. Interacción física no probada en 0.7.",
+      "移動できる空間リモコンには大きな3Dボタンのページが7つあります。狙ってトリガー、手のピンチ、"
+      "近くのボタンへのタッチで操作。上のハンドルは中指グリップでつかみます。全設定ページで詳細パネ"
+      "ルの項目とスクロールにアクセス。R3で戻せます。0.7の実機操作は未検証です。"),
+    H("questtransparent", Background,
+      "AR starts with zero-alpha scenery behind terrain and actors. Empty areas reveal passthrough "
+      "instead of a stretched opaque image. The native CRT keeps the complete original picture. "
+      "Disable this to restore the selected background style. VR still has its own dark "
+      "environment. No camera images are read by this application.",
+      "En AR, le décor derrière le terrain et les acteurs utilise un alpha nul. Les zones vides "
+      "révèlent la pièce. Le CRT natif garde l’image originale complète. Désactive pour retrouver "
+      "le style de fond choisi. La VR conserve son environnement sombre. L’application ne lit "
+      "aucune image des caméras.",
+      "La RA comienza con fondo de alfa cero detrás del terreno y actores. Los huecos muestran "
+      "passthrough. El CRT nativo conserva la imagen original completa. Desactiva para restaurar "
+      "el fondo elegido. La RV conserva su entorno oscuro. La aplicación no lee imágenes de "
+      "cámara.",
+      "ARでは地形やキャラクターの後ろの背景をアルファ0にし、空いた部分から実際の部屋を見せます。通"
+      "常画面CRTは元の画像を保ちます。無効にすると選択した背景を復元。VRは暗い環境を使用します。ア"
+      "プリはカメラ画像を読みません。"),
+    H("transparentbg", Background,
+      "AR starts with zero-alpha scenery behind terrain and actors. Empty areas reveal passthrough "
+      "instead of a stretched opaque image. The native CRT keeps the complete original picture. "
+      "Disable this to restore the selected background style. VR still has its own dark "
+      "environment. No camera images are read by this application.",
+      "En AR, le décor derrière le terrain et les acteurs utilise un alpha nul. Les zones vides "
+      "révèlent la pièce. Le CRT natif garde l’image originale complète. Désactive pour retrouver "
+      "le style de fond choisi. La VR conserve son environnement sombre. L’application ne lit "
+      "aucune image des caméras.",
+      "La RA comienza con fondo de alfa cero detrás del terreno y actores. Los huecos muestran "
+      "passthrough. El CRT nativo conserva la imagen original completa. Desactiva para restaurar "
+      "el fondo elegido. La RV conserva su entorno oscuro. La aplicación no lee imágenes de "
+      "cámara.",
+      "ARでは地形やキャラクターの後ろの背景をアルファ0にし、空いた部分から実際の部屋を見せます。通"
+      "常画面CRTは元の画像を保ちます。無効にすると選択した背景を復元。VRは暗い環境を使用します。ア"
+      "プリはカメラ画像を読みません。"),
+    H("questhandtracking", Controller,
+      "Uses optional OpenXR hand tracking and Meta aim gestures. When no tracked controller or "
+      "external pad is detected, Auto opens a large joystick with A/B/C, Start, rewind and "
+      "both-flipper buttons. Pinch and drag the stick with one hand, use the other for buttons. "
+      "Tracking or focus loss releases input. Enable hand tracking in the headset system; no "
+      "precision or comfort claim is made before hardware testing.",
+      "Utilise le suivi des mains OpenXR et les gestes de visée Meta, facultatifs. Auto affiche un "
+      "grand joystick avec A/B/C, Start, rewind et deux flippers en l’absence de manettes suivies "
+      "ou de pad externe. Pince et déplace le stick d’une main, utilise l’autre pour les boutons. "
+      "La perte de suivi ou de focus relâche les entrées. Active le suivi des mains dans le "
+      "casque. Précision et confort restent à vérifier.",
+      "Usa seguimiento opcional OpenXR y gestos Meta. Auto abre una palanca grande con A/B/C, "
+      "Start, rebobinar y ambas paletas si no detecta mandos seguidos ni pad externo. Pellizca y "
+      "arrastra con una mano; botones con la otra. Perder seguimiento o foco libera entradas. "
+      "Activa el seguimiento en el visor. Precisión y comodidad aún no verificadas.",
+      "任意のOpenXRハンドトラッキングとMetaの照準ジェスチャーを使用します。自動では追跡中のコントロ"
+      "ーラーや外部パッドがない時に大型スティック、A/B/"
+      "C、Start、巻き戻し、両フリッパーを表示。片手でスティックをつまんで動かし、反対の手でボタンを"
+      "押します。追跡やフォーカスを失うと入力解除。精度と快適さは実機で未検証。"),
+    H("questhandjoystick", Controller,
+      "Uses optional OpenXR hand tracking and Meta aim gestures. When no tracked controller or "
+      "external pad is detected, Auto opens a large joystick with A/B/C, Start, rewind and "
+      "both-flipper buttons. Pinch and drag the stick with one hand, use the other for buttons. "
+      "Tracking or focus loss releases input. Enable hand tracking in the headset system; no "
+      "precision or comfort claim is made before hardware testing.",
+      "Utilise le suivi des mains OpenXR et les gestes de visée Meta, facultatifs. Auto affiche un "
+      "grand joystick avec A/B/C, Start, rewind et deux flippers en l’absence de manettes suivies "
+      "ou de pad externe. Pince et déplace le stick d’une main, utilise l’autre pour les boutons. "
+      "La perte de suivi ou de focus relâche les entrées. Active le suivi des mains dans le "
+      "casque. Précision et confort restent à vérifier.",
+      "Usa seguimiento opcional OpenXR y gestos Meta. Auto abre una palanca grande con A/B/C, "
+      "Start, rebobinar y ambas paletas si no detecta mandos seguidos ni pad externo. Pellizca y "
+      "arrastra con una mano; botones con la otra. Perder seguimiento o foco libera entradas. "
+      "Activa el seguimiento en el visor. Precisión y comodidad aún no verificadas.",
+      "任意のOpenXRハンドトラッキングとMetaの照準ジェスチャーを使用します。自動では追跡中のコントロ"
+      "ーラーや外部パッドがない時に大型スティック、A/B/"
+      "C、Start、巻き戻し、両フリッパーを表示。片手でスティックをつまんで動かし、反対の手でボタンを"
+      "押します。追跡やフォーカスを失うと入力解除。精度と快適さは実機で未検証。"),
+    H("questmoverotate", Resize,
+      "Choose Move stage, native CRT, remote or options on the placement page. Hold one "
+      "middle-finger grip to translate and optionally rotate that object. Native CRT and remote "
+      "handles select themselves when aimed at. Selecting the stage unlocks placement. Two grips "
+      "resize the stage; release and regrip to continue. Recover brings controls near you. Room "
+      "poses are local to the session; dimensions are saved.",
+      "Choisis le niveau, le CRT natif, la télécommande ou les options dans Placer. Une prise du "
+      "majeur déplace et éventuellement tourne la cible. Viser une poignée du CRT ou de la "
+      "télécommande la sélectionne. Choisir le niveau déverrouille son placement. Deux prises "
+      "changent sa taille ; reprends les prises pour continuer. Les dimensions sont enregistrées ; "
+      "les poses restent propres à la session.",
+      "Elige nivel, CRT nativo, mando u opciones en Colocar. Un agarre medio desplaza y "
+      "opcionalmente gira el objeto. Apuntar al asa del CRT o mando la selecciona. Elegir el nivel "
+      "desbloquea su posición. Dos agarres cambian tamaño; suelta y vuelve a agarrar. Las "
+      "dimensiones se guardan; poses de objetos son de la sesión.",
+      "配置ページでステージ、通常画面CRT、リモコン、設定を選びます。中指グリップ1つで選択物を移動し"
+      "、任意で回転。CRTとリモコンはハンドルを狙って選択できます。ステージ選択は固定を解除。両グリ"
+      "ップで拡縮し、握り直して続けられます。寸法は保存され、物の位置はセッション内のものです。"),
+    H("questinsetcrt", Resize,
+      "Choose Move stage, native CRT, remote or options on the placement page. Hold one "
+      "middle-finger grip to translate and optionally rotate that object. Native CRT and remote "
+      "handles select themselves when aimed at. Selecting the stage unlocks placement. Two grips "
+      "resize the stage; release and regrip to continue. Recover brings controls near you. Room "
+      "poses are local to the session; dimensions are saved.",
+      "Choisis le niveau, le CRT natif, la télécommande ou les options dans Placer. Une prise du "
+      "majeur déplace et éventuellement tourne la cible. Viser une poignée du CRT ou de la "
+      "télécommande la sélectionne. Choisir le niveau déverrouille son placement. Deux prises "
+      "changent sa taille ; reprends les prises pour continuer. Les dimensions sont enregistrées ; "
+      "les poses restent propres à la session.",
+      "Elige nivel, CRT nativo, mando u opciones en Colocar. Un agarre medio desplaza y "
+      "opcionalmente gira el objeto. Apuntar al asa del CRT o mando la selecciona. Elegir el nivel "
+      "desbloquea su posición. Dos agarres cambian tamaño; suelta y vuelve a agarrar. Las "
+      "dimensiones se guardan; poses de objetos son de la sesión.",
+      "配置ページでステージ、通常画面CRT、リモコン、設定を選びます。中指グリップ1つで選択物を移動し"
+      "、任意で回転。CRTとリモコンはハンドルを狙って選択できます。ステージ選択は固定を解除。両グリ"
+      "ップで拡縮し、握り直して続けられます。寸法は保存され、物の位置はセッション内のものです。"),
+    H("questinsetwidth", Resize,
+      "Choose Move stage, native CRT, remote or options on the placement page. Hold one "
+      "middle-finger grip to translate and optionally rotate that object. Native CRT and remote "
+      "handles select themselves when aimed at. Selecting the stage unlocks placement. Two grips "
+      "resize the stage; release and regrip to continue. Recover brings controls near you. Room "
+      "poses are local to the session; dimensions are saved.",
+      "Choisis le niveau, le CRT natif, la télécommande ou les options dans Placer. Une prise du "
+      "majeur déplace et éventuellement tourne la cible. Viser une poignée du CRT ou de la "
+      "télécommande la sélectionne. Choisir le niveau déverrouille son placement. Deux prises "
+      "changent sa taille ; reprends les prises pour continuer. Les dimensions sont enregistrées ; "
+      "les poses restent propres à la session.",
+      "Elige nivel, CRT nativo, mando u opciones en Colocar. Un agarre medio desplaza y "
+      "opcionalmente gira el objeto. Apuntar al asa del CRT o mando la selecciona. Elegir el nivel "
+      "desbloquea su posición. Dos agarres cambian tamaño; suelta y vuelve a agarrar. Las "
+      "dimensiones se guardan; poses de objetos son de la sesión.",
+      "配置ページでステージ、通常画面CRT、リモコン、設定を選びます。中指グリップ1つで選択物を移動し"
+      "、任意で回転。CRTとリモコンはハンドルを狙って選択できます。ステージ選択は固定を解除。両グリ"
+      "ップで拡縮し、握り直して続けられます。寸法は保存され、物の位置はセッション内のものです。"),
+    H("questeyedetail", Performance,
+      "Stereo buffers are capped at 1024, 1280 or 1600 pixels on the longest eye dimension. "
+      "Balanced is the default; it uses about 36% fewer eye pixels than the former 1600 cap at "
+      "equal aspect. Stage textures have a separate 1/2/4-megapixel budget. This is an allocation "
+      "budget, not measured frame rate. Changing detail reallocates buffers once, never each "
+      "frame.",
+      "Les images stéréo sont limitées à 1024, 1280 ou 1600 pixels sur leur grande dimension. Le "
+      "défaut équilibré réduit d’environ 36 % les pixels par rapport à 1600, à ratio égal. Le "
+      "terrain a un budget distinct de 1/2/4 mégapixels. Il s’agit d’allocations, pas d’un gain de "
+      "FPS mesuré. Les buffers sont réalloués au changement de détail.",
+      "La dimensión mayor estéreo se limita a 1024, 1280 o 1600 píxeles. Equilibrado es inicial: "
+      "unos 36% menos píxeles que 1600 a igual proporción. El terreno tiene presupuesto separado "
+      "de 1/2/4 megapíxeles. Es presupuesto de memoria, no FPS medidos. Cambiar detalle reasigna "
+      "una sola vez.",
+      "立体画像の長辺を1024・1280・1600ピクセルに制限します。初期の標準設定は同じ比率の1600に比べ画"
+      "素数を約36%"
+      "削減。ステージの予算は別に1・2・4メガピクセルです。これは割り当て上限で、測定したFPS向上では"
+      "ありません。詳細変更時にだけ再割り当てします。"),
+    H("questtvmodel", Crt,
+      "Choose an original silver consumer, compact dark or studio enclosure with handles. Real CRT "
+      "proportions, rear depth, vents, speakers and front controls inform the models; no "
+      "manufacturer model or artwork is included. Coplanar mode flattens the main tube and places "
+      "surrounding terrain at exactly its picture plane and pixel scale, cutting out the native "
+      "viewport to prevent overlap. Turn it off for the curved legacy presentation.",
+      "Choisis un boîtier original argenté, compact sombre ou studio à poignées. Proportions de "
+      "CRT, profondeur arrière, grilles, haut-parleurs et commandes inspirent les modèles ; aucun "
+      "modèle de fabricant n’est inclus. Le mode coplanaire aplatit le tube et place le terrain au "
+      "même plan et à la même échelle, en retirant la zone native pour éviter le doublon. "
+      "Désactive pour la courbure historique.",
+      "Elige carcasa original plateada, compacta oscura o de estudio con asas. Proporciones CRT, "
+      "fondo profundo, ventilación, altavoces y controles guían los modelos; no incluyen modelos "
+      "del fabricante. Coplanar aplana el tubo y sitúa el terreno exactamente en su plano y "
+      "escala, recortando la ventana nativa para evitar solapamiento. Desactiva para vista curva "
+      "anterior.",
+      "独自の銀色家庭用、小型の黒色、ハンドル付き業務用の外装を選択。実際のCRTの比率、奥行き、通気"
+      "口、スピーカー、操作部を参考にしています。メーカーのモデルや画像は含みません。同一平面モード"
+      "は管面を平らにし、周囲の地形を正確に同じ平面と画素尺度で描画。通常画面の範囲を切り抜いて重な"
+      "りを防ぎます。"),
+    H("questcoplanar", Crt,
+      "Choose an original silver consumer, compact dark or studio enclosure with handles. Real CRT "
+      "proportions, rear depth, vents, speakers and front controls inform the models; no "
+      "manufacturer model or artwork is included. Coplanar mode flattens the main tube and places "
+      "surrounding terrain at exactly its picture plane and pixel scale, cutting out the native "
+      "viewport to prevent overlap. Turn it off for the curved legacy presentation.",
+      "Choisis un boîtier original argenté, compact sombre ou studio à poignées. Proportions de "
+      "CRT, profondeur arrière, grilles, haut-parleurs et commandes inspirent les modèles ; aucun "
+      "modèle de fabricant n’est inclus. Le mode coplanaire aplatit le tube et place le terrain au "
+      "même plan et à la même échelle, en retirant la zone native pour éviter le doublon. "
+      "Désactive pour la courbure historique.",
+      "Elige carcasa original plateada, compacta oscura o de estudio con asas. Proporciones CRT, "
+      "fondo profundo, ventilación, altavoces y controles guían los modelos; no incluyen modelos "
+      "del fabricante. Coplanar aplana el tubo y sitúa el terreno exactamente en su plano y "
+      "escala, recortando la ventana nativa para evitar solapamiento. Desactiva para vista curva "
+      "anterior.",
+      "独自の銀色家庭用、小型の黒色、ハンドル付き業務用の外装を選択。実際のCRTの比率、奥行き、通気"
+      "口、スピーカー、操作部を参考にしています。メーカーのモデルや画像は含みません。同一平面モード"
+      "は管面を平らにし、周囲の地形を正確に同じ平面と画素尺度で描画。通常画面の範囲を切り抜いて重な"
+      "りを防ぎます。"),
+    H("objectpreview", Camera,
+      "The read-only preview catalogue adds 152 named platform/bridge/hazard object types across "
+      "supported Sonic 1, Sonic 2 and Sonic 3 & Knuckles tables. Use a frozen transparent sprite "
+      "when art can be resolved; otherwise show an origin marker. Other placed origins can also be "
+      "marked, including static scenery. Unknown player-dependent script destinations are not "
+      "invented. These previews never activate enemies, bridges or collision.",
+      "Le catalogue en lecture seule ajoute 152 types nommés de plateformes, ponts et obstacles "
+      "des tables compatibles de Sonic 1, 2 et 3 & Knuckles. Image fixe transparente si le "
+      "graphisme est résolu, repère sinon. Les autres origines placées, y compris le décor "
+      "statique, peuvent être repérées. Les destinations de scripts inconnues ne sont pas "
+      "inventées. Aucun ennemi, pont ou collision n’est activé.",
+      "El catálogo de lectura añade 152 tipos de plataformas, puentes y obstáculos de tablas "
+      "compatibles de Sonic 1, 2 y 3 & Knuckles. Sprite fijo transparente si se resuelve el arte; "
+      "marcador de origen si no. También permite otros orígenes colocados, incluidos estáticos. No "
+      "inventa destinos desconocidos de scripts ni activa enemigos, puentes o colisiones.",
+      "読み取り専用カタログにSonic 1・2・3 & "
+      "Knucklesの対応テーブルから足場・橋・障害物152種類を追加。画像が解決できる場合は透明な静止ス"
+      "プライト、できなければ原点マーカーを表示。静的な背景物を含むその他の配置原点も選択可能。不明"
+      "なスクリプトの行き先は作りません。敵や橋、当たり判定を作動させません。"),
+    H("objectorigins", Camera,
+      "The read-only preview catalogue adds 152 named platform/bridge/hazard object types across "
+      "supported Sonic 1, Sonic 2 and Sonic 3 & Knuckles tables. Use a frozen transparent sprite "
+      "when art can be resolved; otherwise show an origin marker. Other placed origins can also be "
+      "marked, including static scenery. Unknown player-dependent script destinations are not "
+      "invented. These previews never activate enemies, bridges or collision.",
+      "Le catalogue en lecture seule ajoute 152 types nommés de plateformes, ponts et obstacles "
+      "des tables compatibles de Sonic 1, 2 et 3 & Knuckles. Image fixe transparente si le "
+      "graphisme est résolu, repère sinon. Les autres origines placées, y compris le décor "
+      "statique, peuvent être repérées. Les destinations de scripts inconnues ne sont pas "
+      "inventées. Aucun ennemi, pont ou collision n’est activé.",
+      "El catálogo de lectura añade 152 tipos de plataformas, puentes y obstáculos de tablas "
+      "compatibles de Sonic 1, 2 y 3 & Knuckles. Sprite fijo transparente si se resuelve el arte; "
+      "marcador de origen si no. También permite otros orígenes colocados, incluidos estáticos. No "
+      "inventa destinos desconocidos de scripts ni activa enemigos, puentes o colisiones.",
+      "読み取り専用カタログにSonic 1・2・3 & "
+      "Knucklesの対応テーブルから足場・橋・障害物152種類を追加。画像が解決できる場合は透明な静止ス"
+      "プライト、できなければ原点マーカーを表示。静的な背景物を含むその他の配置原点も選択可能。不明"
+      "なスクリプトの行き先は作りません。敵や橋、当たり判定を作動させません。"),
+    H("frozenpreviews", Camera,
+      "The read-only preview catalogue adds 152 named platform/bridge/hazard object types across "
+      "supported Sonic 1, Sonic 2 and Sonic 3 & Knuckles tables. Use a frozen transparent sprite "
+      "when art can be resolved; otherwise show an origin marker. Other placed origins can also be "
+      "marked, including static scenery. Unknown player-dependent script destinations are not "
+      "invented. These previews never activate enemies, bridges or collision.",
+      "Le catalogue en lecture seule ajoute 152 types nommés de plateformes, ponts et obstacles "
+      "des tables compatibles de Sonic 1, 2 et 3 & Knuckles. Image fixe transparente si le "
+      "graphisme est résolu, repère sinon. Les autres origines placées, y compris le décor "
+      "statique, peuvent être repérées. Les destinations de scripts inconnues ne sont pas "
+      "inventées. Aucun ennemi, pont ou collision n’est activé.",
+      "El catálogo de lectura añade 152 tipos de plataformas, puentes y obstáculos de tablas "
+      "compatibles de Sonic 1, 2 y 3 & Knuckles. Sprite fijo transparente si se resuelve el arte; "
+      "marcador de origen si no. También permite otros orígenes colocados, incluidos estáticos. No "
+      "inventa destinos desconocidos de scripts ni activa enemigos, puentes o colisiones.",
+      "読み取り専用カタログにSonic 1・2・3 & "
+      "Knucklesの対応テーブルから足場・橋・障害物152種類を追加。画像が解決できる場合は透明な静止ス"
+      "プライト、できなければ原点マーカーを表示。静的な背景物を含むその他の配置原点も選択可能。不明"
+      "なスクリプトの行き先は作りません。敵や橋、当たり判定を作動させません。"),
+    H("spinballtriggers", Controller,
+      "Spinball uses LT for native A (left flipper) and RT for native B (right flipper), with both "
+      "triggers for both. Rewind uses X on Quest Touch or LB on an ordinary pad, so it cannot "
+      "conflict with the flippers. Keyboard Z/X/C retain A/B/C. Native cartridge control-mode "
+      "changes still apply. The border reminder and remote Play page show these bindings; hide "
+      "hints independently.",
+      "Spinball utilise LT pour A natif (flipper gauche), RT pour B (droit) et les deux pour les "
+      "deux. Le rewind passe sur X avec Touch ou LB avec un pad ordinaire, sans conflit avec les "
+      "flippers. Z/X/C gardent A/B/C au clavier. Les changements de mode de commande dans la "
+      "cartouche s’appliquent toujours. Le bord et la page Jouer indiquent ces commandes.",
+      "Spinball usa LT para A nativo (paleta izquierda), RT para B (derecha), ambos para ambas. "
+      "Rebobinar usa X en Touch o LB en pad normal, evitando conflicto. Z/X/C siguen siendo A/B/C "
+      "en teclado. Cambios de modo de control del cartucho aún se aplican. El borde y página Jugar "
+      "indican controles; pistas se ocultan por separado.",
+      "SpinballではLTを元のA（左）、RTをB（右）、両方で両フリッパーに割り当てます。巻き戻しはTouch"
+      "のX、通常パッドのLBなので競合しません。キーボードZ/X/CはA/B/"
+      "Cのまま。カートリッジ側の操作モード変更は引き続き有効。枠と操作ページに案内を表示し、個別に"
+      "非表示にできます。"),
+    H("questcontrolhints", Controller,
+      "Spinball uses LT for native A (left flipper) and RT for native B (right flipper), with both "
+      "triggers for both. Rewind uses X on Quest Touch or LB on an ordinary pad, so it cannot "
+      "conflict with the flippers. Keyboard Z/X/C retain A/B/C. Native cartridge control-mode "
+      "changes still apply. The border reminder and remote Play page show these bindings; hide "
+      "hints independently.",
+      "Spinball utilise LT pour A natif (flipper gauche), RT pour B (droit) et les deux pour les "
+      "deux. Le rewind passe sur X avec Touch ou LB avec un pad ordinaire, sans conflit avec les "
+      "flippers. Z/X/C gardent A/B/C au clavier. Les changements de mode de commande dans la "
+      "cartouche s’appliquent toujours. Le bord et la page Jouer indiquent ces commandes.",
+      "Spinball usa LT para A nativo (paleta izquierda), RT para B (derecha), ambos para ambas. "
+      "Rebobinar usa X en Touch o LB en pad normal, evitando conflicto. Z/X/C siguen siendo A/B/C "
+      "en teclado. Cambios de modo de control del cartucho aún se aplican. El borde y página Jugar "
+      "indican controles; pistas se ocultan por separado.",
+      "SpinballではLTを元のA（左）、RTをB（右）、両方で両フリッパーに割り当てます。巻き戻しはTouch"
+      "のX、通常パッドのLBなので競合しません。キーボードZ/X/CはA/B/"
+      "Cのまま。カートリッジ側の操作モード変更は引き続き有効。枠と操作ページに案内を表示し、個別に"
+      "非表示にできます。"),
     H("questworldbackdrop", Background,
       "Surround the VR CRT with a distant, repeated panorama made from the game's own backdrop. "
       "Your background style, blur and brightness choices still apply. The expanded stage stays "
@@ -361,18 +693,18 @@ static const SettingHelp entries[] = {
       "最後に保存した壁のアンカーを探索します。部屋の変化、追跡不足、実行環境の制約で復元できない場"
       "合があります。その場合も手動配置や部屋スキャンを利用できます。"),
     H("questrefresh", Performance,
-      "Maximum available is the default: request the highest rate reported by the runtime. Choose "
-      "System or an available rate instead. The active rate is displayed below. The runtime can "
-      "limit the request; native game speed remains normal.",
-      "Maximum disponible est le défaut : demande la plus haute fréquence annoncée par le casque. "
-      "Tu peux choisir Système ou une fréquence proposée. La fréquence active est indiquée. Le "
-      "casque peut limiter la demande ; le jeu garde sa vitesse.",
-      "Máxima disponible pide la mayor frecuencia indicada por el visor. Puedes elegir Sistema u "
-      "otra disponible. Debajo se muestra la frecuencia activa. El visor puede limitarla; el juego "
-      "mantiene su velocidad normal.",
-      "初期設定は利用可能な最大値です。実行環境が示す最大の更新頻度を要求します。システム任せや表示"
-      "された値にも変更できます。実際の値は下に表示します。要求が制限されてもゲーム速度は通常のまま"
-      "です。"),
+      "90 Hz is the default. Choose System, Maximum or another supported rate. An unavailable "
+      "requested rate uses the closest reported value. This changes display cadence, not native "
+      "game speed; actual performance is unmeasured in 0.7.",
+      "90 Hz est le défaut. Choisis Système, Maximum ou une autre fréquence. Une demande non "
+      "disponible utilise la valeur annoncée la plus proche. Cela ne change pas la vitesse du jeu. "
+      "Performances réelles non mesurées en 0.7.",
+      "90 Hz es inicial. Elige Sistema, Máximo u otra frecuencia. Si no está disponible, usa la "
+      "más cercana indicada. Cambia la cadencia de pantalla, no la velocidad del juego. "
+      "Rendimiento real no medido en 0.7.",
+      "初期値は90 "
+      "Hz。システム、最大、他の対応値も選択できます。非対応値は報告された最も近い値を使用。ゲーム速"
+      "度は変えません。0.7の実際の性能は未測定です。"),
     H("questpersonal", Quest,
       "Return to a normal spatial screen that follows your head, one metre ahead at a readable "
       "angular size. This leaves fixed wall framing and restores normal camera preferences. "
