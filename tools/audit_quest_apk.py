@@ -70,6 +70,9 @@ with zipfile.ZipFile(a.apk) as z, tempfile.TemporaryDirectory(prefix='scu-quest-
         assert prefix+'personal-wall-preset-0500.txt' not in names,'Personal preset in ROM-free APK'
     else:
         assert prefix+'personal-wall-preset-0500.txt' in names,'Personal wall profile flag missing'
+        for config in ['UserData/library.tsv','UserData/settings.ini']:
+            raw_config=z.read(prefix+config)
+            assert b'\r' not in raw_config and not raw_config.startswith(b'\xef\xbb\xbf'), 'Package text must use UTF-8 LF: '+config
         settings=dict(line.split('=',1) for line in z.read(prefix+'UserData/settings.ini').decode().splitlines() if '=' in line)
         for key,value in {'questMode':'2','questPassthrough':'1','questWallHeight':'200','questRefresh':'0','questWallLocked':'1','questCompanion':'1'}.items():
             assert settings.get(key)==value,(key,settings.get(key))

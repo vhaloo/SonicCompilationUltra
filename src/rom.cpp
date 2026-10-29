@@ -190,6 +190,10 @@ void Library::load() {
     std::ifstream f(dataDir / "library.tsv");
     std::string line;
     while (std::getline(f, line)) {
+        if (!line.empty() && line.back() == '\r')
+            line.pop_back();
+        if (line.compare(0, 3, "\xEF\xBB\xBF") == 0)
+            line.erase(0, 3);
         std::istringstream in(line);
         RomEntry r;
         std::string crc;

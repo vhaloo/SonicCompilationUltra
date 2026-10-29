@@ -7,6 +7,7 @@
 - Keep a separate nearby options screen, placement locking and a right-stick menu recovery path. Tracking loss hides an attached wall and pauses by default. Cinema, tabletop and head-following screens remain available.
 - Request the highest runtime-reported headset refresh by default, with System and explicit supported-rate options. Reuse unchanged game images, bound mural textures and optionally adapt their render budget under CPU pressure. Original game speed is unchanged.
 - Add original wall diagrams and four-language setting guides. Compilation/lint/static inspection only; no game or headset session is run, and sustained Quest 3 performance remains unverified.
+- Accept Windows CRLF and UTF-8 BOM when reading copied library/settings files on Android or Linux; personal asset packages use UTF-8 LF so ZIP member names stay exact. The private preset also applies once on an existing Quest installation while preserving a settings backup.
 
 ## 0.4.0 Quest preview — Standalone VR and passthrough AR
 
