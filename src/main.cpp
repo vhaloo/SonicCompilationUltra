@@ -497,6 +497,10 @@ int main(int argc, char **argv) {
         }
         a.dirty = true;
         a.flushSettings();
+#ifdef SCU_QUEST
+        // Release XR images and GL objects while the owning SDL context is alive.
+        headset.reset();
+#endif
         holder.reset();
         SDL_Quit();
         return 0;
