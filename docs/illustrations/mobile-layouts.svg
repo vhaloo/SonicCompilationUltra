@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="580" viewBox="0 0 1100 580">
+<rect width="1100" height="580" rx="24" fill="#071323"/>
+<g font-family="sans-serif" fill="#ebf8ff"><text x="40" y="46" font-size="25" font-weight="bold">ONE LIBRARY. EVERY SHAPE.</text><text x="40" y="76" font-size="16" fill="#7edce7">Adaptive touch layout • original design diagram, not a game capture</text></g>
+<g stroke="#4fc8d8" stroke-width="3"><rect x="40" y="108" width="220" height="420" rx="26" fill="#10243b"/><rect x="322" y="116" width="718" height="360" rx="24" fill="#10243b"/>
+<rect x="56" y="140" width="188" height="210" rx="8" fill="#183b54"/><rect x="340" y="134" width="682" height="324" rx="10" fill="#183b54"/></g>
+<g fill="none" stroke="#66a5b4" stroke-width="2" stroke-dasharray="6 6"><path d="M66 320L90 260L132 280L165 218L226 245"/><path d="M360 365L400 300L485 320L560 225L645 250L735 175L820 225L890 190L1002 240"/></g>
+<g fill="#122b42" stroke="#61d4df" stroke-width="2"><circle cx="106" cy="427" r="40"/><circle cx="398" cy="381" r="49"/><circle cx="205" cy="444" r="22"/><circle cx="161" cy="444" r="22"/><circle cx="184" cy="397" r="22"/><circle cx="900" cy="389" r="27"/><circle cx="962" cy="389" r="27"/><circle cx="931" cy="326" r="27"/>
+<rect x="354" y="149" width="62" height="32" rx="7"/><rect x="423" y="149" width="62" height="32" rx="7"/><rect x="66" y="149" width="64" height="28" rx="6"/></g>
+<g fill="#e7f7ff" font-family="sans-serif" font-size="15" text-anchor="middle"><text x="161" y="450">A</text><text x="205" y="450">B</text><text x="184" y="403">C</text><text x="900" y="395">L</text><text x="962" y="395">R</text><text x="931" y="332">L+R</text><text x="98" y="168">Menu</text><text x="385" y="171">Menu</text><text x="454" y="171">Map</text></g>
+<g fill="#ebf8ff" font-family="sans-serif"><text x="40" y="558" font-size="18">PORTRAIT • separate deck</text><text x="323" y="512" font-size="18">LANDSCAPE / TABLET • overlay or separate deck</text><text x="323" y="543" font-size="15" fill="#91aebd">Safe areas · multitouch · gamepad auto-hide · movable control groups</text></g>
+</svg>

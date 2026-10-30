@@ -1,5 +1,13 @@
 # Validation report — 29 October 2026
 
+
+## 0.8 mobile / XR development preview
+
+- A separate non-XR phone/tablet package targets Android API 24+ with ARM64, ARMv7 and x86-64 libraries. It has no headset requirement, camera, microphone, network or broad storage permission. Android's document picker imports into app-private storage; packaged personal libraries seed once and preserve existing data.
+- The pure touch executable links only portable geometry/input code, not SDL or an emulator. It checks 864 combinations of window shape, safe insets, portrait/landscape, touch visibility, handedness, explicit/automatic layout and size, plus finger ownership, simultaneous flippers, move/jump/rewind, sliding off a button, release and held menu scrolling. Existing pure spatial checks remain separate.
+- Phone/tablet controls include an always-accessible menu/map/zoom strip, a separate portrait deck, landscape overlays, native A/B/C/Start, a captured joystick, rewind, handedness, offsets, size, opacity, dead zone, display preferences and panorama memory budgets. Every new setting has four-language labels and an illustrated guide. Menus use logical density-independent coordinates and have explicit touch buttons for page navigation/back/scrolling.
+- This release is compile/lint/static and pure-helper validation only. **No game, application, emulator, installer or headset session is executed.** It does not certify touch ergonomics, hinge behavior, GPU output, mobile refresh, performance or saves on physical hardware. macOS is experimental. See [Android scope](ANDROID.md) and [Quest scope](QUEST.md).
+
 This report separates successful checks from coverage that has not been measured. A boot test or source build is not a full-game completion certificate.
 
 ## 0.7 XR development — no application/headset execution

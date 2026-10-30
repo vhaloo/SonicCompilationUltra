@@ -5,6 +5,7 @@
 #endif
 #include "ui.h"
 #include "quest.h"
+#include "mobile.h"
 #include <SDL.h>
 #include <algorithm>
 #include <fstream>
@@ -76,20 +77,20 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(blur)
     SET(brightness)
     SET(parallax)
-    SET(minimap) SET(locator) SET(spindash) SET(invincible) SET(infiniteAir) SET(rewind) SET(
-        nativeScale) SET(ghost) SET(left) SET(top) SET(volume) SET(language) SET(help) SET(workers)
-        SET(fullscreen) SET(span) SET(vsync) SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot)
-            SET(menuLayout) SET(display) SET(padLabels) SET(jumpLayout) SET(quickControls)
-                SET(confirmActions) SET(confirmQuit) SET(highContrast) SET(readyOnly)
-                    SET(playerInset) SET(quality) SET(overviewStyle) SET(enemyPreview)
-                        SET(enemyOpacity) SET(enemyStyle) SET(bossPreview) SET(scriptPreview)
-                            SET(spawnTint) SET(spawnLabels) SET(fitSpawns) SET(rewindAudio)
-                                SET(rewindButton) SET(rewindMemory) SET(hintCorner) SET(hintScale)
-                                    SET(hintOpacity) SET(hintMargin) SET(hintDetail)
-                                        SET(hintSeconds) SET(noticeSeconds) SET(rewindIndicator)
-                                            SET(performance)
+    SET(minimap)
+    SET(locator) SET(spindash) SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(
+        ghost) SET(left) SET(top) SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen)
+        SET(span) SET(vsync) SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot) SET(menuLayout)
+            SET(display) SET(padLabels) SET(jumpLayout) SET(quickControls) SET(confirmActions)
+                SET(confirmQuit) SET(highContrast) SET(readyOnly) SET(playerInset) SET(quality)
+                    SET(overviewStyle) SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle)
+                        SET(bossPreview) SET(scriptPreview) SET(spawnTint) SET(spawnLabels)
+                            SET(fitSpawns) SET(rewindAudio) SET(rewindButton) SET(rewindMemory)
+                                SET(hintCorner) SET(hintScale) SET(hintOpacity) SET(hintMargin)
+                                    SET(hintDetail) SET(hintSeconds) SET(noticeSeconds)
+                                        SET(rewindIndicator) SET(performance)
 #undef SET
-                                                throw std::runtime_error("Unknown option: " + key);
+                                            throw std::runtime_error("Unknown option: " + key);
 }
 static void execute(App &a, const Action &cmd, uint16_t &mask, bool &rewindMask) {
     std::istringstream in(cmd.args);
@@ -272,7 +273,7 @@ int main(int argc, char **argv) {
             dir = fs::u8path(p);
             SDL_free(p);
         }
-#ifdef SCU_QUEST
+#if defined(SCU_QUEST) || defined(SCU_MOBILE)
         fs::current_path(dir.parent_path());
 #endif
         auto holder = std::make_unique<App>(dir);
@@ -286,7 +287,7 @@ int main(int argc, char **argv) {
         char *base = SDL_GetBasePath();
         fs::path baseDir = base ? fs::u8path(base) : fs::current_path();
         SDL_free(base);
-#ifdef SCU_QUEST
+#if defined(SCU_QUEST) || defined(SCU_MOBILE)
         baseDir = dir.parent_path();
 #endif
 #ifdef __APPLE__
@@ -379,6 +380,10 @@ int main(int argc, char **argv) {
         auto headset = std::make_unique<QuestPresentation>(a);
         a.quest = headset.get();
         headset->initialise();
+#endif
+#ifdef SCU_MOBILE
+        auto mobile = std::make_unique<MobilePresentation>(a);
+        mobile->beginFrame();
 #endif
         if (args.count("--preset"))
             a.settings.preset(args["--preset"] == "light"   ? 0
@@ -481,6 +486,10 @@ int main(int argc, char **argv) {
             while (SDL_PollEvent(&e))
                 a.event(e);
 #endif
+#ifdef SCU_MOBILE
+            mobile->beginFrame();
+            mobile->poll();
+#endif
             double now = SDL_GetPerformanceCounter() / freq,
                    elapsed = std::min(0.25, now - previous);
             previous = now;
@@ -518,6 +527,9 @@ int main(int argc, char **argv) {
 #ifdef SCU_QUEST
             headset->endFrame();
 #endif
+#ifdef SCU_MOBILE
+            mobile->endFrame();
+#endif
             if (a.dirty && step % 60 == 0)
                 a.flushSettings();
             ++step;
@@ -525,7 +537,7 @@ int main(int argc, char **argv) {
                 break;
             if (args.count("--seconds") && now - start >= std::stod(args["--seconds"]))
                 break;
-#ifndef SCU_QUEST
+#if !defined(SCU_QUEST) && !defined(SCU_MOBILE)
             if (!limit || args.count("--realtime"))
                 SDL_Delay(a.settings.vsync ? 1 : 2);
 #endif
@@ -600,6 +612,9 @@ int main(int argc, char **argv) {
 #ifdef SCU_QUEST
         // Release XR images and GL objects while the owning SDL context is alive.
         headset.reset();
+#endif
+#ifdef SCU_MOBILE
+        mobile.reset();
 #endif
         holder.reset();
         SDL_Quit();

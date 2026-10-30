@@ -27,6 +27,8 @@ imgui.ini
 /android/.cxx/
 /android/app/.cxx/
 /android/app/build/
+/android/mobile/.cxx/
+/android/mobile/build/
 /android/build/
 /android/local.properties
 /android/quest-local.properties

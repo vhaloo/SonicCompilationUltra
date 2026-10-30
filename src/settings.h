@@ -14,6 +14,11 @@ struct Settings {
     int hintCorner = 0, hintScale = 100, hintOpacity = 80, hintMargin = 8;
     int hintDetail = 0, hintSeconds = 0, noticeSeconds = 6;
     bool rewindIndicator = true;
+    int mobileLayout = 0, mobileOrientation = 0, mobileTouch = 0, mobileTouchScale = 100;
+    int mobileOpacity = 70, mobileDeadzone = 25, mobileSafeMargin = 8, mobileRefresh = 0;
+    int mobileRenderQuality = 1, mobileStickX = 0, mobileStickY = 0, mobileButtonsX = 0,
+        mobileButtonsY = 0;
+    bool mobileLeftHanded = false, mobileImmersive = true, mobileHints = true;
     int questWidth = 320, questDistance = 220, questHeight = 0, questTilt = 0;
     int questResolution = 1, questAnchor = 0, questHaptics = 30;
     int questMode = 0, questWallHeight = 200, questWallGap = 0, questRefresh = 90;

@@ -1,0 +1,46 @@
+name: Android phone and tablet compile only
+on:
+  push:
+    branches: [quest-standalone]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Install pinned SDK components
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;29.0.14206865' 'cmake;3.31.6'
+      - name: Inspect public source and prepare SDL
+        run: |
+          python tools/audit_public.py
+          python tools/audit_mobile_development.py
+          python tools/prepare_quest.py
+      - name: Compile and lint three ABIs without app execution
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --max-workers=2 :mobile:assembleRelease :mobile:lintRelease
+      - name: Audit ROM-free APK, native dependencies and 16 KB alignment
+        run: python tools/audit_mobile_apk.py android/mobile/build/outputs/apk/release/mobile-release.apk --sdk "$ANDROID_HOME" --out mobile-audit.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Android-Mobile-ROM-free-preview
+          path: |
+            android/mobile/build/outputs/apk/release/*.apk
+            android/mobile/build/reports/lint-results-release.html
+            mobile-audit.json
+          if-no-files-found: error

@@ -1,0 +1,94 @@
+plugins { id 'com.android.application' }
+
+def sdl = file(providers.gradleProperty('scuSdlDir').getOrElse('../.deps/SDL2-2.32.10'))
+def generatedAssets = layout.buildDirectory.dir('generated/scu-assets')
+def generatedJava = layout.buildDirectory.dir('generated/mobile-java')
+def privateAssets = providers.gradleProperty('scuMobilePrivateAssets').orNull
+def keyFile = providers.gradleProperty('scuKeyStore').orElse(providers.environmentVariable('SCU_QUEST_KEYSTORE')).orNull
+android {
+    namespace 'com.vhaloo.soniccompilationultra.mobile'
+    compileSdk 36
+    ndkVersion '29.0.14206865'
+    defaultConfig {
+        applicationId 'com.vhaloo.soniccompilationultra.mobile'
+        minSdk 24
+        targetSdk 36
+        versionCode 800
+        versionName '0.8.0-mobile-preview'
+        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64' }
+        externalNativeBuild {
+            cmake {
+                arguments '-DBUILD_TESTING=OFF', '-DSCU_QUEST_BUILD=OFF', '-DANDROID_STL=c++_shared',
+                    "-DSCU_SDL_SOURCE=${sdl.absolutePath.replace('\\','/')}", '-DSCU_FETCH_SDL=OFF'
+                targets 'SonicCompilationUltra', 'SDL2'
+                cppFlags '-std=c++17'
+            }
+        }
+    }
+    signingConfigs {
+        if (keyFile) {
+            portable {
+                storeFile file(keyFile)
+                storePassword providers.environmentVariable('SCU_QUEST_KEY_PASSWORD').get()
+                keyAlias 'scu-quest'
+                keyPassword providers.environmentVariable('SCU_QUEST_KEY_PASSWORD').get()
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig keyFile ? signingConfigs.portable : signingConfigs.debug
+        }
+    }
+    externalNativeBuild { cmake { path '../../CMakeLists.txt'; version '3.31.6' } }
+    buildFeatures { buildConfig false }
+    sourceSets {
+        main {
+            java.srcDir generatedJava.get().asFile
+            assets.srcDir generatedAssets.get().asFile
+            if (privateAssets) assets.srcDir file(privateAssets)
+        }
+    }
+    packaging { jniLibs { useLegacyPackaging false } }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    lint { abortOnError true; checkReleaseBuilds true; lintConfig file('lint.xml') }
+}
+// Keep the pinned upstream archive intact. Apply the narrow SDK-36 Java fixes
+// in generated sources; the Quest module still uses its original SDL glue.
+tasks.register('prepareScuMobileJava', Copy) {
+    inputs.property('mobileJavaPatchRevision', 2)
+    from new File(sdl, 'android-project/app/src/main/java')
+    into generatedJava
+    filteringCharset = 'UTF-8'
+    filesMatching('**/SDLControllerManager.java') {
+        filter { line ->
+            if (line.startsWith('class SDLHapticHandler_API26 ') ||
+                line.startsWith('class SDLGenericMotionListener_API26 '))
+                return '@android.annotation.TargetApi(26)\n' + line
+            return line
+        }
+    }
+    filesMatching('**/SDLActivity.java') {
+        filter { line -> line == '    public void onBackPressed() {' ?
+            '    @android.annotation.SuppressLint("GestureBackNavigation") // MobileActivity supplies the API-33 callback.\n' + line : line }
+    }
+    filesMatching('**/HIDDeviceManager.java') {
+        filter { line ->
+            if (line.trim() == 'private void initializeUSB() {')
+                return '    @android.annotation.SuppressLint("UnspecifiedRegisterReceiverFlag") // SDK <33 fallback only; SDK 33+ explicitly uses NOT_EXPORTED below.\n' + line
+            if (line.trim() == 'mContext.registerReceiver(mUsbBroadcast, filter);')
+                return '        if (Build.VERSION.SDK_INT >= 33) mContext.registerReceiver(mUsbBroadcast, filter, Context.RECEIVER_NOT_EXPORTED);\n        else ' + line.trim()
+            return line.replace('new Intent(HIDDeviceManager.ACTION_USB_PERMISSION), flags)',
+                'new Intent(HIDDeviceManager.ACTION_USB_PERMISSION).setPackage(mContext.getPackageName()), flags)')
+        }
+    }
+}
+tasks.register('prepareScuMobileAssets', Copy) {
+    from('../../assets') { into 'scu/assets' }
+    from('../../LICENSE') { into 'scu/licences' }
+    from('../../THIRD_PARTY_NOTICES.md') { into 'scu/licences' }
+    from('../../licenses') { into 'scu/licences' }
+    into generatedAssets
+}
+tasks.named('preBuild').configure { dependsOn 'prepareScuMobileAssets', 'prepareScuMobileJava' }

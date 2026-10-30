@@ -11,7 +11,13 @@ namespace scu {
 #ifdef SCU_QUEST
 class QuestPresentation;
 #endif
+#ifdef SCU_MOBILE
+class MobilePresentation;
+#endif
 class App {
+#ifdef SCU_MOBILE
+    friend class MobilePresentation;
+#endif
 #ifdef SCU_QUEST
     friend class QuestPresentation;
 #endif
@@ -90,8 +96,13 @@ class App {
     uint16_t spatialButtons = 0;
     bool spatialRewind = false;
 #endif
+#ifdef SCU_MOBILE
+    MobilePresentation *mobile = nullptr;
+    uint16_t mobileButtons = 0;
+    bool mobileRewind = false;
+#endif
     static constexpr int sectionCount() {
-#ifdef SCU_QUEST
+#if defined(SCU_QUEST) || defined(SCU_MOBILE)
         return 10;
 #else
         return 9;

@@ -9,6 +9,210 @@ namespace scu {
         }                                                                                          \
     }
 static const SettingHelp entries[] = {
+    H("mobilelayout", Resize,
+      "Auto places the controls below the game in portrait. Overlay keeps the whole window for the "
+      "game. Separate deck keeps fingers off the game in either orientation.",
+      "Auto sépare les commandes en portrait. Superposer réserve toute la fenêtre au jeu. La zone "
+      "séparée garde les doigts hors du jeu dans les deux orientations.",
+      "Automático separa los controles en vertical. Superponer usa toda la ventana. La zona "
+      "separada mantiene los dedos fuera del juego en ambas orientaciones.",
+      "自動は縦向きで操作を分離します。重ね表示は全画面を使用し、分離はどの向きでも指がゲームに重な"
+      "りません。"),
+    H("mobileorientation", Resize,
+      "Auto follows the system rotation preference. Landscape and portrait are requests: "
+      "large-screen or multiwindow Android may override them. The layout always adapts to the "
+      "actual window.",
+      "Auto suit la rotation du système. Android peut ignorer les préférences paysage ou portrait "
+      "en multifenêtre ou sur grand écran. La disposition suit toujours la fenêtre réelle.",
+      "Auto sigue la rotación del sistema. Android puede ignorar horizontal o vertical en ventanas "
+      "o pantallas grandes. La distribución sigue siempre la ventana real.",
+      "自動はシステムの回転設定に従います。大画面やマルチウィンドウでは指定が優先されない場合も、実"
+      "際のサイズに適応します。"),
+    H("mobiletouch", Resize,
+      "Automatic hides the joystick and A/B/C when a gamepad is attached. Always supports touch "
+      "and gamepad together. Menu, Map and zoom controls remain on screen even in gamepad-only "
+      "mode.",
+      "Auto masque joystick et A/B/C quand une manette est connectée. Toujours permet les deux. "
+      "Menu, Carte et zoom restent visibles même en mode manette seule.",
+      "Auto oculta joystick y A/B/C al conectar un mando. Siempre permite ambos. Menú, Mapa y zoom "
+      "permanecen incluso con solo mando.",
+      "自動はゲームパッド接続時に操作を隠します。常時表示では併用できます。メニュー・全体・ズームは"
+      "常に表示します。"),
+    H("mobilerefresh", Resize,
+      "This limits presentation, not game speed. The console simulation keeps its original timing. "
+      "Higher limits request a matching display rate when available; the operating system may "
+      "choose a different rate.",
+      "Ce réglage limite l’affichage, pas la vitesse du jeu. La simulation garde sa cadence "
+      "originale. Le système peut choisir une fréquence différente de la demande.",
+      "Limita la presentación, no la velocidad del juego. La simulación mantiene su ritmo "
+      "original. El sistema puede elegir otra frecuencia.",
+      "表示のみを制限し、ゲーム速度は変更しません。元のタイミングを維持します。更新頻度の指定は端末"
+      "によって異なります。"),
+    H("mobilerenderquality", Resize,
+      "The panorama canvas uses at most 1, 2.5 or 8 million pixels. Lower budgets reduce memory "
+      "and CPU work on large tablets. Native Pixel view remains at display resolution for literal "
+      "1:1 pixels.",
+      "Le panorama utilise au plus 1, 2,5 ou 8 millions de pixels. Une limite basse économise "
+      "mémoire et calcul sur tablette. Le mode Pixel conserve la résolution de l’écran pour le "
+      "vrai 1:1.",
+      "El panorama usa como máximo 1, 2,5 u 8 millones de píxeles. Reduce memoria y cálculo en "
+      "tabletas. La vista Píxel conserva la resolución para un 1:1 real.",
+      "パノラマは最大100万・250万・800万画素です。低い設定はメモリと処理を節約します。ピクセル表示"
+      "は画面解像度を保ちます。"),
+    H("mobiletouchscale", Resize,
+      "Touch size, opacity and stick dead zone can be adjusted independently. Controls stay within "
+      "the current safe area; layout offsets are clamped to the window. Rotation, app switching "
+      "and gamepad changes release captured fingers to prevent stuck buttons. Hold the bottom "
+      "Up/Down buttons to scroll options.",
+      "Taille, opacité et zone morte sont indépendantes. Les commandes restent dans la zone sûre "
+      "et les décalages sont limités à la fenêtre. Rotation, changement d’application ou de "
+      "manette libèrent les doigts pour éviter les boutons bloqués. Maintenir Haut/Bas en bas pour "
+      "défiler.",
+      "Tamaño, opacidad y zona muerta son independientes. Los controles quedan en el área segura y "
+      "las posiciones se limitan a la ventana. Rotación y cambios de aplicación o mando liberan "
+      "los dedos para evitar botones atascados. Mantén Subir/Bajar para desplazar.",
+      "大きさ・不透明度・遊びを個別に調整できます。操作は安全領域に収まります。回転やアプリ・ゲーム"
+      "パッドの切り替え時に入力を解除します。下の上下ボタンを長押しして設定をスクロールできます。"),
+    H("mobileopacity", Resize,
+      "Touch size, opacity and stick dead zone can be adjusted independently. Controls stay within "
+      "the current safe area; layout offsets are clamped to the window. Rotation, app switching "
+      "and gamepad changes release captured fingers to prevent stuck buttons. Hold the bottom "
+      "Up/Down buttons to scroll options.",
+      "Taille, opacité et zone morte sont indépendantes. Les commandes restent dans la zone sûre "
+      "et les décalages sont limités à la fenêtre. Rotation, changement d’application ou de "
+      "manette libèrent les doigts pour éviter les boutons bloqués. Maintenir Haut/Bas en bas pour "
+      "défiler.",
+      "Tamaño, opacidad y zona muerta son independientes. Los controles quedan en el área segura y "
+      "las posiciones se limitan a la ventana. Rotación y cambios de aplicación o mando liberan "
+      "los dedos para evitar botones atascados. Mantén Subir/Bajar para desplazar.",
+      "大きさ・不透明度・遊びを個別に調整できます。操作は安全領域に収まります。回転やアプリ・ゲーム"
+      "パッドの切り替え時に入力を解除します。下の上下ボタンを長押しして設定をスクロールできます。"),
+    H("mobiledeadzone", Resize,
+      "Touch size, opacity and stick dead zone can be adjusted independently. Controls stay within "
+      "the current safe area; layout offsets are clamped to the window. Rotation, app switching "
+      "and gamepad changes release captured fingers to prevent stuck buttons. Hold the bottom "
+      "Up/Down buttons to scroll options.",
+      "Taille, opacité et zone morte sont indépendantes. Les commandes restent dans la zone sûre "
+      "et les décalages sont limités à la fenêtre. Rotation, changement d’application ou de "
+      "manette libèrent les doigts pour éviter les boutons bloqués. Maintenir Haut/Bas en bas pour "
+      "défiler.",
+      "Tamaño, opacidad y zona muerta son independientes. Los controles quedan en el área segura y "
+      "las posiciones se limitan a la ventana. Rotación y cambios de aplicación o mando liberan "
+      "los dedos para evitar botones atascados. Mantén Subir/Bajar para desplazar.",
+      "大きさ・不透明度・遊びを個別に調整できます。操作は安全領域に収まります。回転やアプリ・ゲーム"
+      "パッドの切り替え時に入力を解除します。下の上下ボタンを長押しして設定をスクロールできます。"),
+    H("mobilesafemargin", Resize,
+      "Touch size, opacity and stick dead zone can be adjusted independently. Controls stay within "
+      "the current safe area; layout offsets are clamped to the window. Rotation, app switching "
+      "and gamepad changes release captured fingers to prevent stuck buttons. Hold the bottom "
+      "Up/Down buttons to scroll options.",
+      "Taille, opacité et zone morte sont indépendantes. Les commandes restent dans la zone sûre "
+      "et les décalages sont limités à la fenêtre. Rotation, changement d’application ou de "
+      "manette libèrent les doigts pour éviter les boutons bloqués. Maintenir Haut/Bas en bas pour "
+      "défiler.",
+      "Tamaño, opacidad y zona muerta son independientes. Los controles quedan en el área segura y "
+      "las posiciones se limitan a la ventana. Rotación y cambios de aplicación o mando liberan "
+      "los dedos para evitar botones atascados. Mantén Subir/Bajar para desplazar.",
+      "大きさ・不透明度・遊びを個別に調整できます。操作は安全領域に収まります。回転やアプリ・ゲーム"
+      "パッドの切り替え時に入力を解除します。下の上下ボタンを長押しして設定をスクロールできます。"),
+    H("mobilelefthanded", Resize,
+      "Touch size, opacity and stick dead zone can be adjusted independently. Controls stay within "
+      "the current safe area; layout offsets are clamped to the window. Rotation, app switching "
+      "and gamepad changes release captured fingers to prevent stuck buttons. Hold the bottom "
+      "Up/Down buttons to scroll options.",
+      "Taille, opacité et zone morte sont indépendantes. Les commandes restent dans la zone sûre "
+      "et les décalages sont limités à la fenêtre. Rotation, changement d’application ou de "
+      "manette libèrent les doigts pour éviter les boutons bloqués. Maintenir Haut/Bas en bas pour "
+      "défiler.",
+      "Tamaño, opacidad y zona muerta son independientes. Los controles quedan en el área segura y "
+      "las posiciones se limitan a la ventana. Rotación y cambios de aplicación o mando liberan "
+      "los dedos para evitar botones atascados. Mantén Subir/Bajar para desplazar.",
+      "大きさ・不透明度・遊びを個別に調整できます。操作は安全領域に収まります。回転やアプリ・ゲーム"
+      "パッドの切り替え時に入力を解除します。下の上下ボタンを長押しして設定をスクロールできます。"),
+    H("mobilehints", Resize,
+      "Touch size, opacity and stick dead zone can be adjusted independently. Controls stay within "
+      "the current safe area; layout offsets are clamped to the window. Rotation, app switching "
+      "and gamepad changes release captured fingers to prevent stuck buttons. Hold the bottom "
+      "Up/Down buttons to scroll options.",
+      "Taille, opacité et zone morte sont indépendantes. Les commandes restent dans la zone sûre "
+      "et les décalages sont limités à la fenêtre. Rotation, changement d’application ou de "
+      "manette libèrent les doigts pour éviter les boutons bloqués. Maintenir Haut/Bas en bas pour "
+      "défiler.",
+      "Tamaño, opacidad y zona muerta son independientes. Los controles quedan en el área segura y "
+      "las posiciones se limitan a la ventana. Rotación y cambios de aplicación o mando liberan "
+      "los dedos para evitar botones atascados. Mantén Subir/Bajar para desplazar.",
+      "大きさ・不透明度・遊びを個別に調整できます。操作は安全領域に収まります。回転やアプリ・ゲーム"
+      "パッドの切り替え時に入力を解除します。下の上下ボタンを長押しして設定をスクロールできます。"),
+    H("mobileimmersive", Resize,
+      "Touch size, opacity and stick dead zone can be adjusted independently. Controls stay within "
+      "the current safe area; layout offsets are clamped to the window. Rotation, app switching "
+      "and gamepad changes release captured fingers to prevent stuck buttons. Hold the bottom "
+      "Up/Down buttons to scroll options.",
+      "Taille, opacité et zone morte sont indépendantes. Les commandes restent dans la zone sûre "
+      "et les décalages sont limités à la fenêtre. Rotation, changement d’application ou de "
+      "manette libèrent les doigts pour éviter les boutons bloqués. Maintenir Haut/Bas en bas pour "
+      "défiler.",
+      "Tamaño, opacidad y zona muerta son independientes. Los controles quedan en el área segura y "
+      "las posiciones se limitan a la ventana. Rotación y cambios de aplicación o mando liberan "
+      "los dedos para evitar botones atascados. Mantén Subir/Bajar para desplazar.",
+      "大きさ・不透明度・遊びを個別に調整できます。操作は安全領域に収まります。回転やアプリ・ゲーム"
+      "パッドの切り替え時に入力を解除します。下の上下ボタンを長押しして設定をスクロールできます。"),
+    H("mobilestickx", Resize,
+      "Touch size, opacity and stick dead zone can be adjusted independently. Controls stay within "
+      "the current safe area; layout offsets are clamped to the window. Rotation, app switching "
+      "and gamepad changes release captured fingers to prevent stuck buttons. Hold the bottom "
+      "Up/Down buttons to scroll options.",
+      "Taille, opacité et zone morte sont indépendantes. Les commandes restent dans la zone sûre "
+      "et les décalages sont limités à la fenêtre. Rotation, changement d’application ou de "
+      "manette libèrent les doigts pour éviter les boutons bloqués. Maintenir Haut/Bas en bas pour "
+      "défiler.",
+      "Tamaño, opacidad y zona muerta son independientes. Los controles quedan en el área segura y "
+      "las posiciones se limitan a la ventana. Rotación y cambios de aplicación o mando liberan "
+      "los dedos para evitar botones atascados. Mantén Subir/Bajar para desplazar.",
+      "大きさ・不透明度・遊びを個別に調整できます。操作は安全領域に収まります。回転やアプリ・ゲーム"
+      "パッドの切り替え時に入力を解除します。下の上下ボタンを長押しして設定をスクロールできます。"),
+    H("mobilesticky", Resize,
+      "Touch size, opacity and stick dead zone can be adjusted independently. Controls stay within "
+      "the current safe area; layout offsets are clamped to the window. Rotation, app switching "
+      "and gamepad changes release captured fingers to prevent stuck buttons. Hold the bottom "
+      "Up/Down buttons to scroll options.",
+      "Taille, opacité et zone morte sont indépendantes. Les commandes restent dans la zone sûre "
+      "et les décalages sont limités à la fenêtre. Rotation, changement d’application ou de "
+      "manette libèrent les doigts pour éviter les boutons bloqués. Maintenir Haut/Bas en bas pour "
+      "défiler.",
+      "Tamaño, opacidad y zona muerta son independientes. Los controles quedan en el área segura y "
+      "las posiciones se limitan a la ventana. Rotación y cambios de aplicación o mando liberan "
+      "los dedos para evitar botones atascados. Mantén Subir/Bajar para desplazar.",
+      "大きさ・不透明度・遊びを個別に調整できます。操作は安全領域に収まります。回転やアプリ・ゲーム"
+      "パッドの切り替え時に入力を解除します。下の上下ボタンを長押しして設定をスクロールできます。"),
+    H("mobilebuttonsx", Resize,
+      "Touch size, opacity and stick dead zone can be adjusted independently. Controls stay within "
+      "the current safe area; layout offsets are clamped to the window. Rotation, app switching "
+      "and gamepad changes release captured fingers to prevent stuck buttons. Hold the bottom "
+      "Up/Down buttons to scroll options.",
+      "Taille, opacité et zone morte sont indépendantes. Les commandes restent dans la zone sûre "
+      "et les décalages sont limités à la fenêtre. Rotation, changement d’application ou de "
+      "manette libèrent les doigts pour éviter les boutons bloqués. Maintenir Haut/Bas en bas pour "
+      "défiler.",
+      "Tamaño, opacidad y zona muerta son independientes. Los controles quedan en el área segura y "
+      "las posiciones se limitan a la ventana. Rotación y cambios de aplicación o mando liberan "
+      "los dedos para evitar botones atascados. Mantén Subir/Bajar para desplazar.",
+      "大きさ・不透明度・遊びを個別に調整できます。操作は安全領域に収まります。回転やアプリ・ゲーム"
+      "パッドの切り替え時に入力を解除します。下の上下ボタンを長押しして設定をスクロールできます。"),
+    H("mobilebuttonsy", Resize,
+      "Touch size, opacity and stick dead zone can be adjusted independently. Controls stay within "
+      "the current safe area; layout offsets are clamped to the window. Rotation, app switching "
+      "and gamepad changes release captured fingers to prevent stuck buttons. Hold the bottom "
+      "Up/Down buttons to scroll options.",
+      "Taille, opacité et zone morte sont indépendantes. Les commandes restent dans la zone sûre "
+      "et les décalages sont limités à la fenêtre. Rotation, changement d’application ou de "
+      "manette libèrent les doigts pour éviter les boutons bloqués. Maintenir Haut/Bas en bas pour "
+      "défiler.",
+      "Tamaño, opacidad y zona muerta son independientes. Los controles quedan en el área segura y "
+      "las posiciones se limitan a la ventana. Rotación y cambios de aplicación o mando liberan "
+      "los dedos para evitar botones atascados. Mantén Subir/Bajar para desplazar.",
+      "大きさ・不透明度・遊びを個別に調整できます。操作は安全領域に収まります。回転やアプリ・ゲーム"
+      "パッドの切り替え時に入力を解除します。下の上下ボタンを長押しして設定をスクロールできます。"),
     H("questoptionsscale", Resize,
       "Options size changes independently of its distance. Half/double/reset on the placement page "
       "apply to the selected target; moving the options does not resize the stage.",

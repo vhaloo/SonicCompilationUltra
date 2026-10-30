@@ -40,6 +40,7 @@ jobs:
         run: |
           python tools/audit_public.py
           python tools/audit_xr_development.py
+          python tools/audit_mobile_development.py
       - name: Configure Windows
         if: runner.os == 'Windows'
         run: cmake -S . -B build -A x64 -DBUILD_TESTING=OFF -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON
@@ -56,6 +57,9 @@ jobs:
           cmake -S tests/spatial -B build-spatial
           cmake --build build-spatial --config Release
           ctest --test-dir build-spatial -C Release --output-on-failure
+          cmake -S tests/touch -B build-touch
+          cmake --build build-touch --config Release
+          ctest --test-dir build-touch -C Release --output-on-failure
       - name: Package ROM-free software
         run: python tools/package.py --build build --platform ${{ matrix.platform }} --arch ${{ matrix.arch }} --out dist --source
       - uses: actions/upload-artifact@v4

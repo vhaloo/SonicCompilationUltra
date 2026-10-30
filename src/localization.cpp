@@ -13,6 +13,113 @@ struct Text {
         }                                                                                          \
     }
 static const Text texts[] = {
+    T("mobiletab", "Phone / tablet", "Téléphone / tablette", "Teléfono / tableta",
+      "スマートフォン / タブレット"),
+    T("mobileintro",
+      "Touch controls adapt to the available window, orientation and display cutout. Use the "
+      "bottom dock to browse and scroll every options page.",
+      "Les commandes s’adaptent à la fenêtre, à l’orientation et aux encoches. Le bandeau "
+      "inférieur permet de parcourir et de faire défiler toutes les options.",
+      "Los controles se adaptan a la ventana, orientación y recortes. La barra inferior permite "
+      "recorrer y desplazar todas las opciones.",
+      "ウィンドウ、画面の向き、切り欠きに合わせて操作を配置します。下のボタンで設定ページの移動とス"
+      "クロールができます。"),
+    T("mobilelayout", "Touch layout", "Disposition tactile", "Distribución táctil", "タッチ配置"),
+    T("mobileoverlay", "Controls over the game", "Commandes sur le jeu", "Controles sobre el juego",
+      "ゲーム上に操作を表示"),
+    T("mobiledeck", "Separate control deck", "Zone de commandes séparée",
+      "Zona de controles separada", "操作パネルを分離"),
+    T("mobileorientation", "Preferred orientation", "Orientation souhaitée",
+      "Orientación preferida", "画面の向き"),
+    T("mobilelandscape", "Landscape", "Paysage", "Horizontal", "横向き"),
+    T("mobileportrait", "Portrait", "Portrait", "Vertical", "縦向き"),
+    T("mobiletouch", "Show touch controls", "Afficher les commandes tactiles",
+      "Mostrar controles táctiles", "タッチ操作の表示"),
+    T("mobileautopad", "Automatic: hide when gamepad is connected",
+      "Auto : masquer avec une manette", "Automático: ocultar con mando conectado",
+      "自動：ゲームパッド接続時に非表示"),
+    T("mobilealways", "Always", "Toujours", "Siempre", "常に表示"),
+    T("mobilehidden", "Gamepad only (Menu stays visible)", "Manette seule (Menu reste visible)",
+      "Solo mando (Menú siempre visible)", "ゲームパッドのみ（メニューは表示）"),
+    T("mobiletouchscale", "Touch control size", "Taille des commandes", "Tamaño de controles",
+      "操作ボタンの大きさ"),
+    T("mobileopacity", "Touch control opacity", "Opacité des commandes", "Opacidad de controles",
+      "操作ボタンの不透明度"),
+    T("mobiledeadzone", "Touch joystick dead zone", "Zone morte du joystick tactile",
+      "Zona muerta del joystick táctil", "タッチスティックの遊び"),
+    T("mobilesafemargin", "Extra safe margin", "Marge de sécurité supplémentaire",
+      "Margen de seguridad adicional", "追加の余白"),
+    T("mobilelefthanded", "Swap joystick and action buttons", "Inverser joystick et boutons",
+      "Intercambiar joystick y botones", "スティックとボタンを左右反転"),
+    T("mobilehints", "Show control labels on the deck", "Afficher l’aide sur les commandes",
+      "Mostrar ayuda en los controles", "操作パネルに説明を表示"),
+    T("mobileimmersive", "Immersive fullscreen", "Plein écran immersif",
+      "Pantalla completa inmersiva", "全画面表示"),
+    T("mobilerefresh", "Display frame limit", "Limite d’images affichées",
+      "Límite de imágenes mostradas", "表示フレーム上限"),
+    T("mobile60", "60 fps (default)", "60 ips (défaut)", "60 fps (predeterminado)",
+      "60 fps（標準）"),
+    T("mobile30", "30 fps (battery saver)", "30 ips (économie)", "30 fps (ahorro)",
+      "30 fps（省電力）"),
+    T("mobile90", "Up to 90 fps", "Jusqu’à 90 ips", "Hasta 90 fps", "最大90 fps"),
+    T("mobile120", "Up to 120 fps", "Jusqu’à 120 ips", "Hasta 120 fps", "最大120 fps"),
+    T("mobilemax", "Display maximum", "Maximum de l’écran", "Máximo de pantalla", "画面の最大値"),
+    T("mobilerenderquality", "Panorama rendering budget", "Qualité du panorama",
+      "Calidad del panorama", "パノラマ描画品質"),
+    T("mobilebattery", "Battery: up to 1 megapixel", "Économie : jusqu’à 1 mégapixel",
+      "Ahorro: hasta 1 megapíxel", "省電力：最大100万画素"),
+    T("mobilebalanced", "Balanced: up to 2.5 megapixels", "Équilibré : jusqu’à 2,5 mégapixels",
+      "Equilibrado: hasta 2,5 megapíxeles", "標準：最大250万画素"),
+    T("mobilesharp", "Sharp: up to 8 megapixels", "Précis : jusqu’à 8 mégapixels",
+      "Nítido: hasta 8 megapíxeles", "高精細：最大800万画素"),
+    T("mobilestickx", "Joystick horizontal offset", "Décalage horizontal du joystick",
+      "Posición horizontal del joystick", "スティックの横位置"),
+    T("mobilesticky", "Joystick vertical offset", "Décalage vertical du joystick",
+      "Posición vertical del joystick", "スティックの縦位置"),
+    T("mobilebuttonsx", "Action buttons horizontal offset", "Décalage horizontal des boutons",
+      "Posición horizontal de botones", "ボタンの横位置"),
+    T("mobilebuttonsy", "Action buttons vertical offset", "Décalage vertical des boutons",
+      "Posición vertical de botones", "ボタンの縦位置"),
+    T("mobilereset", "Reset touch layout", "Réinitialiser la disposition tactile",
+      "Restablecer controles táctiles", "タッチ配置を初期化"),
+    T("mobilehelp",
+      "Auto layout uses a separate deck in portrait and overlays in landscape. A/B/C retain the "
+      "original console buttons; Spinball shows L, R and L+R. Hold << to rewind with reversed "
+      "audio. Menu and Map remain reachable when controls are hidden. Pixel view bypasses the "
+      "panorama rendering budget. Orientation and refresh requests depend on the device and window "
+      "mode.",
+      "La disposition auto sépare les commandes en portrait et les superpose en paysage. A/B/C "
+      "conservent les boutons de la console ; Spinball affiche L, R et L+R. Maintenir << rembobine "
+      "avec le son inversé. Menu et Carte restent accessibles sans commandes tactiles. Le mode "
+      "pixel ignore la limite de rendu du panorama. L’orientation et la fréquence dépendent de "
+      "l’appareil et de la fenêtre.",
+      "El modo automático separa controles en vertical y los superpone en horizontal. A/B/C "
+      "mantienen los botones originales; Spinball muestra L, R y L+R. Mantén << para rebobinar con "
+      "audio inverso. Menú y Mapa siguen accesibles al ocultar controles. La vista píxel omite el "
+      "límite de calidad panorámica. La orientación y frecuencia dependen del dispositivo y de la "
+      "ventana.",
+      "自動配置は縦向きで操作を分離し、横向きで重ねて表示します。A/B/"
+      "Cは元のボタン、SpinballではL・R・L+Rです。<<"
+      "を長押しすると逆再生音声付きで巻き戻します。操作を隠してもメニューとマップは表示されます。ピ"
+      "クセル表示にはパノラマの画素制限を適用しません。画面の向きと更新頻度は端末やウィンドウによっ"
+      "て異なります。"),
+    T("mobilenav", "Tap settings. Bottom dock: Back, pages, hold Up/Down to scroll.",
+      "Toucher les options. En bas : Retour, pages, maintenir Haut/Bas pour défiler.",
+      "Toca los ajustes. Abajo: Atrás, páginas; mantén Subir/Bajar para desplazar.",
+      "設定をタップ。下のボタンで戻る・ページ移動・上下長押しスクロール。"),
+    T("mobilemenu", "Menu", "Menu", "Menú", "設定"),
+    T("mobilemap", "Map", "Carte", "Mapa", "全体"),
+    T("mobileback", "Back", "Retour", "Atrás", "戻る"),
+    T("mobileup", "Up", "Haut", "Subir", "上へ"),
+    T("mobiledown", "Down", "Bas", "Bajar", "下へ"),
+    T("mobiletouchhint", "Joystick: move · A / B / C: jump · <<: rewind",
+      "Joystick : déplacement · A / B / C : saut · << : retour",
+      "Joystick: mover · A / B / C: salto · <<: rebobinar",
+      "スティック：移動　A / B / C：ジャンプ　<<：巻き戻し"),
+    T("mobilepinballhint", "L / R: flippers · L+R: both · Joystick: nudge · <<: rewind",
+      "L / R : flippers · L+R : les deux · Joystick : secousse · << : retour",
+      "L / R: palancas · L+R: ambas · Joystick: sacudir · <<: rebobinar",
+      "L / R：フリッパー　L+R：両側　スティック：揺らす　<<：巻き戻し"),
     T("questoptionsscale", "Options physical size", "Taille physique des options",
       "Tamaño físico de opciones", "設定パネルの実寸"),
     T("remote_nudge", "Fine move", "Ajuster", "Ajustar", "微調整"),

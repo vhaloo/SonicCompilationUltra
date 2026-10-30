@@ -4,4 +4,4 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = 'SonicCompilationUltraQuest'
-include ':app'
+include ':app', ':mobile'

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-feature android:glEsVersion="0x00020000" android:required="true"/>
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+    <uses-feature android:name="android.hardware.gamepad" android:required="false"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <application android:label="Sonic Compilation Ultra" android:icon="@drawable/scu_icon"
+        android:allowBackup="false" android:hasCode="true" android:extractNativeLibs="false"
+        android:theme="@android:style/Theme.Material.NoActionBar" android:appCategory="game"
+        android:enableOnBackInvokedCallback="true">
+        <activity android:name=".MobileActivity" android:exported="true" android:launchMode="singleTask"
+            android:screenOrientation="fullUser" android:resizeableActivity="true"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboardHidden|keyboard|navigation|uiMode|density|layoutDirection|locale"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

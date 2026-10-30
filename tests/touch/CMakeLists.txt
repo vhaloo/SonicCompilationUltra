@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.20)
+project(TouchLayoutChecks LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+add_executable(touch_layout_checks layout.cpp ../../src/touch_controls.cpp)
+target_include_directories(touch_layout_checks PRIVATE ../../src)
+enable_testing()
+add_test(NAME pure_touch_layout_input COMMAND touch_layout_checks)

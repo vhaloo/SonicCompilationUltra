@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- Upstream optional BLE/audio capture paths. This application never requests
+         Bluetooth scanning/connection or microphone access; SDL checks permission
+         before BLE initialization and the frontend never opens audio capture.
+         The application Activity and manifest remain fully checked. -->
+    <issue id="MissingPermission">
+        <ignore path="build/generated/mobile-java/org/libsdl/app/HIDDeviceBLESteamController.java"/>
+        <ignore path="build/generated/mobile-java/org/libsdl/app/HIDDeviceManager.java"/>
+        <ignore path="build/generated/mobile-java/org/libsdl/app/SDLAudioManager.java"/>
+    </issue>
+</lint>

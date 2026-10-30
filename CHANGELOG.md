@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0 Mobile / XR development preview — 2026-10-29
+
+- Separate non-XR Android phone/tablet application, Android 7.0+, ARM64/ARMv7/x86-64, GLES 2.0 and 16 KB page alignment for 64-bit libraries.
+- Adaptive portrait deck / landscape overlays, safe display/gesture insets, density-aware menus, native multitouch joystick and buttons, rewind, Spinball flippers and gamepad auto-hide.
+- Touch navigation dock, four-language illustrated mobile settings, handedness, control-group offsets, opacity/size/dead zone, orientation, immersive display, refresh preferences and panorama memory budgets.
+- Modern Android Back callback and scoped USB receiver integration; atomic bundled-file seeding preserves existing app data and recovers interrupted first-run copies.
+- 864 pure layout combinations plus input ownership/release checks. All release builds use compile/lint/static validation only; no application, cartridge or headset execution. macOS remains experimental.
+
 ## 0.7.0 XR development preview — 2026-10-29
 
 - 90 Hz default with one-time backed-up migration; transparent AR scenery by default.

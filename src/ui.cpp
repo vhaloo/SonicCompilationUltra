@@ -1,5 +1,6 @@
 #include "ui.h"
 #include "quest.h"
+#include "mobile.h"
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_sdlrenderer2.h>
 #include <imgui_internal.h>
@@ -293,6 +294,15 @@ void App::initialise(const fs::path &base, bool hidden) {
     basePath = base;
     fs::create_directories(library.dataDir);
     settings.load(library.dataDir);
+#ifdef SCU_MOBILE
+    settings.renderer = 0;
+    settings.vsync = false;
+    settings.fullscreen = false;
+    settings.span = false;
+    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengles2");
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+    SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
+#endif
 #ifdef SCU_QUEST
     settings.renderer = 0;
     settings.vsync = false;
@@ -565,7 +575,7 @@ void App::toggleMenu() {
     dirty = true;
 }
 void App::applyDisplay() {
-#ifdef SCU_QUEST
+#if defined(SCU_QUEST) || defined(SCU_MOBILE)
     dirty = true;
     return;
 #endif
@@ -640,6 +650,12 @@ bool App::play(const std::string &id) {
     return true;
 }
 void App::beginBrowser(bool folder) {
+#ifdef SCU_MOBILE
+    if (mobile) {
+        mobile->chooseRom();
+        return;
+    }
+#endif
     folderMode = folder;
     browserOpen = true;
     focusBrowser = true;
@@ -657,6 +673,10 @@ void App::flushSettings() {
     }
 }
 void App::event(const SDL_Event &e) {
+#ifdef SCU_MOBILE
+    if (mobile && mobile->event(e))
+        return;
+#endif
     ImGui_ImplSDL2_ProcessEvent(&e);
     if (e.type == SDL_QUIT) {
         if (settings.confirmQuit && core.loaded) {
@@ -993,6 +1013,10 @@ void App::pollInput() {
     core.buttons[0] |= spatialButtons;
     rewindHeld |= settings.rewind && spatialRewind;
 #endif
+#ifdef SCU_MOBILE
+    core.buttons[0] |= mobileButtons;
+    rewindHeld |= settings.rewind && mobileRewind;
+#endif
     if (releaseInput) {
         if (!(core.buttons[0] | core.buttons[1]) && !rewindHeld)
             releaseInput = false;
@@ -1063,6 +1087,12 @@ uint64_t App::overlayNow() const {
     return SDL_GetTicks64();
 }
 void App::logicalWindowSize(int &width, int &height) const {
+#ifdef SCU_MOBILE
+    if (mobile) {
+        mobile->logicalSize(width, height);
+        return;
+    }
+#endif
 #ifdef SCU_QUEST
     if (quest) {
         quest->logicalSize(width, height);
@@ -1491,6 +1521,10 @@ void App::present(bool capture) {
     if (quest)
         quest->prepareUi();
 #endif
+#ifdef SCU_MOBILE
+    if (mobile)
+        mobile->prepareUi();
+#endif
     updateNavigationController();
     bool editing = GImGui->ActiveId != 0 ||
                    (!GImGui->OpenPopupStack.empty() && GImGui->OpenPopupStack.back().Window &&
@@ -1500,8 +1534,20 @@ void App::present(bool capture) {
                : settings.uiScale == 2 ? 1.3f
                : settings.uiScale == 3 ? 1.65f
                                        : std::clamp(io.DisplaySize.y / 720.0f, 0.85f, 2.0f);
+#ifdef SCU_MOBILE
+    // Density is handled by the presenter. Size controls in logical dp.
+    uiFactor = settings.uiScale == 1   ? .9f
+               : settings.uiScale == 2 ? 1.2f
+               : settings.uiScale == 3 ? 1.4f
+                                       : 1.f;
+#endif
     ImGui::GetStyle() = baseStyle;
     ImGui::GetStyle().ScaleAllSizes(uiFactor);
+#ifdef SCU_MOBILE
+    ImGui::GetStyle().FramePadding.y = 13 * uiFactor;
+    ImGui::GetStyle().TouchExtraPadding = {3, 3};
+    ImGui::GetStyle().ScrollbarSize = 24 * uiFactor;
+#endif
     if (settings.highContrast) {
         ImGui::GetStyle().Colors[ImGuiCol_Text] = {1, 1, 1, 1};
         ImGui::GetStyle().Colors[ImGuiCol_FrameBg] = {0.02f, 0.04f, 0.08f, 1};
@@ -1538,7 +1584,7 @@ void App::present(bool capture) {
         screenshot(p);
         screenshotRequested = false;
     }
-#ifdef SCU_QUEST
+#if defined(SCU_QUEST) || defined(SCU_MOBILE)
     SDL_RenderFlush(renderer);
 #else
     SDL_RenderPresent(renderer);
@@ -1714,6 +1760,9 @@ int App::controllerLabels() const {
     return labels;
 }
 std::string App::navigationHint() const {
+#ifdef SCU_MOBILE
+    return tr("mobilenav", language);
+#endif
 #ifdef SCU_QUEST
     if (settings.questTouch)
         return tr("questnav", language);
@@ -1767,6 +1816,11 @@ void App::menuInput(bool editing) {
         toggleMenu();
 }
 void App::scrollPage() {
+#ifdef SCU_MOBILE
+    if (mobile && mobile->scrollDirection() != 0)
+        ImGui::SetScrollY(ImGui::GetScrollY() +
+                          mobile->scrollDirection() * ImGui::GetIO().DeltaTime * 650);
+#endif
     float direction = ImGui::GetKeyData(ImGuiKey_GamepadR2)->AnalogValue -
                       ImGui::GetKeyData(ImGuiKey_GamepadL2)->AnalogValue;
     if (std::abs(direction) > 0.1f)
@@ -1884,6 +1938,9 @@ void App::ui() {
 #ifdef SCU_QUEST
                           ,
                           "questtab"
+#elif defined(SCU_MOBILE)
+                          ,
+                          "mobiletab"
 #endif
     };
     if (small) {
@@ -1910,6 +1967,9 @@ void App::ui() {
         ImGui::CalcTextSize(navigationHint().c_str(), nullptr, false, safe).y +
         ImGui::GetStyle().ItemSpacing.y * 3 +
         (!tiny ? ImGui::CalcTextSize(tr("autosettings", language), nullptr, false, safe).y : 0);
+#ifdef SCU_MOBILE
+    footer = ImGui::GetFrameHeightWithSpacing() + 12;
+#endif
     float contentH = std::max(50.0f, ImGui::GetContentRegionAvail().y - footer);
     if (!small) {
         ImGui::BeginChild("##sections", {230 * uiFactor, contentH}, ImGuiChildFlags_NavFlattened);
@@ -1961,9 +2021,11 @@ void App::ui() {
 #endif
             ))
         guideRequested = true;
+#ifndef SCU_MOBILE
     ImGui::TextWrapped("%s", navigationHint().c_str());
     if (!tiny)
         ImGui::TextDisabled("%s", tr("autosettings", language));
+#endif
     ImGui::EndChild();
     ImGui::End();
     ImGui::PopStyleVar();
@@ -2148,7 +2210,7 @@ void App::optionsUi(int section) {
                                         language));
         }
         ImGui::TextWrapped("%s", tr("pixelhelp", language));
-#ifndef SCU_QUEST
+#if !defined(SCU_QUEST) && !defined(SCU_MOBILE)
         bool full = settings.fullscreen, span = settings.span;
         int display = settings.display;
         check("fullscreen", settings.fullscreen);
@@ -2178,7 +2240,7 @@ void App::optionsUi(int section) {
         changed |=
             choice("uiscale", settings.uiScale, {"auto", "smalltext", "largetext", "hugetext"});
         check("contrast", settings.highContrast);
-#ifndef SCU_QUEST
+#if !defined(SCU_QUEST) && !defined(SCU_MOBILE)
         check("vsync", settings.vsync);
 #endif
         check("nearest", settings.integerScale);
@@ -2199,7 +2261,7 @@ void App::optionsUi(int section) {
 #endif
         slide("nativescale", settings.nativeScale, 0, 8);
         slide("workers", settings.workers, 0, 16);
-#ifndef SCU_QUEST
+#if !defined(SCU_QUEST) && !defined(SCU_MOBILE)
         bool soft = settings.renderer != 0;
         if (tick("soft", soft)) {
             settings.renderer = soft ? 1 : 0;
@@ -2420,6 +2482,11 @@ void App::optionsUi(int section) {
 #ifdef SCU_QUEST
     case 9:
         quest->options();
+        break;
+#elif defined(SCU_MOBILE)
+    case 9:
+        if (mobile)
+            mobile->options();
         break;
 #endif
     case 8:

@@ -83,9 +83,17 @@ public final class QuestActivity extends SDLActivity {
             String[] nested = getAssets().list(asset);
             if (nested != null && nested.length > 0) copyTree(asset, target);
             else if (!target.exists() || asset.startsWith("scu/assets/") || asset.startsWith("scu/licences/")) {
-                try (InputStream in = getAssets().open(asset); OutputStream out = new FileOutputStream(target)) {
-                    byte[] buffer = new byte[65536]; int count;
-                    while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                File staging = new File(target.getPath() + ".seed");
+                try {
+                    try (InputStream in = getAssets().open(asset); OutputStream out = new FileOutputStream(staging)) {
+                        byte[] buffer = new byte[65536]; int count;
+                        while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+                    }
+                    // Same-filesystem rename publishes a complete file. An interrupted
+                    // seed never leaves a partial ROM that would be skipped on retry.
+                    if (!staging.renameTo(target)) throw new IOException("Cannot finish bundled file copy.");
+                } finally {
+                    if (staging.exists()) staging.delete();
                 }
             }
         }

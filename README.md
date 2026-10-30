@@ -9,13 +9,13 @@
 
 **Play your own Mega Drive / Genesis Sonic cartridges with an adaptable PC interface, huge views and backgrounds that look good at any aspect ratio.** No ROMs are included.
 
-Windows and Linux · **macOS: experimental** · English, French, Spanish and Japanese · Keyboard and gamepads
+Windows and Linux · Android phones/tablets · Quest XR · **macOS: experimental** · English, French, Spanish and Japanese · Keyboard and gamepads
 
-**[Standalone Quest XR preview 0.7](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/quest-preview-0.7.0):** 90 Hz by default, transparent AR scenery, movable spatial buttons, nine direct view presets, an optional hand joystick, independent native CRT and trigger flippers in Spinball. [Controls in pictures](docs/XR_CONTROLS.md) · [Quest installation](docs/QUEST.md).
+**[Mobile + XR preview 0.8](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/mobile-xr-preview-0.8.0):** a separate Android phone/tablet APK with adaptive portrait/landscape touch controls, safe areas, gamepad auto-hide, adjustable control groups and power options. Quest retains the 90 Hz default, transparent AR, movable remote, independent CRT and Spinball cabinet. [Android guide](docs/ANDROID.md) · [XR controls](docs/XR_CONTROLS.md) · [Quest installation](docs/QUEST.md).
 
-![Spatial remote design diagram, not a headset capture](docs/illustrations/spatial-remote.svg)
+![Original adaptive-layout design diagram, not an app capture](docs/illustrations/mobile-layouts.svg)
 
-**0.7 is a development preview, not tested on Quest.** It is compiled/linted and statically inspected; pure interaction checks do not start the application or load cartridges. Hand/controller ergonomics, visual alignment and sustained performance await a later hardware pass. Windows companion frames use portable 2D rendering; Quest furniture uses stereo 3D. **macOS remains experimental.**
+**0.8 is a development preview.** Compilation, lint, static APK/package audits and pure CPU layout/input checks do not start any application or load a cartridge. Phone/tablet and Quest behavior still needs later hardware testing. **macOS remains experimental.**
 
 ## Start playing
 

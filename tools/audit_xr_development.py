@@ -26,6 +26,6 @@ for p in (root/'src').iterdir():
     if p.suffix not in {'.cpp','.h','.inl'}:continue
     text=p.read_text(encoding='utf-8')
     assert chr(0xc2)+chr(0xb0) not in text, 'Mojibake degree mark: '+p.name
-assert '0.7.0' in (root/'CMakeLists.txt').read_text()
+assert '0.8.0' in (root/'CMakeLists.txt').read_text()
 print(f'PASS XR source/guide audit: {len(labels)} remote labels, {len(new_options)} illustrated options, 152 metadata rows; 90 Hz/transparent defaults.')
 print('No application, cartridge or headset operation executed.')
