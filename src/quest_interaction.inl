@@ -328,6 +328,14 @@ void spatialAction(int action, float dt) {
     case EyeHigh:
         s.questEyeDetail = action - EyeLow;
         break;
+    case ToggleAdaptive: {
+        bool enable = !(s.autoPerformance && s.questAdaptive);
+        s.autoPerformance = s.questAdaptive = enable;
+        break;
+    }
+    case CycleShader:
+        s.questShaderQuality = (s.questShaderQuality + 1) % 3;
+        break;
     case ScrollUp:
         wheel = dt * 10;
         break;
@@ -606,6 +614,10 @@ bool spatialActive(int action) const {
         return s.questCrtCoplanar;
     case ToggleHints:
         return s.questControlHints;
+    case ToggleAdaptive:
+        return s.autoPerformance && s.questAdaptive;
+    case CycleShader:
+        return s.questShaderQuality != 2;
     case Refresh72:
         return s.questRefresh == 72;
     case Refresh90:
@@ -629,10 +641,10 @@ void renderDeckLabels() {
         return;
     auto &s = app.settings;
     uint64_t hash = 1469598103934665603ull;
-    for (int n :
-         {deckPage, moveTarget, app.language, mode(), s.questScale, s.questRefresh,
-          s.questRemoteScale, s.questInsetWidth, int(s.questTransparent), int(s.questPassthrough),
-          int(s.questWallLocked), int(autoJoystick), int(app.menu)}) {
+    for (int n : {deckPage, moveTarget, app.language, mode(), s.questScale, s.questRefresh,
+                  s.questRemoteScale, s.questInsetWidth, int(s.questTransparent),
+                  int(s.questPassthrough), int(s.questWallLocked), int(autoJoystick), int(app.menu),
+                  int(s.autoPerformance), s.questShaderQuality}) {
         hash ^= uint32_t(n);
         hash *= 1099511628211ull;
     }

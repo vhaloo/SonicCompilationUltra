@@ -27,6 +27,7 @@ jobs:
       - name: Inspect public source and prepare SDL
         run: |
           python tools/audit_public.py
+          python tools/audit_performance.py
           python tools/audit_mobile_development.py
           python tools/prepare_quest.py
       - name: Compile and lint three ABIs without app execution

@@ -251,7 +251,7 @@ void World::captureActors(const Scene &v, const Game *g) {
     // BuildSprites empties the game queues before the completed-frame snapshot.
     // The published hardware SAT is the authoritative visible actor list.
     unsigned satBase = (snap->regs[5] & ((snap->regs[12] & 1) ? 0x7E : 0x7F)) * 512u, index = 0;
-    std::vector<Sprite> satSprites;
+    satSprites.clear();
     for (unsigned n = 0; n < 80; n++) {
         unsigned p = (satBase + index * 8) & 65535;
         int y = (be16(snap->vram, p) & 511) - 128;
@@ -436,8 +436,17 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
         w = std::max(1, std::min(dw, int(std::ceil(coverW))));
         h = std::max(1, std::min(dh, int(std::ceil(coverH))));
     }
+    // Sampling changes resolution only: the camera extent, native inset and UI
+    // continue to use the full display coordinates.
+    double adaptiveScale = cfg.performancePixelLock && cfg.view == 0
+                               ? 1.
+                               : std::clamp(cfg.compositionScale, 25, 100) * .01;
+    double pixelBudget = cfg.compositionPixels > 0 && !(cfg.performancePixelLock && cfg.view == 0)
+                             ? std::sqrt(double(cfg.compositionPixels) / (double(w) * h))
+                             : 1.;
     // Memory/texture bounds are limits on output dimensions, not aspect ratio.
-    double cap = std::min({1.0, 16384.0 / w, 8192.0 / h, std::sqrt(33554432.0 / (double(w) * h))});
+    double cap = std::min({1.0, 16384.0 / w, 8192.0 / h, std::sqrt(33554432.0 / (double(w) * h)),
+                           adaptiveScale, pixelBudget});
     w = std::max(1, int(w * cap));
     h = std::max(1, int(h * cap));
     canvas.coverageW = coverW;
@@ -486,9 +495,13 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
     shape = hashTerrain(shape, &coverW, sizeof coverW);
     shape = hashTerrain(shape, &coverH, sizeof coverH);
     if (v.family <= 3) {
-        shape = hashTerrain(shape, s.ram, 0xA800);
-        if (v.family == 1)
-            shape = hashTerrain(shape, s.ram + 0xB000, 0x1800);
+        uint64_t geometry = terrainGeometryRevision(s.ram, v.family);
+        shape = hashTerrain(shape, &geometry, sizeof(geometry));
+        // Cache the decoder's entire legal tile domain, including filter taps
+        // just beyond a stage boundary. Pixel sampling itself is unchanged.
+        terrainAttributes.prepare(geometry, v.family == 3 ? 32768 : 16384,
+                                  v.family == 3 ? 4096 : 2048,
+                                  [&](int x, int y) { return attribute(s, v.family, x, y); });
         if (shape != shapeSignature) {
             terrainUsed.fill(false);
             // Enumerate tile references once per geometry/camera change, rather
@@ -498,7 +511,7 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
                 y1 = std::min(v.height, int(std::ceil(canvas.top + coverH)));
             for (int y = y0; y < y1; y += 8)
                 for (int x = x0; x < x1; x += 8)
-                    terrainUsed[attribute(s, v.family, x, y) & 2047] = true;
+                    terrainUsed[terrainAttributes.sample(x, y) & 2047] = true;
         }
     } else {
         auto version = atlas.version();
@@ -514,19 +527,30 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
                 signature = schematic ? hashTerrain(signature, &visibleTile[tile], sizeof(bool))
                                       : hashTerrain(signature, s.vram + tile * 32, 32);
     bool terrainCached = signature == terrainSignature && terrainPixels.size() == size_t(w) * h;
+    actorsDamage.resize(w, h);
+    textureDamage.resize(w, h);
+    textureDamage.clear();
     if (terrainCached) {
-        canvas.pixels = terrainPixels;
+        restoredBytes += actorsDamage.restore(canvas.pixels, terrainPixels);
+        textureDamage.merge(actorsDamage);
         // The cached priority buffer is read-only after terrain generation.
         ++terrainCacheHits;
     } else {
         canvas.pixels.assign(size_t(w) * h, 0);
         priority.assign(size_t(w) * h, 0);
         ++terrainCacheMisses;
+        textureDamage.full();
     }
+    actorsDamage.clear();
     int workers = cfg.workers;
 #ifdef _OPENMP
-    if (!workers)
-        workers = std::max(1, std::min(8, omp_get_num_procs() - 1));
+    if (!workers) {
+#ifdef __ANDROID__
+        workers = std::max(1, std::min(4, omp_get_num_procs() - 2));
+#else
+        workers = std::max(1, std::min(w * h >= 2000000 ? 8 : 4, omp_get_num_procs() - 1));
+#endif
+    }
     omp_set_num_threads(workers);
 #endif
     if (!terrainCached) {
@@ -570,9 +594,9 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
                 auto pal = s.palettes[nativeLine];
                 for (int x = xBegin; x < xEnd; x++) {
                     int wx = canvas.left + (int)(x * coverW / w);
-                    uint16_t a = attribute(s, v.family, wx, wy);
+                    uint16_t a = terrainAttributes.sample(wx, wy);
                     auto sample = [&](int xx, int yy) -> uint32_t {
-                        unsigned attr = attribute(s, v.family, xx, yy);
+                        unsigned attr = terrainAttributes.sample(xx, yy);
                         if (!attr)
                             return 0;
                         if (map)
@@ -602,7 +626,7 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
                 int oy = firstY + row * 8, wy = canvas.top + oy;
                 for (int ox = firstX; ox < lastX; ox += 8) {
                     int wx = canvas.left + ox;
-                    uint16_t a = attribute(s, v.family, wx, wy);
+                    uint16_t a = terrainAttributes.sample(wx, wy);
                     if (!a)
                         continue;
                     auto &tile = patterns[a & 2047];
@@ -636,6 +660,7 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
             outW = (int)std::ceil(sw * w / coverW), outH = (int)std::ceil(sh * h / coverH);
         if (x >= w || y >= h || x + outW <= 0 || y + outH <= 0)
             continue;
+        actorsDamage.mark(x, y, outW, outH);
         for (int py = std::max(0, -y); py < outH && y + py < h; py++) {
             int rawY = clampi((int)((y + py - screenY) * coverH / h), 0, sh - 1),
                 iy = (q.attr & 0x1000) ? sh - 1 - rawY : rawY;
@@ -689,6 +714,7 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
             x1 = (int)std::ceil((v.cameraX + 320 - canvas.left) * w / coverW),
             y0 = (int)std::floor((v.cameraY - canvas.top) * h / coverH),
             y1 = (int)std::ceil((v.cameraY + 224 - canvas.top) * h / coverH);
+        actorsDamage.mark(x0, y0, x1 - x0, y1 - y0);
         for (int y = std::max(0, y0); y < std::min(h, y1); y++) {
             int ny = clampi((int)(canvas.top + y * coverH / h - v.cameraY), 0, 223);
             for (int x = std::max(0, x0); x < std::min(w, x1); x++) {
@@ -731,6 +757,7 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
                 int x0 = int(std::floor(screenX)), y0 = int(std::floor(screenY)),
                     x1 = int(std::ceil(screenX + image.width * w / coverW)),
                     y1 = int(std::ceil(screenY + image.height * h / coverH));
+                actorsDamage.mark(x0, y0, x1 - x0, y1 - y0);
                 for (int y = std::max(0, y0); y < std::min(h, y1); ++y)
                     for (int x = std::max(0, x0); x < std::min(w, x1); ++x) {
                         int ix = clampi(int((x - screenX) * coverW / w), 0, image.width - 1),
@@ -767,6 +794,7 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
                         2, int(std::lround((p.kind == SpawnKind::Boss ? 9 : 5) / canvas.scale)));
                 if (x + radius < 0 || x - radius >= w || y + radius < 0 || y - radius >= h)
                     continue;
+                actorsDamage.mark(x - radius, y - radius, radius * 2 + 1, radius * 2 + 1);
                 for (int k = -radius; k <= radius; ++k) {
                     int dy = radius - std::abs(k);
                     blend(x + k, y + dy, tint);
@@ -785,6 +813,8 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
         }
     } else
         enemies.visible.clear();
+    textureDamage.merge(actorsDamage);
+    uploadRegions = textureDamage.rectangles();
     return true;
 }
 static void blurImage(std::array<uint32_t, 320 * 224> &img, int r) {

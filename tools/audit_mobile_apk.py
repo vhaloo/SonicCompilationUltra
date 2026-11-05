@@ -14,7 +14,7 @@ def run(args):
 build=a.sdk/'build-tools/36.0.0';suffix='.exe' if os.name=='nt' else ''
 signature=run([build/('apksigner.bat' if os.name=='nt' else 'apksigner'),'verify','--verbose','--print-certs',a.apk])
 badging=run([build/('aapt2'+suffix),'dump','badging',a.apk])
-for expected in ["name='com.vhaloo.soniccompilationultra.mobile'","versionCode='800'","versionName='0.8.0-mobile-preview'","minSdkVersion:'24'","targetSdkVersion:'36'",'MobileActivity']:
+for expected in ["name='com.vhaloo.soniccompilationultra.mobile'","versionCode='900'","versionName='0.9.0-mobile-preview'","minSdkVersion:'24'","targetSdkVersion:'36'",'MobileActivity']:
     assert expected in badging,expected
 manifest=run([build/('aapt2'+suffix),'dump','xmltree','--file','AndroidManifest.xml',a.apk])
 for banned in ['oculus','openxr','IMMERSIVE_HMD','android.permission.CAMERA','android.permission.RECORD_AUDIO',
@@ -71,7 +71,7 @@ with zipfile.ZipFile(a.apk) as z,tempfile.TemporaryDirectory(prefix='scu-mobile-
     for n in names:
         if n.startswith('assets/'):
             raw=z.read(n);assert b'C:\\Users\\' not in raw and b'E:\\Emulation' not in raw,n
-report={'version':'0.8.0-mobile-preview','package':'com.vhaloo.soniccompilationultra.mobile',
+report={'version':'0.9.0-mobile-preview','package':'com.vhaloo.soniccompilationultra.mobile',
         'bytes':a.apk.stat().st_size,'sha256':hashlib.sha256(a.apk.read_bytes()).hexdigest(),
         'signature_verified':True,'signature':signature,'abis':list(abis),'native_dependencies':deps,
         'elf64_load_alignment_minimum':16384,'zip_16k_alignment_verified':True,'font_bytes':len(font),

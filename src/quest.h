@@ -26,6 +26,9 @@ class QuestPresentation {
     void recenter();
     void chooseRom();
     void logicalSize(int &width, int &height) const;
+    double refreshLimit() const;
+    double gpuMilliseconds() const;
+    double submissionMilliseconds() const;
 };
 } // namespace scu
 #endif

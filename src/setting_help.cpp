@@ -9,6 +9,102 @@ namespace scu {
         }                                                                                          \
     }
 static const SettingHelp entries[] = {
+    H("autoperformance", Resize,
+      "Shared across all game/view modes and platforms. The governor observes active CPU work and "
+      "available GPU timings, ignores menu/idle waits and uses a short peak envelope so occasional "
+      "VR composition overruns are not averaged away. The camera coverage never changes.",
+      "Commun à tous les jeux, modes et plateformes. Le contrôleur suit le travail CPU actif et "
+      "les mesures GPU disponibles, ignore les attentes et garde les pics brefs pour ne pas "
+      "masquer les dépassements VR. Le cadrage reste identique.",
+      "Compartido por todos los juegos, vistas y plataformas. Observa trabajo CPU activo y tiempos "
+      "GPU disponibles, ignora esperas y conserva picos breves para detectar sobrecargas VR. El "
+      "encuadre no cambia.",
+      "すべてのゲーム・表示モード・プラットフォームで共通です。実処理時間と利用可能なGPU測定値を使"
+      "い、待機時間を除外します。VRの一時的な重いフレームも考慮し、表示範囲は変えません。"),
+    H("performancetarget", Resize,
+      "Default 60. Vsync uses an integer display divisor when possible: a 144 Hz display can "
+      "present at 72 Hz rather than fighting a 60 Hz timer. Android can override the target in its "
+      "display settings; Quest retains its selected display rate (90 Hz by default). PAL/NTSC game "
+      "speed is not changed.",
+      "60 par défaut. Avec la synchronisation, un diviseur entier est utilisé si possible : 144 Hz "
+      "peut afficher à 72 Hz. Android possède sa préférence d’affichage ; Quest conserve sa "
+      "fréquence choisie, 90 Hz par défaut. La vitesse PAL/NTSC reste intacte.",
+      "60 por defecto. Con sincronización se usa un divisor entero: 144 Hz puede presentar a 72 "
+      "Hz. Android tiene su preferencia de pantalla; Quest conserva su frecuencia elegida, 90 Hz "
+      "por defecto. No cambia la velocidad PAL/NTSC.",
+      "標準は60です。垂直同期時は整数分周を使い、144 Hz画面では72 "
+      "Hzで表示できます。Androidの表示設定が優先される場合があり、Questは選択した更新頻度（標準90 "
+      "Hz）を保ちます。PAL/NTSCのゲーム速度は変えません。"),
+    H("performancepixellock", Resize,
+      "Pixel lock keeps source sampling at 100% in Pixel view even under load. UI, native screen "
+      "and camera extents remain independent in every mode. Unlock it to allow the panorama "
+      "extension to downsample when the frame budget is missed.",
+      "Le verrouillage conserve 100 % de l’échantillonnage source en mode Pixel, même en charge. "
+      "UI, écran natif et cadrage restent indépendants. Désactive-le pour permettre de réduire la "
+      "résolution de l’extension si le budget est dépassé.",
+      "El bloqueo conserva el muestreo al 100% en vista Píxel incluso con carga. Interfaz, imagen "
+      "nativa y encuadre son independientes. Desactívalo para reducir la resolución de la "
+      "extensión si se supera el tiempo disponible.",
+      "ピクセル固定は高負荷でも元の解像度を維持します。UI・元の画面・表示範囲は独立しています。固定"
+      "を解除すると、時間制限を超えた際に拡張シーンを縮小できます。"),
+    H("thermalaware", Resize,
+      "Android reports thermal status locally without camera, microphone, network or extra "
+      "permissions. Moderate/severe/critical pressure caps scene detail; game time is never "
+      "accelerated or slowed by the governor. The operating system still controls clocks and "
+      "actual refresh.",
+      "Android transmet localement son état thermique sans caméra, micro, réseau ni permission "
+      "supplémentaire. Une chauffe modérée, sévère ou critique limite les détails. Le contrôleur "
+      "ne change pas la vitesse du jeu ; le système garde le contrôle des fréquences.",
+      "Android informa del estado térmico localmente sin cámara, micrófono, red ni permisos "
+      "adicionales. La presión moderada/grave/crítica limita el detalle. El controlador no cambia "
+      "la velocidad del juego; el sistema controla frecuencias reales.",
+      "Androidの発熱状態を端末内だけで読み取ります。追加の権限や通信は不要です。発熱が強いと描画詳"
+      "細を制限しますが、ゲーム速度は変えません。実際のクロックや更新頻度はOSが管理します。"),
+    H("questshaderquality", Resize,
+      "Efficient preserves the original texture colors, gamma and CRT edge shading, with a "
+      "polynomial scanline wave, exact multiply/sqrt bloom and cheaper material highlights. Both "
+      "variants compile at startup. Auto begins efficient and uses the reference shader only after "
+      "sustained measured GPU headroom. No GPU query result is awaited.",
+      "Léger conserve couleurs, gamma et bords CRT, avec une onde polynomiale, un bloom par "
+      "multiplication/racine et des reflets plus simples. Les deux variantes compilent au "
+      "démarrage. Auto utilise la référence après une marge GPU mesurée durable. Aucune attente de "
+      "résultat GPU.",
+      "Ligero conserva colores, gamma y bordes CRT, con onda polinómica, brillo por "
+      "multiplicación/raíz y reflejos simplificados. Ambas variantes se compilan al inicio. Auto "
+      "usa referencia tras medir margen GPU sostenido. Nunca espera resultados GPU.",
+      "軽量版は色・ガンマ・CRTの縁の陰影を保ち、走査線と反射を簡略化します。両方を起動時にコンパイ"
+      "ルします。自動はGPUの余裕が長く測定された場合だけ基準版に切り替え、GPU測定の完了は待ちません"
+      "。"),
+    H("minimumrenderscale", Resize,
+      "These are percentages of the scene sampling ceiling, not screen size or zoom. Changes "
+      "preserve the same whole-stage framing. Lower values use fewer CPU pixels and smaller stereo "
+      "viewports; UI and native source images are separate. Resolution recovery is deliberately "
+      "slower to avoid pumping.",
+      "Pourcentages du plafond d’échantillonnage, pas de la taille d’écran ni du zoom. Le cadrage "
+      "du niveau est conservé. Les valeurs basses réduisent le travail CPU et les viewports "
+      "stéréo. UI et images natives sont séparées. La remontée est lente pour éviter les "
+      "oscillations.",
+      "Porcentajes del techo de muestreo, no del tamaño de pantalla o zoom. Conservan el encuadre "
+      "del nivel. Valores bajos reducen píxeles CPU y viewports estéreo. Interfaz e imágenes "
+      "nativas van separadas. La recuperación es lenta para evitar oscilaciones.",
+      "画面サイズやズームではなく、シーン描画の上限に対する割合です。全体の表示範囲を保ち、CPUの画"
+      "素数とステレオのビューポートを減らします。UIと元の画像は独立し、解像度はゆっくり回復します"
+      "。"),
+    H("maximumrenderscale", Resize,
+      "These are percentages of the scene sampling ceiling, not screen size or zoom. Changes "
+      "preserve the same whole-stage framing. Lower values use fewer CPU pixels and smaller stereo "
+      "viewports; UI and native source images are separate. Resolution recovery is deliberately "
+      "slower to avoid pumping.",
+      "Pourcentages du plafond d’échantillonnage, pas de la taille d’écran ni du zoom. Le cadrage "
+      "du niveau est conservé. Les valeurs basses réduisent le travail CPU et les viewports "
+      "stéréo. UI et images natives sont séparées. La remontée est lente pour éviter les "
+      "oscillations.",
+      "Porcentajes del techo de muestreo, no del tamaño de pantalla o zoom. Conservan el encuadre "
+      "del nivel. Valores bajos reducen píxeles CPU y viewports estéreo. Interfaz e imágenes "
+      "nativas van separadas. La recuperación es lenta para evitar oscilaciones.",
+      "画面サイズやズームではなく、シーン描画の上限に対する割合です。全体の表示範囲を保ち、CPUの画"
+      "素数とステレオのビューポートを減らします。UIと元の画像は独立し、解像度はゆっくり回復します"
+      "。"),
     H("mobilelayout", Resize,
       "Auto places the controls below the game in portrait. Overlay keeps the whole window for the "
       "game. Separate deck keeps fingers off the game in either orientation.",
@@ -56,7 +152,8 @@ static const SettingHelp entries[] = {
       "mémoire et calcul sur tablette. Le mode Pixel conserve la résolution de l’écran pour le "
       "vrai 1:1.",
       "El panorama usa como máximo 1, 2,5 u 8 millones de píxeles. Reduce memoria y cálculo en "
-      "tabletas. La vista Píxel conserva la resolución para un 1:1 real.",
+      "tabletas. El bloqueo Píxel conserva el 1:1 real; interfaz e imagen nativa mantienen "
+      "nitidez.",
       "パノラマは最大100万・250万・800万画素です。低い設定はメモリと処理を節約します。ピクセル表示"
       "は画面解像度を保ちます。"),
     H("mobiletouchscale", Resize,

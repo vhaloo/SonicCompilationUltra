@@ -130,6 +130,10 @@ public final class QuestActivity extends SDLActivity {
             startActivityForResult(intent, IMPORT_ROM);
         });
     }
+    public int thermalStatus() {
+        android.os.PowerManager power=(android.os.PowerManager)getSystemService(POWER_SERVICE);
+        return power!=null ? power.getCurrentThermalStatus() : 0;
+    }
     public boolean scenePermissionGranted() {
         return checkSelfPermission("com.oculus.permission.USE_SCENE") == PackageManager.PERMISSION_GRANTED;
     }

@@ -11,8 +11,15 @@ import java.io.*;
 
 /** Local-only storage and Android's document picker. No camera frames or network access. */
 public final class MobileActivity extends SDLActivity {
-    private volatile int[] display = {1000,0,0,0,0,0,0,60000};
-    public int[] displayInfo() { return display.clone(); }
+    private volatile int[] display = {1000,0,0,0,0,0,0,60000,0};
+    public int[] displayInfo() {
+        int[] info=display.clone();
+        if(android.os.Build.VERSION.SDK_INT>=29) {
+            android.os.PowerManager power=(android.os.PowerManager)getSystemService(POWER_SERVICE);
+            if(power!=null) info[8]=power.getCurrentThermalStatus();
+        }
+        return info;
+    }
     private void updateDisplayInfo() {
         android.view.View view = mSurface;
         if (view == null) return;
@@ -39,9 +46,9 @@ public final class MobileActivity extends SDLActivity {
             Math.max(0,l-pos[0]),Math.max(0,t-pos[1]),
             Math.max(0,r-(decor.getWidth()-pos[0]-view.getWidth())),
             Math.max(0,b-(decor.getHeight()-pos[1]-view.getHeight())),view.getWidth(),view.getHeight(),
-            Math.round(view.getDisplay()!=null ? view.getDisplay().getRefreshRate()*1000 : 60000)};
+            Math.round(view.getDisplay()!=null ? view.getDisplay().getRefreshRate()*1000 : 60000),0};
     }
-    public void configureDisplay(int orientation, int refresh, boolean immersive) {
+    public void configureDisplay(int orientation, int refresh, int globalTarget, boolean immersive) {
         runOnUiThread(() -> {
             int requested=orientation==1?android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE:
                 orientation==2?android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT:
@@ -57,7 +64,7 @@ public final class MobileActivity extends SDLActivity {
                 decor.setSystemUiVisibility(immersive ? android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
                     |android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY : 0);
             }
-            int[] rates={60,30,90,120,0};int rate=rates[Math.max(0,Math.min(4,refresh))];
+            int[] rates={globalTarget,30,90,120,0};int rate=rates[Math.max(0,Math.min(4,refresh))];
             android.view.WindowManager.LayoutParams params=getWindow().getAttributes();
             if(rate==0 && decor.getDisplay()!=null) {
                 android.view.Display.Mode current=decor.getDisplay().getMode();

@@ -1185,8 +1185,10 @@ void App::prepareOverlays() {
         add("rewind", rewindText(true), false, true, height * 0.20f);
     if (settings.performance) {
         char text[160];
-        std::snprintf(text, sizeof text, "%.1f ticks/s · %.1f fps · %d × %d", measuredFps,
-                      presentationFps, drawableW, drawableH);
+        std::snprintf(text, sizeof text, "%.1f ticks/s · %.1f fps · %d%% · CPU %.1f ms · %d × %d",
+                      measuredFps, presentationFps, performanceGovernor.scale(),
+                      performanceGovernor.cpuMs(), core.world.canvas.width,
+                      core.world.canvas.height);
         add("performance", text, false, false, height * 0.20f);
     }
     if (!notice.empty() &&
@@ -1280,6 +1282,17 @@ void App::gameOverlays() {
     ImGui::PopStyleVar(4);
 }
 void App::present(bool capture) {
+    const auto workStarted = SDL_GetPerformanceCounter();
+    settings.compositionScale = settings.autoPerformance ? performanceGovernor.scale() : 100;
+    settings.compositionPixels = settings.autoPerformance ? (settings.quality == 0   ? 1000000
+                                                             : settings.quality == 2 ? 8000000
+                                                                                     : 2500000)
+                                                          : 0;
+#ifdef SCU_MOBILE
+    settings.compositionPixels = settings.mobileRenderQuality == 0   ? 1000000
+                                 : settings.mobileRenderQuality == 2 ? 8000000
+                                                                     : 2500000;
+#endif
     Settings transientSettings;
     auto *projectionSettings = &settings;
 #ifdef SCU_QUEST
@@ -1327,6 +1340,9 @@ void App::present(bool capture) {
                   renderSettings.brightness,
                   renderSettings.overviewStyle,
                   renderSettings.quality,
+                  renderSettings.compositionScale,
+                  renderSettings.compositionPixels,
+                  int(renderSettings.performancePixelLock),
                   int(renderSettings.projectionUiOnly),
                   int(renderSettings.projectionCleanScene),
                   renderSettings.fixedMapWidth,
@@ -1361,7 +1377,8 @@ void App::present(bool capture) {
     bool expanded = core.loaded && cachedExpanded;
     if (core.loaded && !renderSettings.projectionUiOnly) {
         if (!transparentCanvas) {
-            bool fixed = !renderSettings.parallax || renderSettings.reduceMotion ||
+            bool fixed = renderSettings.background >= 4 || !renderSettings.parallax ||
+                         renderSettings.reduceMotion ||
                          (scene.ready && (renderSettings.camera == 2 ||
                                           renderSettings.camera == 4 || renderSettings.view == 2));
             uint64_t backdropHash = 1469598103934665603ull;
@@ -1375,20 +1392,18 @@ void App::present(bool capture) {
             if (refresh && !retainBackground)
                 core.world.makeBackdrop(core.snapshot, scene, renderSettings, core.native,
                                         core.nativeW, core.nativeH);
-            if (retainBackground)
-                core.world.backdrop = frozenBackground;
-            else {
-                frozenBackground = core.world.backdrop;
+            if (!retainBackground) {
                 backgroundFrozen = fixed;
                 backgroundStage = scene.stage;
                 backdropSettingsHash = backdropHash;
             }
+            bool createdBackground = !bgTexture;
             if (!bgTexture) {
                 bgTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
                                               SDL_TEXTUREACCESS_STREAMING, 320, 224);
                 SDL_SetTextureScaleMode(bgTexture, SDL_ScaleModeLinear);
             }
-            if (refresh && !retainBackground)
+            if (createdBackground || (refresh && !retainBackground))
                 SDL_UpdateTexture(bgTexture, nullptr, core.world.backdrop.data(), 320 * 4);
             if (renderSettings.background == 6 || renderSettings.projectionTransparent) {
                 // Leave alpha zero behind terrain, actors and interface.
@@ -1405,6 +1420,7 @@ void App::present(bool capture) {
         }
         if (expanded) {
             auto &c = core.world.canvas;
+            bool createdWorldTexture = false;
             if (!worldTexture || textureW != c.width || textureH != c.height) {
                 if (worldTexture)
                     SDL_DestroyTexture(worldTexture);
@@ -1412,6 +1428,7 @@ void App::present(bool capture) {
                                                  SDL_TEXTUREACCESS_STREAMING, c.width, c.height);
                 textureW = c.width;
                 textureH = c.height;
+                createdWorldTexture = true;
                 SDL_SetTextureBlendMode(worldTexture, SDL_BLENDMODE_BLEND);
                 SDL_SetTextureScaleMode(worldTexture, SDL_ScaleModeNearest);
             }
@@ -1421,8 +1438,19 @@ void App::present(bool capture) {
                                     renderSettings.smoothMap && c.coverageW > c.width * 1.01
                                         ? SDL_ScaleModeLinear
                                         : SDL_ScaleModeNearest);
-            if (refresh)
-                SDL_UpdateTexture(worldTexture, nullptr, c.pixels.data(), c.width * 4);
+            if (refresh) {
+                if (createdWorldTexture) {
+                    SDL_UpdateTexture(worldTexture, nullptr, c.pixels.data(), c.width * 4);
+                    uploadedBytes += size_t(c.width) * c.height * 4;
+                } else
+                    for (const auto &r : core.world.uploadRegions) {
+                        SDL_Rect rect{r.x, r.y, r.w, r.h};
+                        SDL_UpdateTexture(worldTexture, &rect,
+                                          c.pixels.data() + size_t(r.y) * c.width + r.x,
+                                          c.width * 4);
+                        uploadedBytes += size_t(r.w) * r.h * 4;
+                    }
+            }
             SDL_RenderCopy(renderer, worldTexture, nullptr, nullptr);
             if (!renderSettings.projectionCleanScene &&
                 ((renderSettings.view == 2 && renderSettings.playerInset) ||
@@ -1486,8 +1514,14 @@ void App::present(bool capture) {
         if (renderSettings.scanlines) {
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, renderSettings.scanlines * 255 / 100);
-            for (int y = 1; y < drawableH; y += 3)
-                SDL_RenderDrawLine(renderer, 0, y, drawableW, y);
+            if (scanlineWidth != drawableW || scanlineHeight != drawableH) {
+                scanlineWidth = drawableW;
+                scanlineHeight = drawableH;
+                scanlineRects.clear();
+                for (int y = 1; y < drawableH; y += 3)
+                    scanlineRects.push_back({0, y, drawableW, 1});
+            }
+            SDL_RenderFillRects(renderer, scanlineRects.data(), int(scanlineRects.size()));
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
         }
     }
@@ -1584,10 +1618,16 @@ void App::present(bool capture) {
         screenshot(p);
         screenshotRequested = false;
     }
-#if defined(SCU_QUEST) || defined(SCU_MOBILE)
+    // Flush drawing separately from display waiting: vsync wait is not GPU/CPU work.
     SDL_RenderFlush(renderer);
-#else
+    lastRenderMs =
+        double(SDL_GetPerformanceCounter() - workStarted) * 1000 / SDL_GetPerformanceFrequency();
+    lastPresentMs = 0;
+#if !defined(SCU_QUEST) && !defined(SCU_MOBILE)
+    const auto swapStarted = SDL_GetPerformanceCounter();
     SDL_RenderPresent(renderer);
+    lastPresentMs =
+        double(SDL_GetPerformanceCounter() - swapStarted) * 1000 / SDL_GetPerformanceFrequency();
 #endif
     ++presentationFrames;
     uint64_t now = SDL_GetTicks64();
@@ -2152,6 +2192,35 @@ void App::libraryUi() {
             ImGui::PopID();
         }
 }
+void App::performanceOptions() {
+    bool changed = tick("autoperformance", settings.autoPerformance);
+    changed |= slider("performancetarget", settings.performanceTarget, 30, 120, "%d fps");
+    if (slider("minimumrenderscale", settings.minimumRenderScale, 25, 100, "%d%%")) {
+        settings.maximumRenderScale =
+            std::max(settings.maximumRenderScale, settings.minimumRenderScale);
+        changed = true;
+    }
+    if (slider("maximumrenderscale", settings.maximumRenderScale, 25, 100, "%d%%")) {
+        settings.minimumRenderScale =
+            std::min(settings.minimumRenderScale, settings.maximumRenderScale);
+        changed = true;
+    }
+    changed |= tick("performancepixellock", settings.performancePixelLock);
+    changed |= tick("thermalaware", settings.thermalAware);
+    ImGui::TextWrapped("%s", tr("performancehint", language));
+    char gpu[48];
+    if (performanceGovernor.gpuMs() >= 0)
+        std::snprintf(gpu, sizeof gpu, "%.2f ms", performanceGovernor.gpuMs());
+    else
+        std::snprintf(gpu, sizeof gpu, "%s", tr("unmeasuredgpu", language));
+    ImGui::TextWrapped("%s: %d%% / CPU %.2f ms / GPU %s / %d x %d",
+                       tr("performancereadout", language), performanceGovernor.scale(),
+                       performanceGovernor.cpuMs(), gpu, core.world.canvas.width,
+                       core.world.canvas.height);
+    if (performanceGovernor.coreLimited())
+        ImGui::TextWrapped("%s", tr("performancesimbound", language));
+    dirty |= changed;
+}
 void App::optionsUi(int section) {
     bool changed = false;
     auto check = [&](const char *key, bool &value) { changed |= tick(key, value); };
@@ -2269,6 +2338,7 @@ void App::optionsUi(int section) {
         }
 #endif
         slide("scanlines", settings.scanlines, 0, 60);
+        performanceOptions();
         check("performance", settings.performance);
         if (button("defaults"))
             requestAction(3);

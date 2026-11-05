@@ -14,6 +14,7 @@
 #include <memory>
 #include <map>
 #include <chrono>
+#include <cmath>
 #include <thread>
 using namespace scu;
 struct Action {
@@ -78,19 +79,20 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(brightness)
     SET(parallax)
     SET(minimap)
-    SET(locator) SET(spindash) SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(
-        ghost) SET(left) SET(top) SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen)
-        SET(span) SET(vsync) SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot) SET(menuLayout)
-            SET(display) SET(padLabels) SET(jumpLayout) SET(quickControls) SET(confirmActions)
-                SET(confirmQuit) SET(highContrast) SET(readyOnly) SET(playerInset) SET(quality)
-                    SET(overviewStyle) SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle)
-                        SET(bossPreview) SET(scriptPreview) SET(spawnTint) SET(spawnLabels)
-                            SET(fitSpawns) SET(rewindAudio) SET(rewindButton) SET(rewindMemory)
-                                SET(hintCorner) SET(hintScale) SET(hintOpacity) SET(hintMargin)
-                                    SET(hintDetail) SET(hintSeconds) SET(noticeSeconds)
-                                        SET(rewindIndicator) SET(performance)
+    SET(locator)
+    SET(spindash) SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left)
+        SET(top) SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen) SET(span)
+            SET(vsync) SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot) SET(menuLayout)
+                SET(display) SET(padLabels) SET(jumpLayout) SET(quickControls) SET(confirmActions)
+                    SET(confirmQuit) SET(highContrast) SET(readyOnly) SET(playerInset) SET(quality)
+                        SET(overviewStyle) SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle)
+                            SET(bossPreview) SET(scriptPreview) SET(spawnTint) SET(spawnLabels)
+                                SET(fitSpawns) SET(rewindAudio) SET(rewindButton) SET(rewindMemory)
+                                    SET(hintCorner) SET(hintScale) SET(hintOpacity) SET(hintMargin)
+                                        SET(hintDetail) SET(hintSeconds) SET(noticeSeconds)
+                                            SET(rewindIndicator) SET(performance)
 #undef SET
-                                            throw std::runtime_error("Unknown option: " + key);
+                                                throw std::runtime_error("Unknown option: " + key);
 }
 static void execute(App &a, const Action &cmd, uint16_t &mask, bool &rewindMask) {
     std::istringstream in(cmd.args);
@@ -470,6 +472,9 @@ int main(int argc, char **argv) {
                previous = SDL_GetPerformanceCounter() / freq, start = previous,
                measureStart = previous;
         uint64_t measureFrames = 0, executedFrames = 0, presentedFrames = 0;
+        FrameDeadline pacing;
+        double panelHz = 60;
+        uint64_t displayPoll = 0;
         while (a.running) {
             SDL_Event e;
             while (SDL_PollEvent(&e))
@@ -490,8 +495,8 @@ int main(int argc, char **argv) {
             mobile->beginFrame();
             mobile->poll();
 #endif
-            double now = SDL_GetPerformanceCounter() / freq,
-                   elapsed = std::min(0.25, now - previous);
+            double now = SDL_GetPerformanceCounter() / freq, rawElapsed = now - previous,
+                   elapsed = std::min(0.25, rawElapsed);
             previous = now;
             while (next < actions.size() && actions[next].step == step) {
                 execute(a, actions[next], mask, rewindMask);
@@ -502,7 +507,37 @@ int main(int argc, char **argv) {
                 a.core.buttons[0] = mask;
                 a.rewindHeld = rewindMask;
             }
+            double targetHz = a.settings.performanceTarget;
+#ifdef SCU_QUEST
+            targetHz = headset->refreshLimit();
+#elif defined(SCU_MOBILE)
+            targetHz = mobile->refreshLimit();
+#else
+            if (SDL_GetTicks64() - displayPoll > 1000 || !displayPoll) {
+                SDL_DisplayMode mode{};
+                if (SDL_GetCurrentDisplayMode(std::max(0, SDL_GetWindowDisplayIndex(a.window)),
+                                              &mode) == 0 &&
+                    mode.refresh_rate > 0)
+                    panelHz = mode.refresh_rate;
+                displayPoll = SDL_GetTicks64();
+            }
+            targetHz = pacedRefresh(targetHz, panelHz, a.settings.vsync);
+#endif
+            PerformancePolicy policy;
+            policy.enabled = a.settings.autoPerformance;
+#ifdef SCU_QUEST
+            policy.enabled &= a.settings.questAdaptive;
+#endif
+            policy.thermalAware = a.settings.thermalAware;
+            policy.targetHz = targetHz;
+            policy.minimum = a.settings.minimumRenderScale;
+            policy.maximum = std::max(a.settings.minimumRenderScale, a.settings.maximumRenderScale);
+            a.performanceGovernor.configure(policy);
+            const auto simulationStarted = SDL_GetPerformanceCounter();
             const unsigned ticks = a.advanceGame(elapsed, limit && !args.count("--realtime"));
+            const double simulationMs =
+                double(SDL_GetPerformanceCounter() - simulationStarted) * 1000 / freq;
+            bool drewFrame = false;
             measureFrames += ticks;
             executedFrames += ticks;
             if (now - measureStart >= 1) {
@@ -519,6 +554,7 @@ int main(int argc, char **argv) {
                 headset->prepareRender();
 #endif
                 a.present();
+                drewFrame = true;
 #ifdef SCU_QUEST
                 headset->rendered();
 #endif
@@ -530,6 +566,23 @@ int main(int argc, char **argv) {
 #ifdef SCU_MOBILE
             mobile->endFrame();
 #endif
+            PerformanceSample sample;
+            sample.simulationMs = simulationMs;
+            sample.renderMs = drewFrame ? a.lastRenderMs : 0;
+            sample.active = a.core.loaded && !a.menu && a.focused;
+            sample.thermal = a.thermalStatus;
+#ifdef SCU_QUEST
+            sample.renderMs += headset->submissionMilliseconds();
+            sample.gpuMs = headset->gpuMilliseconds();
+#elif defined(SCU_MOBILE)
+            sample.renderMs += mobile->lastSubmissionMs;
+#else
+            // A sustained blocking swap longer than a whole refresh period can
+            // expose GPU pressure even with SDL renderers lacking timer queries.
+            if (a.lastPresentMs > 1000. / targetHz * 1.2)
+                sample.gpuMs = a.lastPresentMs;
+#endif
+            a.performanceGovernor.observe(sample, rawElapsed);
             if (a.dirty && step % 60 == 0)
                 a.flushSettings();
             ++step;
@@ -539,7 +592,10 @@ int main(int argc, char **argv) {
                 break;
 #if !defined(SCU_QUEST) && !defined(SCU_MOBILE)
             if (!limit || args.count("--realtime"))
-                SDL_Delay(a.settings.vsync ? 1 : 2);
+                if (double delay = pacing.delay(SDL_GetPerformanceCounter() / freq,
+                                                a.focused ? targetHz : 15.);
+                    delay > 0)
+                    SDL_Delay(Uint32(std::ceil(delay * 1000)));
 #endif
         }
         if (args.count("--capture")) {
@@ -605,6 +661,11 @@ int main(int argc, char **argv) {
                 << ",\n  \"rewind_audio\":" << (a.settings.rewindAudio ? "true" : "false")
                 << ",\n  \"rewind_button\":" << a.settings.rewindButton
                 << ",\n  \"rewind_history_seconds\":" << a.core.rewindSeconds()
+                << ",\n  \"adaptive_render_percent\":" << a.performanceGovernor.scale()
+                << ",\n  \"composition_cpu_ms\":" << a.performanceGovernor.cpuMs()
+                << ",\n  \"stereo_gpu_ms\":" << a.performanceGovernor.gpuMs()
+                << ",\n  \"restored_terrain_bytes\":" << a.core.world.restoredBytes
+                << ",\n  \"uploaded_world_bytes\":" << a.uploadedBytes
                 << ",\n  \"rewind_history_bytes\":" << a.core.rewindBytes() << "\n}\n";
         }
         a.dirty = true;

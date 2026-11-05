@@ -1,6 +1,7 @@
 #pragma once
 #ifdef SCU_MOBILE
 #include "touch_controls.h"
+#include "performance.h"
 #include <SDL.h>
 #include <cstdint>
 namespace scu {
@@ -18,6 +19,9 @@ class MobilePresentation {
     bool pointerDown = false;
     int displayConfig = -1;
     uint64_t frameStart = 0;
+    uint64_t metricsAt = 0;
+    float safeLeft = 0, safeTop = 0, safeRight = 0, safeBottom = 0;
+    FrameDeadline pacing;
     int scroll = 0;
     void clearInput();
     void action(touch::Action action);
@@ -34,6 +38,8 @@ class MobilePresentation {
     void options();
     void chooseRom();
     void poll();
+    double refreshLimit() const;
+    double lastSubmissionMs = 0;
     float scrollDirection() const {
         return float(scroll);
     }

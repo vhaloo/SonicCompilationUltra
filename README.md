@@ -11,11 +11,11 @@
 
 Windows and Linux · Android phones/tablets · Quest XR · **macOS: experimental** · English, French, Spanish and Japanese · Keyboard and gamepads
 
-**[Mobile + XR preview 0.8](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/mobile-xr-preview-0.8.0):** a separate Android phone/tablet APK with adaptive portrait/landscape touch controls, safe areas, gamepad auto-hide, adjustable control groups and power options. Quest retains the 90 Hz default, transparent AR, movable remote, independent CRT and Spinball cabinet. [Android guide](docs/ANDROID.md) · [XR controls](docs/XR_CONTROLS.md) · [Quest installation](docs/QUEST.md).
+**[Performance preview 0.9](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/performance-preview-0.9.0):** automatic scene resolution targets 60 fps across desktop, mobile and XR modes, with sharp native/UI layers, optional literal-pixel lock, bounded damage uploads and cached terrain decoding. Quest retains its 90 Hz display default and gains adaptive stereo viewports plus an efficient CRT shader. [Performance settings and evidence](docs/PERFORMANCE.md) · [Android guide](docs/ANDROID.md) · [Quest installation](docs/QUEST.md).
 
 ![Original adaptive-layout design diagram, not an app capture](docs/illustrations/mobile-layouts.svg)
 
-**0.8 is a development preview.** Compilation, lint, static APK/package audits and pure CPU layout/input checks do not start any application or load a cartridge. Phone/tablet and Quest behavior still needs later hardware testing. **macOS remains experimental.**
+**0.9 is a development preview.** Generated-data checks compare retained composition against fresh full images and validate the performance governor without starting a game, app, emulator or headset session. Compilation, lint, static package checks and offline GLSL compilation do not certify sustained device FPS. **macOS remains experimental.**
 
 ## Start playing
 

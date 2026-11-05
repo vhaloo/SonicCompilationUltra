@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.20)
+project(GeneratedPerformanceChecks LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+add_executable(performance_checks checks.cpp ../../src/performance.cpp)
+target_include_directories(performance_checks PRIVATE ../../src)
+enable_testing()
+add_test(NAME pure_generated_performance COMMAND performance_checks)

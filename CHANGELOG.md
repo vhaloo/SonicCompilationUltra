@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0 Performance development preview — 2026-11-05
+
+- Shared automatic CPU/GPU/thermal resolution governor across every platform and view, 60 fps presentation target, independent native/UI layers and a literal-pixel lock.
+- Bounded damage restoration and partial world uploads, memoized geometry/tile attributes, high-bank revision correctness, retained actor allocation, backdrop-copy removal and batched scanlines.
+- Stable stereo swapchains with adaptive viewport/image rectangles, optional non-blocking disjoint-safe GPU timings and two precompiled CRT/material shader variants.
+- Fractional display-aware frame deadlines, mobile metrics polling and Android thermal signals. Four-language illustrated controls and direct VR performance buttons.
+- Generated-data compositor/texture equivalence and performance checks, offline GLSL compile/link, six platform builds and static packaging. No game/app/device execution or sustained-FPS certification; macOS experimental.
+
 ## 0.8.0 Mobile / XR development preview — 2026-10-29
 
 - Separate non-XR Android phone/tablet application, Android 7.0+, ARM64/ARMv7/x86-64, GLES 2.0 and 16 KB page alignment for 64-bit libraries.

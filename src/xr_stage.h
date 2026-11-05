@@ -28,6 +28,7 @@ struct XrStageContent {
     const std::array<uint32_t, 320 * 224> *backdrop = nullptr;
     int nativeWidth = 320, nativeHeight = 224;
     uint64_t version = 0;
+    double targetFrameMs = 11.111;
     bool loaded = false;
     Scene scene;
     int left = 0, top = 0;
@@ -47,6 +48,7 @@ class XrStageRenderer {
                                                const XrSpatialControls &controls, bool passthrough,
                                                const std::string &capture = {});
     uint64_t frames() const;
+    double gpuMilliseconds() const;
 };
 } // namespace scu
 #endif

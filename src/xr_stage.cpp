@@ -1,5 +1,6 @@
 #include "xr_stage.h"
 #include "xr_gl_state.h"
+#include "xr_gpu_timer.h"
 #ifdef SCU_QUEST
 #include <jni.h>
 #include <EGL/egl.h>
@@ -250,7 +251,12 @@ uniform bool flipImage,srgbTarget;
 out vec4 result;
 vec3 displayColor(vec2 uv){return texture(image,vec2(uv.x,flipImage?1.0-uv.y:uv.y)).rgb;}
 void main(){
+#ifdef SCU_FAST
+ vec3 n=vec3(0,0,1),v=vec3(0,0,1);float facing=1.0;
+ if(kind==0||kind==4||(kind==2&&crt>0)){n=normalize(worldNormal);v=normalize(eye-worldPosition);facing=max(dot(n,v),0.0);}
+#else
  vec3 n=normalize(worldNormal);vec3 v=normalize(eye-worldPosition);float facing=max(dot(n,v),0.0);
+#endif
  vec3 c=tint.rgb;float a=tint.a;
  if(kind==1||kind==2||kind==3){
   vec2 uv=texcoord;
@@ -260,15 +266,26 @@ void main(){
   if(a<.002)discard;
   c=(kind==1||kind==3)?sampleColor.rgb/max(a,.001):sampleColor.rgb;
   if(kind==2&&crt>0){
+#ifdef SCU_FAST
+   float phase=abs(fract(uv.y*raster.y+.5)*2.0-1.0);
+   float scan=1.0-phase*phase*(3.0-2.0*phase);
+#else
    float scan=.5+.5*cos(uv.y*raster.y*6.2831853);
+#endif
    float scanAA=1.0-smoothstep(.5,1.25,fwidth(uv.y*raster.y));
    float strength=intensity*(crt==1?.19:crt==2?.32:.43);
    c*=1.0-strength*scan*scanAA;
    if(maskMode>0){float lane=mod(floor(uv.x*raster.x*3.0),3.0);vec3 mask=lane<1.0?vec3(1,.68,.68):lane<2.0?vec3(.68,1,.68):vec3(.68,.68,1);
     float aa=1.0-smoothstep(.45,1.5,fwidth(uv.x*raster.x*3.0));c*=mix(vec3(1),mask,aa*intensity*(maskMode==1?.38:.65));}
    vec2 edge=uv*(1.0-uv);float vignette=pow(clamp(edge.x*edge.y*16.0,0.0,1.0),.12);
-   c*=mix(1.0,vignette,intensity);c+=pow(max(c-vec3(.65),vec3(0)),vec3(1.5))*.12*intensity;
+   c*=mix(1.0,vignette,intensity);
+#ifdef SCU_FAST
+   vec3 bloom=max(c-vec3(.65),vec3(0));c+=bloom*sqrt(bloom)*.12*intensity;
+   float grazing=1.0-facing;c+=vec3(.015,.025,.04)*grazing*grazing*grazing*glassStrength;
+#else
+   c+=pow(max(c-vec3(.65),vec3(0)),vec3(1.5))*.12*intensity;
    c+=vec3(.015,.025,.04)*pow(1.0-facing,3.0)*glassStrength;
+#endif
   }
   if(kind==3)c*=surroundBrightness;
  }else if(kind==6){
@@ -276,15 +293,22 @@ void main(){
   float fade=smoothstep(0.0,.28,uv.y)*smoothstep(0.0,.28,1.0-uv.y);
   c=mix(vec3(.008,.013,.025),displayColor(uv)*surroundBrightness,fade);
  }else if(kind==4){
-  float fresnel=pow(1.0-facing,4.0);c=vec3(.2,.47,.65);a=glassStrength*(.015+.14*fresnel);
+  float grazing=1.0-facing;float fresnel=grazing*grazing;fresnel*=fresnel;
+  c=vec3(.2,.47,.65);a=glassStrength*(.015+.14*fresnel);
  }else if(kind==5){
   vec2 cell=worldPosition.xz*.8;vec2 grid=abs(fract(cell-.5)-.5)/max(fwidth(cell),vec2(.001));
   float line=1.0-min(min(grid.x,grid.y),1.0);float fade=exp(-length(worldPosition.xz-eye.xz)*.055);
   c=vec3(.014,.022,.036)+vec3(.025,.095,.12)*line*fade;
  }else{
   vec3 l=normalize(vec3(-.45,.85,.65));float diffuse=max(dot(n,l),0.0);
+#ifdef SCU_FAST
+  float specBase=max(dot(reflect(-l,n),v),0.0),s2=specBase*specBase,s4=s2*s2,s8=s4*s4,s16=s8*s8,s32=s16*s16;
+  float spec=mix(s32*s32,s16,clamp(roughness,0.0,1.0));
+  float grazing=1.0-facing;float rim=grazing*grazing;rim*=rim;
+#else
   float spec=pow(max(dot(reflect(-l,n),v),0.0),mix(100.0,12.0,roughness));
   float rim=pow(1.0-facing,4.0);
+#endif
   c*=.3+.7*diffuse;c+=vec3(.7,.84,1)*spec*(1.0-roughness)*.7;
   c+=vec3(.035,.10,.14)*rim;
   if(roughness<0.0)c=tint.rgb*1.2;
@@ -346,6 +370,12 @@ struct XrStageRenderer::Impl {
     std::array<Eye, 2> eyes{};
     std::array<XrCompositionLayerProjectionView, 2> projectionViews{};
     XrCompositionLayerProjection layer{XR_TYPE_COMPOSITION_LAYER_PROJECTION};
+    std::array<GLuint, 2> programs{};
+    int shaderIndex = -1;
+    XrGpuTimer gpuTimer;
+    unsigned fullHeadroomFrames = 0;
+    bool automaticFull = false;
+    uint64_t shaderUpgradeAfter = 0;
     GLuint program = 0, framebuffer = 0, nativeTexture = 0, demoTexture = 0, backdropTexture = 0;
     int nativeW = 0, nativeH = 0, eyeDetail = -1;
     std::array<XrViewConfigurationView, 2> eyeSizes{};
@@ -363,24 +393,11 @@ struct XrStageRenderer::Impl {
     Mesh furniture, screen, glass, plain, surroundings;
     Matrix screenLocal = Matrix::identity(), glassLocal = Matrix::identity();
     int vp = -1, model = -1, kind = -1, eyePosition = -1;
-    void initialise(XrInstance instance, XrSystemId system, XrSession xrSession, int detail) {
-        GlState restore;
-        session = xrSession;
-        GLuint vert = compile(GL_VERTEX_SHADER, vertexSource),
-               frag = compile(GL_FRAGMENT_SHADER, fragmentSource);
-        program = glCreateProgram();
-        glAttachShader(program, vert);
-        glAttachShader(program, frag);
-        glLinkProgram(program);
-        glDeleteShader(vert);
-        glDeleteShader(frag);
-        GLint ok = 0;
-        glGetProgramiv(program, GL_LINK_STATUS, &ok);
-        if (!ok) {
-            char log[2048]{};
-            glGetProgramInfoLog(program, sizeof log, nullptr, log);
-            throw std::runtime_error(std::string("XR scene link: ") + log);
-        }
+    void selectShader(int index) {
+        if (shaderIndex == index)
+            return;
+        shaderIndex = index;
+        program = programs[index];
         vp = glGetUniformLocation(program, "vp");
         model = glGetUniformLocation(program, "model");
         kind = glGetUniformLocation(program, "kind");
@@ -396,6 +413,32 @@ struct XrStageRenderer::Impl {
         flipUniform = glGetUniformLocation(program, "flipImage");
         holeUniform = glGetUniformLocation(program, "nativeHole");
         clipUniform = glGetUniformLocation(program, "clipNative");
+    }
+    void initialise(XrInstance instance, XrSystemId system, XrSession xrSession, int detail) {
+        GlState restore;
+        session = xrSession;
+        GLuint vert = compile(GL_VERTEX_SHADER, vertexSource);
+        for (int index = 0; index < 2; ++index) {
+            std::string source = fragmentSource;
+            if (index == 1)
+                source.insert(source.find('\n') + 1, "#define SCU_FAST 1\n");
+            GLuint frag = compile(GL_FRAGMENT_SHADER, source.c_str());
+            programs[index] = glCreateProgram();
+            glAttachShader(programs[index], vert);
+            glAttachShader(programs[index], frag);
+            glLinkProgram(programs[index]);
+            glDeleteShader(frag);
+            GLint ok = 0;
+            glGetProgramiv(programs[index], GL_LINK_STATUS, &ok);
+            if (!ok) {
+                char log[2048]{};
+                glGetProgramInfoLog(programs[index], sizeof log, nullptr, log);
+                throw std::runtime_error(std::string("XR scene link: ") + log);
+            }
+        }
+        glDeleteShader(vert);
+        selectShader(1);
+        gpuTimer.initialise();
         glGenFramebuffers(1, &framebuffer);
         uint32_t count = 0;
         xrCheck(xrEnumerateViewConfigurationViews(instance, system,
@@ -836,6 +879,25 @@ struct XrStageRenderer::Impl {
         // The presenter owns the complete SDL/OpenXR state guard; avoid a nested
         // glGet* round trip on each eye frame.
         configureEyes(s.questEyeDetail);
+        gpuTimer.frame();
+        double gpuMs = gpuTimer.latest();
+        if (s.questShaderQuality == 0) {
+            bool overloaded =
+                gpuMs < 0 || gpuMs > content.targetFrameMs * .7 || s.compositionScale < 90;
+            if (overloaded) {
+                if (automaticFull)
+                    shaderUpgradeAfter = SDL_GetTicks64() + 15000;
+                automaticFull = false;
+                fullHeadroomFrames = 0;
+            } else if (gpuMs < content.targetFrameMs * .45 && s.compositionScale >= 95 &&
+                       SDL_GetTicks64() >= shaderUpgradeAfter) {
+                if (++fullHeadroomFrames > 300)
+                    automaticFull = true;
+            } else
+                fullHeadroomFrames = 0;
+        }
+        selectShader(s.questShaderQuality == 2 || (s.questShaderQuality == 0 && automaticFull) ? 0
+                                                                                               : 1);
         glUseProgram(program);
         glActiveTexture(GL_TEXTURE0);
         glUniform1i(imageUniform, 0);
@@ -910,7 +972,19 @@ struct XrStageRenderer::Impl {
                                       e.depth);
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
                 throw std::runtime_error("Incomplete XR stereo framebuffer");
-            glViewport(0, 0, e.width, e.height);
+            // The swapchains/depth storage stay allocated. Only the viewport and
+            // submitted image rectangle change, avoiding driver allocation hitches.
+            float scale = s.autoPerformance && s.questAdaptive
+                              ? std::clamp(s.compositionScale, 25, 100) * .01f
+                              : 1.f;
+            int renderWidth = std::max(64, int(e.width * scale) / 8 * 8);
+            int renderHeight = std::max(64, int(e.height * scale) / 8 * 8);
+            renderWidth = std::min(renderWidth, e.width);
+            renderHeight = std::min(renderHeight, e.height);
+            glViewport(0, 0, renderWidth, renderHeight);
+            glEnable(GL_SCISSOR_TEST);
+            glScissor(0, 0, renderWidth, renderHeight);
+            gpuTimer.startEye(i);
             glClearColor(alphaLayer ? 0 : .008f, alphaLayer ? 0 : .013f, alphaLayer ? 0 : .025f,
                          alphaLayer ? 0 : 1);
             glDepthMask(GL_TRUE);
@@ -1042,6 +1116,7 @@ struct XrStageRenderer::Impl {
                     SDL_FreeSurface(surface);
                 }
             }
+            gpuTimer.finishEye();
             glInvalidateFramebuffer(GL_FRAMEBUFFER, 1,
                                     std::array<GLenum, 1>{GL_DEPTH_ATTACHMENT}.data());
             glFlush();
@@ -1052,7 +1127,7 @@ struct XrStageRenderer::Impl {
             p.pose = views[i].pose;
             p.fov = views[i].fov;
             p.subImage.swapchain = e.chain;
-            p.subImage.imageRect = {{0, 0}, {e.width, e.height}};
+            p.subImage.imageRect = {{0, 0}, {renderWidth, renderHeight}};
         }
         if (labelsImage)
             SDL_GL_UnbindTexture(controls.labels);
@@ -1077,8 +1152,9 @@ struct XrStageRenderer::Impl {
         glass.clear();
         plain.clear();
         surroundings.clear();
-        if (program)
-            glDeleteProgram(program);
+        for (auto id : programs)
+            if (id)
+                glDeleteProgram(id);
         if (framebuffer)
             glDeleteFramebuffers(1, &framebuffer);
         if (nativeTexture)
@@ -1106,6 +1182,9 @@ const XrCompositionLayerProjection *XrStageRenderer::render(XrSpace space, XrTim
                                                             const XrSpatialControls &controls,
                                                             bool ar, const std::string &capture) {
     return impl->render(space, time, origin, s, mode, c, controls, ar, capture);
+}
+double XrStageRenderer::gpuMilliseconds() const {
+    return impl->gpuTimer.latest();
 }
 uint64_t XrStageRenderer::frames() const {
     return impl->frameCount;

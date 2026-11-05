@@ -76,8 +76,8 @@ std::vector<SpatialButton> spatialButtons(int page) {
         grid(EyeLow, "remote_eye_low");
         grid(EyeBalanced, "remote_eye_balanced");
         grid(EyeHigh, "remote_eye_high");
-        grid(Resume, "remote_resume");
-        grid(Recover, "remote_recover");
+        grid(ToggleAdaptive, "remote_auto_performance");
+        grid(CycleShader, "remote_shader");
         grid(Advanced, "remote_advanced");
         break;
     case 5:

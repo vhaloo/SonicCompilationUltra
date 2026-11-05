@@ -13,6 +13,58 @@ struct Text {
         }                                                                                          \
     }
 static const Text texts[] = {
+    T("autoperformance", "Automatic performance / resolution",
+      "Performances et résolution automatiques", "Rendimiento y resolución automáticos",
+      "描画性能と解像度を自動調整"),
+    T("performancetarget", "Presentation target", "Objectif d’affichage",
+      "Objetivo de presentación", "表示フレーム目標"),
+    T("minimumrenderscale", "Minimum scene resolution", "Résolution minimale du décor",
+      "Resolución mínima de escena", "シーンの最小解像度"),
+    T("maximumrenderscale", "Maximum scene resolution", "Résolution maximale du décor",
+      "Resolución máxima de escena", "シーンの最大解像度"),
+    T("performancepixellock", "Lock literal 1:1 Pixel view",
+      "Verrouiller le mode Pixel en vrai 1:1", "Bloquear vista Píxel en 1:1 real",
+      "ピクセル表示を厳密な1:1に固定"),
+    T("thermalaware", "React to Android thermal pressure", "Tenir compte de la chauffe Android",
+      "Adaptar a la presión térmica de Android", "Androidの発熱状態に合わせて調整"),
+    T("questshaderquality", "Stereo shader quality", "Qualité du shader stéréo",
+      "Calidad del shader estéreo", "ステレオシェーダー品質"),
+    T("shaderauto", "Automatic (efficient until headroom is measured)",
+      "Auto (léger tant que la marge n’est pas mesurée)",
+      "Auto (ligero hasta medir margen suficiente)", "自動（余裕が測定されるまでは軽量）"),
+    T("shaderefficient", "Efficient CRT / materials", "CRT et matériaux légers",
+      "CRT y materiales ligeros", "軽量CRT・マテリアル"),
+    T("shaderreference", "Full reference CRT / materials", "CRT et matériaux de référence complets",
+      "CRT y materiales de referencia completos", "基準の高品質CRT・マテリアル"),
+    T("performancereadout", "Last measured work", "Dernière charge mesurée", "Última carga medida",
+      "直近の処理時間"),
+    T("unmeasuredgpu", "not measured", "non mesuré", "sin medir", "未測定"),
+    T("performancesimbound",
+      "The native simulation is the bottleneck. Lower resolution cannot remove a core/CPU limit.",
+      "La simulation native limite le débit. Une résolution plus basse ne supprime pas une limite "
+      "du cœur ou du processeur.",
+      "La simulación nativa limita el rendimiento. Reducir la resolución no elimina un límite del "
+      "núcleo o CPU.",
+      "元のゲーム処理がボトルネックです。解像度を下げてもCPUやコアの制限は解消されません。"),
+    T("performancehint",
+      "Auto lowers scene sampling quickly under load and restores detail slowly when there is "
+      "room. UI and the native game image stay sharp. Lock 1:1 to protect literal source pixels; "
+      "this can limit automatic gains. The display and original console timing still set the "
+      "achievable cadence.",
+      "Auto réduit vite l’échantillonnage du décor en charge et rétablit lentement les détails "
+      "quand la marge revient. UI et image native restent nettes. Le verrouillage 1:1 protège les "
+      "pixels sources et peut limiter les gains automatiques. L’écran et la cadence de la console "
+      "fixent toujours les limites.",
+      "Auto reduce pronto el muestreo con carga y recupera detalle lentamente al haber margen. "
+      "Interfaz e imagen nativa conservan nitidez. Bloquear 1:1 protege píxeles originales y puede "
+      "limitar las mejoras. La pantalla y el ritmo de la consola siguen fijando los límites.",
+      "負荷が高いとシーンの解像度を素早く下げ、余裕が続くとゆっくり戻します。UIと元のゲーム画像は鮮"
+      "明に保ちます。1:"
+      "1固定は元のピクセルを守るため、自動調整の効果を制限する場合があります。表示性能と元のゲーム"
+      "速度には端末ごとの限界があります。"),
+    T("remote_auto_performance", "Auto resolution", "Résolution auto", "Resolución auto",
+      "解像度の自動調整"),
+    T("remote_shader", "CRT shader", "Shader CRT", "Shader CRT", "CRTシェーダー"),
     T("mobiletab", "Phone / tablet", "Téléphone / tablette", "Teléfono / tableta",
       "スマートフォン / タブレット"),
     T("mobileintro",
@@ -57,8 +109,8 @@ static const Text texts[] = {
       "Pantalla completa inmersiva", "全画面表示"),
     T("mobilerefresh", "Display frame limit", "Limite d’images affichées",
       "Límite de imágenes mostradas", "表示フレーム上限"),
-    T("mobile60", "60 fps (default)", "60 ips (défaut)", "60 fps (predeterminado)",
-      "60 fps（標準）"),
+    T("mobile60", "Global target (60 by default)", "Objectif global (60 par défaut)",
+      "Objetivo global (60 por defecto)", "共通目標（標準60）"),
     T("mobile30", "30 fps (battery saver)", "30 ips (économie)", "30 fps (ahorro)",
       "30 fps（省電力）"),
     T("mobile90", "Up to 90 fps", "Jusqu’à 90 ips", "Hasta 90 fps", "最大90 fps"),

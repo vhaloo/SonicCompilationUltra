@@ -86,8 +86,10 @@ void MobilePresentation::beginFrame() {
     SDL_GetRendererOutputSize(app.renderer, &w, &h);
     w = std::max(1, w);
     h = std::max(1, h);
-    float left = 0, top = 0, right = 0, bottom = 0, newDensity = density;
-    {
+    float left = safeLeft, top = safeTop, right = safeRight, bottom = safeBottom,
+          newDensity = density;
+    if (w != width || h != height || !metricsAt || SDL_GetTicks64() - metricsAt >= 250) {
+        metricsAt = SDL_GetTicks64();
         Activity a;
         if (a.type) {
             auto method = a.env->GetMethodID(a.type, "displayInfo", "()[I");
@@ -107,10 +109,19 @@ void MobilePresentation::beginFrame() {
                     displayHz = std::clamp(hz / 1000.f, 30.f, 240.f);
                 }
             }
+            if (result && a.env->GetArrayLength(result) >= 9) {
+                jint thermal = 0;
+                a.env->GetIntArrayRegion(result, 8, 1, &thermal);
+                app.thermalStatus = std::clamp(int(thermal), 0, 6);
+            }
             if (result)
                 a.env->DeleteLocalRef(result);
         }
     }
+    safeLeft = left;
+    safeTop = top;
+    safeRight = right;
+    safeBottom = bottom;
     bool controls = app.settings.mobileTouch == 1 ||
                     (app.settings.mobileTouch == 0 &&
                      !(app.pads[0] && SDL_GameControllerGetAttached(app.pads[0])));
@@ -146,16 +157,9 @@ void MobilePresentation::beginFrame() {
         next.stick.w != layout.stick.w)
         clearInput();
     layout = std::move(next);
+    // Only the world sampler is adaptive. UI and native overlays render at the
+    // drawable resolution and are not blurred by a low-resolution scene target.
     float renderScale = 1;
-    // Pixel mode is literal 1:1. Overview/panorama may trade resolution for battery life.
-    if (!app.menu && s.view != 0) {
-        float budget = s.mobileRenderQuality == 0   ? 1000000.f
-                       : s.mobileRenderQuality == 2 ? 8000000.f
-                                                    : 2500000.f;
-        renderScale =
-            std::min(1.f, std::sqrt(budget / std::max(1.f, layout.canvas.w * layout.canvas.h *
-                                                               density * density)));
-    }
     int tw = std::max(1, int(layout.canvas.w * density * renderScale));
     int th = std::max(1, int(layout.canvas.h * density * renderScale));
     SDL_RendererInfo info{};
@@ -177,13 +181,15 @@ void MobilePresentation::beginFrame() {
         SDL_SetTextureBlendMode(canvas, SDL_BLENDMODE_NONE);
         SDL_SetTextureScaleMode(canvas, SDL_ScaleModeNearest);
     }
-    int config = s.mobileOrientation + 4 * s.mobileRefresh + 32 * int(s.mobileImmersive);
+    int config = s.mobileOrientation + 4 * s.mobileRefresh + 32 * int(s.mobileImmersive) +
+                 s.performanceTarget * 64;
     if (config != displayConfig) {
         Activity a;
         if (a.type)
-            a.env->CallVoidMethod(
-                a.object, a.env->GetMethodID(a.type, "configureDisplay", "(IIZ)V"),
-                s.mobileOrientation, s.mobileRefresh, s.mobileImmersive ? JNI_TRUE : JNI_FALSE);
+            a.env->CallVoidMethod(a.object,
+                                  a.env->GetMethodID(a.type, "configureDisplay", "(IIIZ)V"),
+                                  s.mobileOrientation, s.mobileRefresh, s.performanceTarget,
+                                  s.mobileImmersive ? JNI_TRUE : JNI_FALSE);
         displayConfig = config;
     }
     SDL_SetRenderTarget(app.renderer, canvas);
@@ -386,17 +392,24 @@ void MobilePresentation::endFrame() {
     SDL_Rect dest{int(layout.canvas.x * density), int(layout.canvas.y * density),
                   int(layout.canvas.w * density), int(layout.canvas.h * density)};
     SDL_RenderCopy(app.renderer, canvas, nullptr, &dest);
+    const auto submitStarted = SDL_GetPerformanceCounter();
     drawControls();
+    SDL_RenderFlush(app.renderer);
+    lastSubmissionMs =
+        double(SDL_GetPerformanceCounter() - submitStarted) * 1000 / SDL_GetPerformanceFrequency();
     SDL_RenderPresent(app.renderer);
-    const int rates[] = {60, 30, 90, 120, 0};
-    double rate = rates[std::clamp(app.settings.mobileRefresh, 0, 4)];
-    if (rate == 0)
-        rate = displayHz;
+    double rate = refreshLimit();
     if (!app.focused)
         rate = 15;
-    auto elapsed = SDL_GetTicks64() - frameStart;
-    if (rate > 0 && elapsed < 1000.0 / rate)
-        SDL_Delay(Uint32(std::ceil(1000.0 / rate - elapsed)));
+    if (double delay =
+            pacing.delay(double(SDL_GetPerformanceCounter()) / SDL_GetPerformanceFrequency(), rate);
+        delay > 0)
+        SDL_Delay(Uint32(std::ceil(delay * 1000)));
+}
+double MobilePresentation::refreshLimit() const {
+    const double rates[] = {double(app.settings.performanceTarget), 30, 90, 120, 0};
+    double rate = rates[std::clamp(app.settings.mobileRefresh, 0, 4)];
+    return std::min(rate > 0 ? rate : double(displayHz), double(displayHz));
 }
 void MobilePresentation::chooseRom() {
     Activity a;

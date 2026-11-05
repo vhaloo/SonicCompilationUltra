@@ -3,6 +3,11 @@
 #include <algorithm>
 namespace scu {
 struct Settings {
+    bool autoPerformance = true, performancePixelLock = false, thermalAware = true;
+    int performanceTarget = 60, minimumRenderScale = 35, maximumRenderScale = 100;
+    int questShaderQuality = 0;
+    // Per-frame composition budgets. Display coordinates/native pixels/UI stay independent.
+    int compositionScale = 100, compositionPixels = 0;
     int language = -1, view = 2, zoom = 1, camera = 0, background = 0, blur = 7, brightness = 60;
     int hud = 0, hudScale = 0, nativeScale = 0, workers = 0, volume = 70, quality = 1, uiScale = 0;
     int slot = 1, region = 0, renderer = 0, scanlines = 0, panSpeed = 6, deadzone = 12000;

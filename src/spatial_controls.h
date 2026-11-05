@@ -54,6 +54,8 @@ enum SpatialAction {
     ScrollDown,
     Advanced,
     Library,
+    ToggleAdaptive = 96,
+    CycleShader,
     Cinema = 100,
     Tabletop,
     HeadFollow,

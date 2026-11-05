@@ -3,6 +3,7 @@
 #include "settings.h"
 #include "enemies.h"
 #include "terrain_atlas.h"
+#include "performance.h"
 #include <array>
 namespace scu {
 inline uint16_t be16(const uint8_t *p, unsigned a) {
@@ -32,10 +33,12 @@ class World {
     bool patternsValid = false;
     std::array<bool, 2048> terrainUsed{};
     std::vector<uint32_t> terrainPixels;
+    DamageMap actorsDamage, textureDamage;
+    TileAttributeCache terrainAttributes;
 
     uint64_t shapeSignature = 0, terrainSignature = 0;
     std::vector<uint8_t> priority;
-    std::vector<Sprite> sprites;
+    std::vector<Sprite> sprites, satSprites;
     std::vector<uint8_t> rom;
     int lastStage = -1, lastFamily = -1;
     bool cameraValid = false;
@@ -53,6 +56,8 @@ class World {
     int enemySpriteCount = 0, enemyMarkerCount = 0;
     Canvas canvas;
     uint64_t terrainCacheHits = 0, terrainCacheMisses = 0;
+    uint64_t restoredBytes = 0;
+    std::vector<DamageRect> uploadRegions;
     std::array<uint32_t, 320 * 224> backdrop{};
     Scene inspect(const SCUSnapshot &s, const Game *game) const;
     void setRom(const std::vector<uint8_t> &r) {
@@ -61,6 +66,9 @@ class World {
         patternsValid = false;
         shapeSignature = terrainSignature = 0;
         terrainPixels.clear();
+        terrainAttributes.clear();
+        actorsDamage.clear();
+        textureDamage.clear();
         priority.clear();
         reset();
     }

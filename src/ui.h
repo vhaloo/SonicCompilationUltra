@@ -3,6 +3,7 @@
 #include "localization.h"
 #include "setting_help.h"
 #include "desktop_frame.h"
+#include "performance.h"
 #include <imgui.h>
 #ifdef SCU_UI_TESTS
 #include <map>
@@ -26,7 +27,8 @@ class App {
     ImGuiContext *uiContext = nullptr;
     bool uiPlatformReady = false, uiRendererReady = false;
     int textureW = 0, textureH = 0, nativeTW = 0, nativeTH = 0;
-    std::array<uint32_t, 320 * 224> frozenBackground{};
+    std::vector<SDL_Rect> scanlineRects;
+    int scanlineWidth = 0, scanlineHeight = 0;
     int backgroundStage = -1;
     bool backgroundFrozen = false;
     uint64_t lastImageVersion = ~uint64_t(0), lastPresentationHash = 0, backdropSettingsHash = 0;
@@ -108,6 +110,10 @@ class App {
         return 9;
 #endif
     }
+    PerformanceGovernor performanceGovernor;
+    double lastRenderMs = 0, lastPresentMs = 0;
+    uint64_t uploadedBytes = 0;
+    int thermalStatus = 0;
     Settings settings;
     Library library;
     Core core;
@@ -140,6 +146,7 @@ class App {
     void present(bool capture = false);
     void screenshot(const fs::path &path);
     void flushSettings();
+    void performanceOptions();
     void notify(std::string text);
     int menuTab() const {
         return tab;

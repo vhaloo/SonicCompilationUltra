@@ -137,7 +137,9 @@ struct QuestPresentation::Impl {
     float displayHz = 0, requestedHz = 0;
     int lastRefresh = -999, lastMode = -1, mapWidth = 0, mapHeight = 0, mapStage = -1,
         mapFamily = -1, lastMenuDistance = 0;
-    int adaptiveStep = 0, overBudget = 0, underBudget = 0;
+    double submissionMs = 0;
+    jmethodID thermalMethod = nullptr;
+    uint64_t thermalPoll = 0;
     uint64_t permissionPoll = 0, ratePoll = 0, adaptiveAt = 0, renderStarted = 0;
     std::string mapGame;
     XrUuidEXT selectedUuid{};
@@ -184,6 +186,7 @@ struct QuestPresentation::Impl {
         auto activityType = env->GetObjectClass(activity);
         permissionMethod = env->GetMethodID(activityType, "scenePermissionGranted", "()Z");
         requestPermissionMethod = env->GetMethodID(activityType, "requestScenePermission", "()V");
+        thermalMethod = env->GetMethodID(activityType, "thermalStatus", "()I");
         env->DeleteLocalRef(activityType);
         if (env->ExceptionCheck())
             env->ExceptionClear();
@@ -649,8 +652,8 @@ struct QuestPresentation::Impl {
         int detail = std::clamp(app.settings.questWallDetail, 0, 2);
         int capWidth = detail == 0 ? 4096 : detail == 1 ? 8192 : 12288;
         double pixels = detail == 0 ? 1048576. : detail == 1 ? 2097152. : 4194304.;
-        int step = app.settings.questAdaptive ? adaptiveStep : 0;
-        pixels /= double(1 << step);
+        // Scene sampling is adaptive in the shared compositor. Keep the source
+        // canvas allocation stable and preserve sharp native/overlay layers.
         float ratio = aspect();
         int w = std::min(capWidth, int(std::sqrt(pixels * ratio)));
         int h = std::max(1, int(std::lround(w / ratio)));
@@ -1282,6 +1285,15 @@ struct QuestPresentation::Impl {
             }
         }
         refreshRate();
+        if (thermalMethod && SDL_GetTicks64() - thermalPoll >= 1000) {
+            thermalPoll = SDL_GetTicks64();
+            auto env = static_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
+            app.thermalStatus = std::clamp(int(env->CallIntMethod(activity, thermalMethod)), 0, 6);
+            if (env->ExceptionCheck()) {
+                env->ExceptionClear();
+                app.thermalStatus = 0;
+            }
+        }
         return true;
     }
     void end() {
@@ -1289,6 +1301,7 @@ struct QuestPresentation::Impl {
             return;
         // The runtime can use GL during acquire/release and frame submission.
         // Preserve SDL's cached state across the complete XR call sequence.
+        const auto submissionStarted = SDL_GetPerformanceCounter();
         renderDeckLabels();
         SDL_RenderFlush(app.renderer);
         GlState restoreGraphics;
@@ -1376,6 +1389,8 @@ struct QuestPresentation::Impl {
             content.nativeWidth = app.core.nativeW;
             content.nativeHeight = app.core.nativeH;
             content.version = app.core.imageVersion;
+            content.targetFrameMs =
+                frame.predictedDisplayPeriod > 0 ? frame.predictedDisplayPeriod * 1e-6 : 11.111;
             content.scene = app.core.world.inspect(app.core.snapshot, app.core.game);
             if (mode() == 4 && !content.scene.ready)
                 content.expanded = nullptr;
@@ -1449,6 +1464,8 @@ struct QuestPresentation::Impl {
         end.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
         end.layerCount = layerCount;
         end.layers = layers.data();
+        submissionMs = double(SDL_GetPerformanceCounter() - submissionStarted) * 1000 /
+                       SDL_GetPerformanceFrequency();
         check(xrEndFrame(session, &end), "Submit headset frame");
         ++submittedFrames;
         auto now = SDL_GetTicks64();
@@ -1467,24 +1484,6 @@ struct QuestPresentation::Impl {
         frameOpen = false;
         restoreGraphics.restore();
         SDL_SetRenderTarget(app.renderer, nullptr);
-        if (wasDrawn && activeScreen == &gameScreen && fixed() && !app.menu &&
-            app.settings.questAdaptive && frame.predictedDisplayPeriod > 0) {
-            double seconds =
-                double(SDL_GetPerformanceCounter() - renderStarted) / SDL_GetPerformanceFrequency();
-            double period = frame.predictedDisplayPeriod * 1e-9;
-            overBudget = seconds > period * .85 ? overBudget + 1 : std::max(0, overBudget - 1);
-            underBudget = seconds < period * .45 ? underBudget + 1 : 0;
-            auto now = SDL_GetTicks64();
-            if (now - adaptiveAt > 3000 && overBudget > 45 && adaptiveStep < 2) {
-                ++adaptiveStep;
-                adaptiveAt = now;
-                overBudget = underBudget = 0;
-            } else if (now - adaptiveAt > 10000 && underBudget > 600 && adaptiveStep > 0) {
-                --adaptiveStep;
-                adaptiveAt = now;
-                overBudget = underBudget = 0;
-            }
-        }
     }
     ~Impl() {
         if (frameOpen && session) {
@@ -1556,6 +1555,7 @@ bool QuestPresentation::needsRedraw() const {
     auto size = p.canvasSize(p.companion());
     return p.app.menu || !target.valid || target.mode != p.mode() ||
            target.imageVersion != p.app.core.imageVersion || p.app.dirty ||
+           p.app.settings.compositionScale != p.app.performanceGovernor.scale() ||
            p.app.screenshotRequested || target.requestedWidth != size.first ||
            target.requestedHeight != size.second;
 }
@@ -1564,6 +1564,18 @@ void QuestPresentation::prepareRender() {
 }
 void QuestPresentation::rendered() {
     impl->wasDrawn = true;
+}
+double QuestPresentation::refreshLimit() const {
+    const auto &p = *impl;
+    return p.displayHz > 0                      ? p.displayHz
+           : p.frame.predictedDisplayPeriod > 0 ? 1e9 / p.frame.predictedDisplayPeriod
+                                                : 90.;
+}
+double QuestPresentation::gpuMilliseconds() const {
+    return impl->stage ? impl->stage->gpuMilliseconds() : -1;
+}
+double QuestPresentation::submissionMilliseconds() const {
+    return impl->submissionMs;
 }
 void QuestPresentation::configureRender(Settings &settings) const {
     auto &p = *impl;
@@ -1652,6 +1664,9 @@ void QuestPresentation::options() {
     changed |= a.tick("questinsetcrt", s.questInsetCrt);
     changed |= a.slider("questinsetwidth", s.questInsetWidth, 25, 160, "%d cm");
     changed |= a.choice("questeyedetail", s.questEyeDetail, {"light", "balanced", "ultra"});
+    changed |= a.choice("questshaderquality", s.questShaderQuality,
+                        {"shaderauto", "shaderefficient", "shaderreference"});
+    a.performanceOptions();
     if (a.button("remote_recover")) {
         impl->placeDeck(true);
         impl->placeMenu();

@@ -1,6 +1,13 @@
 # Validation report — 29 October 2026
 
 
+## 0.9 performance development preview
+
+- Shared active-work governor with CPU/GPU pressure, thermal caps, hysteresis, pixel-lock/manual bounds, pause handling and fractional display deadlines. Native game timing and camera coverage remain independent.
+- Portable generated-data checks exercise sparse restore/texture equivalence, terrain revision sensitivity (including high Sonic 1 banks), invalid input, thermal/manual policies, core bottlenecks and intermittent XR overruns. A separate presentation-only compositor executable links neither SDL nor an emulator and compares retained/full output plus actual upload regions across three views, tiny/normal/ultrawide dimensions and palette/VRAM/layout/resolution changes.
+- Both exact GLES 3.0 shader variants compile/link offline. Texture colors/gamma/vignette remain unchanged; efficient scanlines/highlights are approximations. Optional timer queries are availability-checked, bounded, disjoint-invalidated and never awaited. Stereo viewport scaling reuses allocated eye swapchains.
+- See [performance evidence and limits](PERFORMANCE.md). No app, game, emulator, installer, phone/tablet or Quest session is executed. Hardware startup, sustained FPS, thermals and visual/input behavior remain unqualified. macOS is experimental.
+
 ## 0.8 mobile / XR development preview
 
 - A separate non-XR phone/tablet package targets Android API 24+ with ARM64, ARMv7 and x86-64 libraries. It has no headset requirement, camera, microphone, network or broad storage permission. Android's document picker imports into app-private storage; packaged personal libraries seed once and preserve existing data.
