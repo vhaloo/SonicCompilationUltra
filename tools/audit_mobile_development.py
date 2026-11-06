@@ -5,7 +5,7 @@ r=Path(__file__).resolve().parents[1]
 java=(r/'android/mobile/src/main/java/com/vhaloo/soniccompilationultra/mobile/MobileActivity.java').read_text(encoding='utf-8')
 gradle=(r/'android/mobile/build.gradle').read_text(encoding='utf-8')
 manifest=(r/'android/mobile/src/main/AndroidManifest.xml').read_text(encoding='utf-8')
-assert 'minSdk 24' in gradle and 'targetSdk 36' in gradle
+assert 'minSdk wearable ? 26 : 24' in gradle and 'targetSdk 36' in gradle
 assert "'arm64-v8a', 'armeabi-v7a', 'x86_64'" in gradle
 assert 'SCU_QUEST_BUILD=OFF' in gradle and 'scuMobilePrivateAssets' in gradle and 'scuPrivateAssets' not in gradle
 assert 'OpenXR' not in java and 'openxr' not in gradle and 'oculus' not in manifest

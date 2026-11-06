@@ -125,6 +125,7 @@ struct QuestPresentation::Impl {
     uint64_t diagnosticAt = 0, submittedFrames = 0, captureAfter = 0;
     bool menuCaptured = false;
     bool sceneSupported = false, storageSupported = false, captureSupported = false;
+    bool foveationSupported = false;
     bool refreshSupported = false, localFloorSupported = false;
     bool permissionAsked = false, permissionGranted = false, queriedScene = false, restored = false,
          captureAfterPermission = false;
@@ -218,6 +219,14 @@ struct QuestPresentation::Impl {
         passthroughSupported = supports(XR_FB_PASSTHROUGH_EXTENSION_NAME);
         if (passthroughSupported)
             enabled.push_back(XR_FB_PASSTHROUGH_EXTENSION_NAME);
+        foveationSupported = supports(XR_FB_FOVEATION_EXTENSION_NAME) &&
+                             supports(XR_FB_FOVEATION_CONFIGURATION_EXTENSION_NAME) &&
+                             supports(XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME);
+        if (foveationSupported) {
+            enabled.push_back(XR_FB_FOVEATION_EXTENSION_NAME);
+            enabled.push_back(XR_FB_FOVEATION_CONFIGURATION_EXTENSION_NAME);
+            enabled.push_back(XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME);
+        }
         bool spatial = supports(XR_FB_SPATIAL_ENTITY_EXTENSION_NAME) &&
                        supports(XR_FB_SPATIAL_ENTITY_QUERY_EXTENSION_NAME);
         sceneSupported = spatial && supports(XR_FB_SCENE_EXTENSION_NAME);
@@ -347,7 +356,8 @@ struct QuestPresentation::Impl {
         }
         glGenFramebuffers(1, &framebuffer);
         stage = std::make_unique<XrStageRenderer>();
-        stage->initialise(instance, system, session, app.settings.questEyeDetail);
+        stage->initialise(instance, system, session, app.settings.questEyeDetail,
+                          foveationSupported);
         captureAfter = SDL_GetTicks64() + 2000;
     }
     void createActions() {
@@ -1666,6 +1676,8 @@ void QuestPresentation::options() {
     changed |= a.choice("questeyedetail", s.questEyeDetail, {"light", "balanced", "ultra"});
     changed |= a.choice("questshaderquality", s.questShaderQuality,
                         {"shaderauto", "shaderefficient", "shaderreference"});
+    changed |= a.choice("questfoveation", s.questFoveation,
+                        {"auto", "off", "light", "balanced", "strong"});
     a.performanceOptions();
     if (a.button("remote_recover")) {
         impl->placeDeck(true);

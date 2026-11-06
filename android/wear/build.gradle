@@ -1,0 +1,2 @@
+// Share the Android core and storage glue, with a separate standalone Wear APK.
+apply from: '../mobile/build.gradle'

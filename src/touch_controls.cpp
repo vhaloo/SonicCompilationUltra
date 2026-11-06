@@ -18,6 +18,44 @@ Layout arrange(Rect safe, const Options &o) {
     safe.h = std::max(1.f, safe.h);
     Layout l;
     l.safe = l.canvas = safe;
+    if (o.watch) {
+        const float d = std::min(safe.w, safe.h);
+        const float ox = safe.x + (safe.w - d) * .5f, oy = safe.y + (safe.h - d) * .5f;
+        auto r = [&](float x, float y, float w, float h) {
+            return Rect{ox + x * d, oy + y * d, w * d, h * d};
+        };
+        auto add = [&](Action a, float x, float y, float w, float h) {
+            if (o.leftHanded && !o.menu)
+                x = 1 - x - w;
+            l.buttons.push_back({r(x, y, w, h), a});
+        };
+        if (o.menu) {
+            l.canvas = o.circular ? r(.16f, .16f, .68f, .59f) : r(.03f, .03f, .94f, .72f);
+            add(Action::Back, .36f, .79f, .28f, .14f);
+            // The crown scrolls menus. Touch-only watches retain two clear buttons.
+            add(Action::ScrollUp, .14f, .68f, .18f, .14f);
+            add(Action::ScrollDown, .68f, .68f, .18f, .14f);
+        } else {
+            l.canvas = r(0, 0, 1, 1);
+            add(Action::Menu, .40f, .06f, .20f, .13f);
+            if (o.controls) {
+                add(Action::Utility, .40f, .86f, .20f, .12f);
+                if (o.utilityBank) {
+                    add(Action::Overview, .30f, .27f, .40f, .16f);
+                    add(Action::ZoomOut, .10f, .48f, .24f, .18f);
+                    add(Action::ZoomIn, .66f, .48f, .24f, .18f);
+                    add(Action::Rewind, .36f, .50f, .28f, .19f);
+                } else {
+                    l.stick = r(o.leftHanded ? .56f : .08f, .35f, .36f, .36f);
+                    add(Action::A, .56f, .53f, .18f, .18f);
+                    add(Action::B, .76f, .40f, .18f, .18f);
+                    add(Action::C, .58f, .29f, .18f, .18f);
+                    add(Action::Start, .44f, .74f, .18f, .10f);
+                }
+            }
+        }
+        return l;
+    }
     const float pad = std::min({std::max(4.f, o.margin), safe.w * .03f, safe.h * .03f});
     if (o.menu) {
         float dock = std::min(54.f, safe.h * .2f);

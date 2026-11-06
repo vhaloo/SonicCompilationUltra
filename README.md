@@ -1,7 +1,7 @@
 <p align="center"><img src="assets/brand.svg" width="760" alt="Sonic Compilation Ultra — your cartridges, a much bigger view"></p>
 
 <p align="center">
-  <a href="https://github.com/vhaloo/SonicCompilationUltra/releases/latest">Download</a> ·
+  <a href="https://github.com/vhaloo/SonicCompilationUltra/releases/tag/quality-wear-preview-0.10.0">Download preview</a> ·
   <a href="docs/QUICK_START.md">First steps</a> ·
   <a href="docs/ROMS.md">ROM guide</a> ·
   <a href="docs/FEATURES.md">All options</a>
@@ -9,17 +9,19 @@
 
 **Play your own Mega Drive / Genesis Sonic cartridges with an adaptable PC interface, huge views and backgrounds that look good at any aspect ratio.** No ROMs are included.
 
-Windows and Linux · Android phones/tablets · Quest XR · **macOS: experimental** · English, French, Spanish and Japanese · Keyboard and gamepads
+Windows and Linux · Android phones/tablets · **Meta Quest 3 VR/AR** · **Wear OS and macOS: experimental** · English, French, Spanish and Japanese · Keyboard, touch and gamepads
 
-**[Performance preview 0.9](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/performance-preview-0.9.0):** automatic scene resolution targets 60 fps across desktop, mobile and XR modes, with sharp native/UI layers, optional literal-pixel lock, bounded damage uploads and cached terrain decoding. Quest retains its 90 Hz display default and gains adaptive stereo viewports plus an efficient CRT shader. [Performance settings and evidence](docs/PERFORMANCE.md) · [Android guide](docs/ANDROID.md) · [Quest installation](docs/QUEST.md).
+**[Quality and Wear preview 0.10](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/quality-wear-preview-0.10.0):** automatic quality now reserves time for sudden load and adjusts effects, CPU scene resolution and stereo detail independently. Palette animations and rewind reuse more work. Quest retains 90 Hz by default and adds optional peripheral rendering. A separate watch APK has crown/bezel zoom from the whole stage to the native screen, a round fisheye and flat touch controls.
+
+**Downloads:** [Meta Quest 3 standalone APK](https://github.com/vhaloo/SonicCompilationUltra/releases/download/quality-wear-preview-0.10.0/SonicCompilationUltra-0.10.0-Quest-ROM-free.apk) · [Android phone/tablet APK](https://github.com/vhaloo/SonicCompilationUltra/releases/download/quality-wear-preview-0.10.0/SonicCompilationUltra-0.10.0-Android-Mobile-ROM-free.apk) · [Wear OS APK — experimental](https://github.com/vhaloo/SonicCompilationUltra/releases/download/quality-wear-preview-0.10.0/SonicCompilationUltra-0.10.0-Android-Wear-ROM-free.apk). [Automatic quality](docs/AUTOMATIC_QUALITY.md) · [Watch guide](docs/WEAR.md) · [Android guide](docs/ANDROID.md) · [Quest guide](docs/QUEST.md).
 
 ![Original adaptive-layout design diagram, not an app capture](docs/illustrations/mobile-layouts.svg)
 
-**0.9 is a development preview.** Generated-data checks compare retained composition against fresh full images and validate the performance governor without starting a game, app, emulator or headset session. Compilation, lint, static package checks and offline GLSL compilation do not certify sustained device FPS. **macOS remains experimental.**
+**0.10 is a development preview.** Generated-data checks validate composition, adaptive quality, round geometry, crown input and rewind bytes/audio without starting a game, app, emulator, watch or headset session. Compilation, lint, static package checks and offline GLSL compilation do not certify device startup, visuals, controls or sustained FPS. **macOS and Wear OS remain experimental.**
 
 ## Start playing
 
-1. **[Download your platform’s package](https://github.com/vhaloo/SonicCompilationUltra/releases/latest)** and extract it completely. On Windows, open `SonicCompilationUltra.exe`; on macOS, open the app; on Linux, run the included launcher.
+1. **[Download your platform’s package](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/quality-wear-preview-0.10.0)** and extract it completely. On Windows, open `SonicCompilationUltra.exe`; on macOS, open the app; on Linux, run the included launcher. For phone, tablet or watch, install the matching APK.
 2. Choose **Choose ROM…** using a mouse or gamepad or drop your own `.bin`, `.md`, `.gen`, `.smd` or `.zip` into the window. The app checks the file’s contents. [Which edition do I need?](docs/ROMS.md)
 3. Choose **Play**. Use **Enter / gamepad Start** on the original title screen. Move with the arrows or left stick; jump with **Z, X, C / gamepad A, X, B**.
 4. Open the fullscreen options whenever you like: **Esc, F10 or gamepad Select / View**. Use **A / bottom face button** to confirm, **B / right face button** to go back, **LB/RB** to switch sections and **LT/RT** to scroll. Gameplay pauses in the menu.
@@ -50,6 +52,10 @@ Choose a familiar **Panorama**, a very wide **Pixel world**, a **Whole-level ove
 <img src="docs/screenshots/fullscreen-options.png" alt="Fullscreen options with controller hints and clear stage-view choices">
 
 **Every setting has an illustrated explanation in English, French, Spanish and Japanese.** Focus an option with the gamepad or mouse: the guide appears beside it on larger screens. **Y / Triangle (top face button), or F1**, opens the scrollable explanation on any screen; **B / Esc** closes it.
+
+**New in 0.10:** each option's icon opens its illustrated explanation. Mouse hover offers a nearby preview; touch and VR users can press the icon. Picture, screen and quality controls are grouped, with detailed limits tucked into expandable sections. The examples below are original demo art, **not gameplay/device captures**. Earlier gameplay captures on this page show earlier desktop editions.
+
+![Original A/B setting examples used by the desktop, Android, watch and XR menus](docs/illustrations/settings-preview-gallery.png)
 
 <table><tr>
 <td width="50%"><img src="docs/screenshots/spinball-overview.png" alt="Spinball full-board terrain in the running application"><br><em>Spinball · full board with authentic live close-up</em></td>

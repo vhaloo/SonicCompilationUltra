@@ -23,6 +23,7 @@ class App {
     friend class QuestPresentation;
 #endif
     SDL_Texture *worldTexture = nullptr, *nativeTexture = nullptr, *bgTexture = nullptr;
+    SDL_Texture *settingsPreview = nullptr;
     DesktopFrame desktopFrame;
     ImGuiContext *uiContext = nullptr;
     bool uiPlatformReady = false, uiRendererReady = false;
@@ -54,6 +55,9 @@ class App {
     void gameOverlays();
     SDL_Rect avoidOverlays(SDL_Rect rect) const;
     std::string guideKey = "view";
+    std::string hoveredHeading;
+    bool headingReady = false;
+    int guideTooltipFrame = -1;
     uint64_t presentationClock = 0;
     unsigned presentationFrames = 0;
     double presentationFps = 0;
@@ -88,6 +92,9 @@ class App {
     bool choice(const char *key, int &value, std::initializer_list<const char *> keys);
     bool slider(const char *key, int &value, int lo, int hi, const char *format = "%d");
     void control(const char *key);
+    void settingBadge(const char *key);
+    void settingTitle(const char *key);
+    void loadSettingsPreview();
     void settingGuide(bool compact = false);
     std::string navigationHint() const;
     int controllerLabels() const;

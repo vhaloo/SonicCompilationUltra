@@ -51,8 +51,9 @@ int main() {
             retained->setRom({});
             std::vector<uint32_t> native(320 * 224), texture;
             int textureWidth = 0, textureHeight = 0;
-            for (int frame = 0; frame < 16; ++frame) {
-                int cameraX = frame < 3 ? 0 : frame * 11, cameraY = frame < 8 ? 0 : frame;
+            for (int frame = 0; frame < 24; ++frame) {
+                int cameraX = frame < 3 ? 0 : std::min(frame, 16) * 11,
+                    cameraY = frame < 8 ? 0 : std::min(frame, 16);
                 word(snapshot->ram, 0xF700, cameraX);
                 word(snapshot->ram, 0xF704, cameraY);
                 word(snapshot->ram, 0xD008, cameraX + 160);
@@ -68,6 +69,11 @@ int main() {
                 if (frame == 10)
                     for (int y = 0; y < 224; ++y)
                         snapshot->palettes[y][3] ^= 0x00335577;
+                if (frame >= 16)
+                    for (int y = 0; y < 224; ++y) {
+                        snapshot->palettes[y][3] ^= 0x00335577;
+                        snapshot->palettes[y][2] = frame % 2 ? 0 : 0xaaff0044;
+                    }
                 for (size_t i = 0; i < native.size(); ++i)
                     native[i] = (i % 29 == unsigned(frame))
                                     ? 0xffff8800
@@ -117,6 +123,8 @@ int main() {
             }
             require(retained->terrainCacheHits > 0,
                     "synthetic scenario never exercised cache reuse");
+            require(retained->paletteCacheHits > 0,
+                    "palette cycle did not exercise indexed sample cache");
         }
     std::printf("PASS %d retained/full compositor comparisons: generated terrain, SAT actors, "
                 "native foreground, palette/VRAM/layout changes, three views and "

@@ -80,17 +80,20 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(parallax)
     SET(minimap)
     SET(locator)
-    SET(spindash) SET(invincible) SET(infiniteAir) SET(rewind) SET(nativeScale) SET(ghost) SET(left)
-        SET(top) SET(volume) SET(language) SET(help) SET(workers) SET(fullscreen) SET(span)
-            SET(vsync) SET(uiScale) SET(scanlines) SET(lockon) SET(fastBoot) SET(menuLayout)
-                SET(display) SET(padLabels) SET(jumpLayout) SET(quickControls) SET(confirmActions)
-                    SET(confirmQuit) SET(highContrast) SET(readyOnly) SET(playerInset) SET(quality)
-                        SET(overviewStyle) SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle)
-                            SET(bossPreview) SET(scriptPreview) SET(spawnTint) SET(spawnLabels)
-                                SET(fitSpawns) SET(rewindAudio) SET(rewindButton) SET(rewindMemory)
-                                    SET(hintCorner) SET(hintScale) SET(hintOpacity) SET(hintMargin)
-                                        SET(hintDetail) SET(hintSeconds) SET(noticeSeconds)
-                                            SET(rewindIndicator) SET(performance)
+    SET(spindash)
+    SET(invincible)
+    SET(infiniteAir)
+    SET(rewind) SET(nativeScale) SET(ghost) SET(left) SET(top) SET(volume) SET(language) SET(help)
+        SET(workers) SET(fullscreen) SET(span) SET(vsync) SET(uiScale) SET(scanlines) SET(lockon)
+            SET(fastBoot) SET(menuLayout) SET(display) SET(padLabels) SET(jumpLayout)
+                SET(quickControls) SET(confirmActions) SET(confirmQuit) SET(highContrast)
+                    SET(readyOnly) SET(playerInset) SET(quality) SET(overviewStyle)
+                        SET(enemyPreview) SET(enemyOpacity) SET(enemyStyle) SET(bossPreview)
+                            SET(scriptPreview) SET(spawnTint) SET(spawnLabels) SET(fitSpawns)
+                                SET(rewindAudio) SET(rewindButton) SET(rewindMemory) SET(hintCorner)
+                                    SET(hintScale) SET(hintOpacity) SET(hintMargin) SET(hintDetail)
+                                        SET(hintSeconds) SET(noticeSeconds) SET(rewindIndicator)
+                                            SET(performance)
 #undef SET
                                                 throw std::runtime_error("Unknown option: " + key);
 }
@@ -529,10 +532,17 @@ int main(int argc, char **argv) {
             policy.enabled &= a.settings.questAdaptive;
 #endif
             policy.thermalAware = a.settings.thermalAware;
+            policy.reservePercent = a.settings.performanceHeadroom;
+            policy.effects = a.settings.adaptiveEffects;
+#ifdef SCU_QUEST
+            policy.stereo = true;
+#endif
             policy.targetHz = targetHz;
             policy.minimum = a.settings.minimumRenderScale;
             policy.maximum = std::max(a.settings.minimumRenderScale, a.settings.maximumRenderScale);
             a.performanceGovernor.configure(policy);
+            a.settings.stereoScale = a.performanceGovernor.stereoScale();
+            a.settings.effectsLevel = a.performanceGovernor.effectLevel();
             const auto simulationStarted = SDL_GetPerformanceCounter();
             const unsigned ticks = a.advanceGame(elapsed, limit && !args.count("--realtime"));
             const double simulationMs =
@@ -569,13 +579,17 @@ int main(int argc, char **argv) {
             PerformanceSample sample;
             sample.simulationMs = simulationMs;
             sample.renderMs = drewFrame ? a.lastRenderMs : 0;
-            sample.active = a.core.loaded && !a.menu && a.focused;
+            // Options are also an active XR scene. Measure their actual work;
+            // the frame/swap waits remain outside the measured intervals.
+            sample.active = a.focused;
             sample.thermal = a.thermalStatus;
 #ifdef SCU_QUEST
-            sample.renderMs += headset->submissionMilliseconds();
+            sample.presentationMs = headset->submissionMilliseconds();
             sample.gpuMs = headset->gpuMilliseconds();
 #elif defined(SCU_MOBILE)
-            sample.renderMs += mobile->lastSubmissionMs;
+            sample.presentationMs = mobile->lastSubmissionMs;
+            if (a.lastPresentMs > 1000. / targetHz * 1.2)
+                sample.gpuMs = a.lastPresentMs;
 #else
             // A sustained blocking swap longer than a whole refresh period can
             // expose GPU pressure even with SDL renderers lacking timer queries.
@@ -662,9 +676,15 @@ int main(int argc, char **argv) {
                 << ",\n  \"rewind_button\":" << a.settings.rewindButton
                 << ",\n  \"rewind_history_seconds\":" << a.core.rewindSeconds()
                 << ",\n  \"adaptive_render_percent\":" << a.performanceGovernor.scale()
+                << ",\n  \"adaptive_stereo_percent\":" << a.performanceGovernor.stereoScale()
+                << ",\n  \"adaptive_effect_level\":" << a.performanceGovernor.effectLevel()
+                << ",\n  \"reserved_frame_percent\":" << a.settings.performanceHeadroom
+                << ",\n  \"measured_headroom_percent\":"
+                << a.performanceGovernor.availableHeadroom()
                 << ",\n  \"composition_cpu_ms\":" << a.performanceGovernor.cpuMs()
                 << ",\n  \"stereo_gpu_ms\":" << a.performanceGovernor.gpuMs()
                 << ",\n  \"restored_terrain_bytes\":" << a.core.world.restoredBytes
+                << ",\n  \"palette_sample_cache_hits\":" << a.core.world.paletteCacheHits
                 << ",\n  \"uploaded_world_bytes\":" << a.uploadedBytes
                 << ",\n  \"rewind_history_bytes\":" << a.core.rewindBytes() << "\n}\n";
         }

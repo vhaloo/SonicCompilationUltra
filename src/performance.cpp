@@ -8,44 +8,84 @@ namespace scu {
 void PerformanceGovernor::configure(PerformancePolicy value) {
     value.minimum = std::clamp(value.minimum, 25, 100);
     value.maximum = std::clamp(value.maximum, value.minimum, 100);
+    value.reservePercent = std::clamp(value.reservePercent, 10, 45);
     value.targetHz = std::isfinite(value.targetHz) ? std::clamp(value.targetHz, 30., 240.) : 60.;
     value.targetHz = std::round(value.targetHz * 10.) / 10.;
-    if (policy.targetHz != value.targetHz || policy.enabled != value.enabled)
+    if (policy.targetHz != value.targetHz || policy.enabled != value.enabled ||
+        policy.stereo != value.stereo)
         reset();
     policy = value;
     percentage = std::clamp(percentage, value.minimum, value.maximum);
+    eyePercentage = std::clamp(eyePercentage, value.minimum, value.maximum);
 }
 void PerformanceGovernor::reset() {
-    cpu = peak = simulation = clock = 0;
+    cpu = peak = simulation = clock = gpuPeak = scenePeak = presentationPeak = percentile =
+        pressure = 0;
     gpu = -1;
-    changedAt = -100;
-    samples = overloaded = spare = 0;
+    changedAt = eyeChangedAt = effectChangedAt = -100;
+    samples = overloaded = spare = eyeOverloaded = eyeSpare = effectOverloaded = effectSpare = 0;
+    historyAt = historyCount = 0;
     simulationBound = false;
     heatLimit = 100;
     percentage = policy.maximum;
+    eyePercentage = policy.maximum;
+    effectsLevel = 3;
 }
 int PerformanceGovernor::scale() const {
     return policy.enabled
                ? std::clamp(std::min(percentage, heatLimit), policy.minimum, policy.maximum)
                : 100;
 }
+int PerformanceGovernor::stereoScale() const {
+    return policy.enabled && policy.stereo
+               ? std::clamp(std::min(eyePercentage, heatLimit), policy.minimum, policy.maximum)
+               : 100;
+}
+int PerformanceGovernor::effectLevel() const {
+    return policy.enabled && policy.effects ? std::min(effectsLevel, heatLimit <= 50   ? 0
+                                                                     : heatLimit <= 65 ? 1
+                                                                     : heatLimit <= 85 ? 2
+                                                                                       : 3)
+                                            : 3;
+}
+double PerformanceGovernor::availableHeadroom() const {
+    return std::clamp(100. * (1. - pressure * policy.targetHz / 1000.), -100., 100.);
+}
 void PerformanceGovernor::observe(const PerformanceSample &s, double elapsed) {
     if (!s.active || !std::isfinite(elapsed) || elapsed <= 0 || elapsed > .25) {
         samples = overloaded = spare = 0;
         peak = 0; // Preserve the last measured readout while the menu pauses play.
+        scenePeak = gpuPeak = presentationPeak = 0;
+        historyAt = historyCount = 0;
+        eyeOverloaded = eyeSpare = effectOverloaded = effectSpare = 0;
         return;
     }
     clock += elapsed;
-    if (!std::isfinite(s.simulationMs) || !std::isfinite(s.renderMs) || s.renderMs < 0 ||
-        s.simulationMs < 0 || s.simulationMs + s.renderMs > 250)
+    if (!std::isfinite(s.simulationMs) || !std::isfinite(s.renderMs) ||
+        !std::isfinite(s.presentationMs) || s.renderMs < 0 || s.presentationMs < 0 ||
+        s.simulationMs < 0 || s.simulationMs + s.renderMs + s.presentationMs > 250)
         return;
     const double a = samples ? .12 : 1.;
-    cpu += a * (s.simulationMs + s.renderMs - cpu);
-    peak = std::max(peak * .97, s.simulationMs + s.renderMs);
+    const double work = s.simulationMs + s.renderMs + s.presentationMs;
+    const double decay = std::exp(-elapsed / .22);
+    cpu += a * (work - cpu);
+    peak = std::max(peak * decay, work);
+    scenePeak = std::max(scenePeak * decay, s.simulationMs + s.renderMs);
+    presentationPeak = std::max(presentationPeak * decay, s.presentationMs);
+    history[historyAt] = work;
+    historyAt = (historyAt + 1) % history.size();
+    historyCount = std::min<unsigned>(historyCount + 1, unsigned(history.size()));
+    if (samples % 8 == 0) {
+        auto sorted = history;
+        auto nth = sorted.begin() + (historyCount - 1) * 95 / 100;
+        std::nth_element(sorted.begin(), nth, sorted.begin() + historyCount);
+        percentile = *nth;
+    }
     simulation += a * (s.simulationMs - simulation);
     const bool validGpu = std::isfinite(s.gpuMs) && s.gpuMs >= 0 && s.gpuMs <= 250;
     if (validGpu)
         gpu = gpu < 0 ? s.gpuMs : gpu + a * (s.gpuMs - gpu);
+    gpuPeak = validGpu ? std::max(gpuPeak * decay, s.gpuMs) : gpuPeak * decay;
     const double budget = 1000. / policy.targetHz;
     heatLimit = !policy.thermalAware ? 100
                 : s.thermal >= 4     ? 50
@@ -54,20 +94,57 @@ void PerformanceGovernor::observe(const PerformanceSample &s, double elapsed) {
                                      : 100;
     simulationBound = simulation > budget * .9 && cpu - simulation < budget * .12 &&
                       (!validGpu || gpu < budget * .8);
+    pressure =
+        std::max({cpu, peak * .94, percentile, validGpu ? std::max(gpu, gpuPeak * .94) : 0.});
     if (!policy.enabled || ++samples < 8)
         return;
-    double pressure = std::max({cpu, peak * .92, validGpu ? gpu : 0.});
-    overloaded = pressure > budget * .83 ? overloaded + 1 : 0;
-    spare = pressure < budget * .56 && heatLimit == 100 ? spare + 1 : 0;
-    if (!simulationBound && overloaded >= 5 && clock - changedAt >= .35) {
-        const int reduction = pressure > budget * 1.25 ? 10 : 5;
+    const double usable = usableBudgetMs();
+    const double sceneLoad = policy.stereo ? scenePeak : pressure;
+    const double eyeLoad = std::max(presentationPeak, validGpu ? std::max(gpu, gpuPeak * .94) : 0.);
+    overloaded = sceneLoad > usable ? overloaded + 1 : 0;
+    eyeOverloaded = eyeLoad > usable ? eyeOverloaded + 1 : 0;
+    effectOverloaded = pressure > usable ? effectOverloaded + 1 : 0;
+    // Recover only after a complete, quiet history window. CPU and stereo
+    // sampling are independent: expensive CPU terrain must not blur both eyes.
+    const bool timely = elapsed <= 1.20 / policy.targetHz;
+    const bool comfortable = pressure < usable * .70 && heatLimit == 100 && timely;
+    spare = comfortable ? spare + 1 : 0;
+    eyeSpare = comfortable ? eyeSpare + 1 : 0;
+    effectSpare = comfortable ? effectSpare + 1 : 0;
+    if (policy.effects && effectOverloaded >= 3 && clock - effectChangedAt >= .20 &&
+        effectsLevel > 0) {
+        --effectsLevel;
+        effectChangedAt = clock;
+        effectOverloaded = effectSpare = 0;
+    }
+    if (!simulationBound && overloaded >= 5 && clock - changedAt >= .35 &&
+        (!policy.effects || effectsLevel <= 1 || sceneLoad > budget)) {
+        const int reduction = sceneLoad > budget * 1.15 ? 10 : 5;
         percentage = std::max(policy.minimum, percentage - reduction);
         changedAt = clock;
         overloaded = spare = 0;
-    } else if (spare >= 180 && clock - changedAt >= 4.) {
+    } else if (spare >= 180 && clock - changedAt >= 4. &&
+               pressure * std::pow(double(percentage + 5) / percentage, 2) < usable * .92) {
         percentage = std::min(policy.maximum, percentage + 5);
         changedAt = clock;
         overloaded = spare = 0;
+    }
+    if (policy.stereo && eyeOverloaded >= 4 && clock - eyeChangedAt >= .25 &&
+        (!policy.effects || effectsLevel <= 1 || eyeLoad > budget)) {
+        eyePercentage = std::max(policy.minimum, eyePercentage - (eyeLoad > budget ? 10 : 5));
+        eyeChangedAt = clock;
+        eyeOverloaded = eyeSpare = 0;
+    } else if (policy.stereo && eyeSpare >= 180 && clock - eyeChangedAt >= 4. &&
+               pressure * std::pow(double(eyePercentage + 5) / eyePercentage, 2) < usable * .92) {
+        eyePercentage = std::min(policy.maximum, eyePercentage + 5);
+        eyeChangedAt = clock;
+        eyeOverloaded = eyeSpare = 0;
+    }
+    if (policy.effects && effectSpare >= 240 && clock - effectChangedAt >= 6. &&
+        percentage >= policy.maximum && (!policy.stereo || eyePercentage >= policy.maximum)) {
+        effectsLevel = std::min(3, effectsLevel + 1);
+        effectChangedAt = clock;
+        effectSpare = 0;
     }
 }
 double FrameDeadline::delay(double now, double targetHz) {

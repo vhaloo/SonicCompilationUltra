@@ -49,6 +49,8 @@ struct Harness {
         app->core.headless = true;
         auto base = SDL_GetBasePath();
         app->initialise(base ? fs::u8path(base) : fs::current_path(), true);
+        // This legacy exhaustive navigation fixture intentionally exposes all controls.
+        app->settings.advancedOptions = true;
         SDL_free(base);
         require(app->pads[0] != nullptr, "SDL virtual controller is not recognised");
         frame(6);

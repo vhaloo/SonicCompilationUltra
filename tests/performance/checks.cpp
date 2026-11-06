@@ -21,6 +21,30 @@ static uint64_t hash(const std::vector<uint32_t> &v) {
     return h;
 }
 int main() {
+    {
+        PerformanceGovernor governor;
+        PerformancePolicy vr;
+        vr.stereo = true;
+        vr.reservePercent = 35;
+        vr.targetHz = 90;
+        governor.configure(vr);
+        for (int i = 0; i < 360; ++i)
+            governor.observe({1, 1, 10, true, 0, 1}, 1. / 90);
+        require(governor.stereoScale() < 100 && governor.scale() == 100,
+                "GPU pressure blurred CPU terrain or failed to reduce stereo work");
+        require(governor.effectLevel() < 3, "effects did not adapt before resolution");
+        governor.reset();
+        for (int i = 0; i < 360; ++i)
+            governor.observe({1, 10, 1, true, 0, 1}, 1. / 90);
+        require(governor.scale() < 100 && governor.stereoScale() == 100,
+                "CPU terrain pressure unnecessarily blurred stereo eyes");
+        require(std::abs(governor.usableBudgetMs() - 1000. / 90 * .65) < .001,
+                "explicit reserve did not reduce usable budget");
+        vr.enabled = false;
+        governor.configure(vr);
+        require(governor.effectLevel() == 3 && governor.stereoScale() == 100,
+                "manual quality mode retained automatic reductions");
+    }
     PerformanceGovernor g;
     PerformancePolicy p;
     g.configure(p);

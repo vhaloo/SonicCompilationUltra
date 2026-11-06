@@ -1,6 +1,7 @@
 #include "xr_stage.h"
 #include "xr_gl_state.h"
 #include "xr_gpu_timer.h"
+#include "xr_foveation.h"
 #ifdef SCU_QUEST
 #include <jni.h>
 #include <EGL/egl.h>
@@ -242,7 +243,7 @@ in vec4 tint;
 in float roughness;
 uniform sampler2D image;
 uniform vec3 eye;
-uniform int kind,crt,maskMode;
+uniform int kind,crt,maskMode,effectDetail;
 uniform vec2 raster;
 uniform vec4 nativeHole;
 uniform bool clipNative;
@@ -296,9 +297,11 @@ void main(){
   float grazing=1.0-facing;float fresnel=grazing*grazing;fresnel*=fresnel;
   c=vec3(.2,.47,.65);a=glassStrength*(.015+.14*fresnel);
  }else if(kind==5){
+  if(effectDetail==0){c=vec3(.014,.022,.036);}else{
   vec2 cell=worldPosition.xz*.8;vec2 grid=abs(fract(cell-.5)-.5)/max(fwidth(cell),vec2(.001));
   float line=1.0-min(min(grid.x,grid.y),1.0);float fade=exp(-length(worldPosition.xz-eye.xz)*.055);
   c=vec3(.014,.022,.036)+vec3(.025,.095,.12)*line*fade;
+  }
  }else{
   vec3 l=normalize(vec3(-.45,.85,.65));float diffuse=max(dot(n,l),0.0);
 #ifdef SCU_FAST
@@ -365,7 +368,10 @@ struct XrStageRenderer::Impl {
         XrSwapchain chain = XR_NULL_HANDLE;
         int width = 0, height = 0;
         std::vector<XrSwapchainImageOpenGLESKHR> images;
+        std::vector<uint8_t> validated;
         GLuint depth = 0;
+        bool foveated = false;
+        int foveationLevel = -1;
     };
     std::array<Eye, 2> eyes{};
     std::array<XrCompositionLayerProjectionView, 2> projectionViews{};
@@ -373,6 +379,8 @@ struct XrStageRenderer::Impl {
     std::array<GLuint, 2> programs{};
     int shaderIndex = -1;
     XrGpuTimer gpuTimer;
+    XrFoveation foveation;
+    bool blendEnabled = false;
     unsigned fullHeadroomFrames = 0;
     bool automaticFull = false;
     uint64_t shaderUpgradeAfter = 0;
@@ -386,7 +394,7 @@ struct XrStageRenderer::Impl {
     Mesh remoteMesh, insetFurniture, insetScreen, cube, joystickPlate, joystickHandle;
     int imageUniform = -1, crtUniform = -1, maskUniform = -1, rasterUniform = -1,
         intensityUniform = -1, glassUniform = -1, brightnessUniform = -1, srgbUniform = -1,
-        flipUniform = -1, holeUniform = -1, clipUniform = -1;
+        flipUniform = -1, holeUniform = -1, clipUniform = -1, effectUniform = -1;
     uint64_t nativeVersion = ~uint64_t(0), backdropVersion = ~uint64_t(0), frameCount = 0,
              meshHash = 0;
     bool srgb = false;
@@ -401,6 +409,7 @@ struct XrStageRenderer::Impl {
         vp = glGetUniformLocation(program, "vp");
         model = glGetUniformLocation(program, "model");
         kind = glGetUniformLocation(program, "kind");
+        effectUniform = glGetUniformLocation(program, "effectDetail");
         eyePosition = glGetUniformLocation(program, "eye");
         imageUniform = glGetUniformLocation(program, "image");
         crtUniform = glGetUniformLocation(program, "crt");
@@ -414,9 +423,11 @@ struct XrStageRenderer::Impl {
         holeUniform = glGetUniformLocation(program, "nativeHole");
         clipUniform = glGetUniformLocation(program, "clipNative");
     }
-    void initialise(XrInstance instance, XrSystemId system, XrSession xrSession, int detail) {
+    void initialise(XrInstance instance, XrSystemId system, XrSession xrSession, int detail,
+                    bool useFoveation) {
         GlState restore;
         session = xrSession;
+        foveation.initialise(instance, session, useFoveation);
         GLuint vert = compile(GL_VERTEX_SHADER, vertexSource);
         for (int index = 0; index < 2; ++index) {
             std::string source = fragmentSource;
@@ -551,6 +562,10 @@ struct XrStageRenderer::Impl {
             e.width = std::max(256, int(eyeSizes[i].recommendedImageRectWidth * scale));
             e.height = std::max(256, int(eyeSizes[i].recommendedImageRectHeight * scale));
             XrSwapchainCreateInfo info{XR_TYPE_SWAPCHAIN_CREATE_INFO};
+            XrSwapchainCreateInfoFoveationFB foveated{XR_TYPE_SWAPCHAIN_CREATE_INFO_FOVEATION_FB};
+            foveated.flags = XR_SWAPCHAIN_CREATE_FOVEATION_SCALED_BIN_BIT_FB;
+            if (foveation.available)
+                info.next = &foveated;
             info.usageFlags =
                 XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_SAMPLED_BIT;
             info.format = eyeFormat;
@@ -558,9 +573,17 @@ struct XrStageRenderer::Impl {
             info.width = e.width;
             info.height = e.height;
             info.faceCount = info.arraySize = info.mipCount = 1;
-            xrCheck(xrCreateSwapchain(session, &info, &e.chain), "Create stereo image");
+            auto created = xrCreateSwapchain(session, &info, &e.chain);
+            e.foveated = info.next && XR_SUCCEEDED(created);
+            if (XR_FAILED(created) && info.next) {
+                info.next = nullptr;
+                foveation.available = false;
+                created = xrCreateSwapchain(session, &info, &e.chain);
+            }
+            xrCheck(created, "Create stereo image");
             xrCheck(xrEnumerateSwapchainImages(e.chain, 0, &count, nullptr), "Read stereo images");
             e.images.assign(count, {XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR});
+            e.validated.assign(count, 0);
             xrCheck(xrEnumerateSwapchainImages(
                         e.chain, count, &count,
                         reinterpret_cast<XrSwapchainImageBaseHeader *>(e.images.data())),
@@ -852,6 +875,14 @@ struct XrStageRenderer::Impl {
         glass.upload(g);
     }
     void draw(const Mesh &mesh, const Matrix &m, int shaderKind, GLuint texture = 0) {
+        const bool alpha = shaderKind == 1 || shaderKind == 3 || shaderKind == 4;
+        if (alpha != blendEnabled) {
+            if (alpha)
+                glEnable(GL_BLEND);
+            else
+                glDisable(GL_BLEND);
+            blendEnabled = alpha;
+        }
         glUniformMatrix4fv(model, 1, GL_FALSE, m.v);
         glUniform1i(kind, shaderKind);
         glBindTexture(GL_TEXTURE_2D, texture ? texture : demoTexture);
@@ -879,18 +910,43 @@ struct XrStageRenderer::Impl {
         // The presenter owns the complete SDL/OpenXR state guard; avoid a nested
         // glGet* round trip on each eye frame.
         configureEyes(s.questEyeDetail);
+        const int peripheral =
+            s.questFoveation == 0 ? std::array<int, 4>{3, 2, 1, 0}[std::clamp(s.effectsLevel, 0, 3)]
+                                  : s.questFoveation - 1;
+        bool rejectedFoveation = false;
+        for (auto &eye : eyes) {
+            if (eye.foveated && foveation.available && eye.foveationLevel != peripheral) {
+                if (foveation.apply(eye.chain, peripheral))
+                    eye.foveationLevel = peripheral;
+                else {
+                    rejectedFoveation = true;
+                    break;
+                }
+            }
+        }
+        if (rejectedFoveation) {
+            // Roll both eyes back together, before acquiring any image. A failed
+            // update must not leave one eye foveated and the other at full detail.
+            foveation.available = false;
+            eyeDetail = -1;
+            configureEyes(s.questEyeDetail);
+            SDL_LogWarn(SDL_LOG_CATEGORY_RENDER,
+                        "SCU XR: peripheral profiles unavailable; using ordinary eye buffers");
+        }
         gpuTimer.frame();
         double gpuMs = gpuTimer.latest();
         if (s.questShaderQuality == 0) {
             bool overloaded =
-                gpuMs < 0 || gpuMs > content.targetFrameMs * .7 || s.compositionScale < 90;
+                gpuMs < 0 ||
+                gpuMs > content.targetFrameMs * (1. - s.performanceHeadroom * .01) * .90 ||
+                s.stereoScale < 95 || s.effectsLevel < 3;
             if (overloaded) {
                 if (automaticFull)
                     shaderUpgradeAfter = SDL_GetTicks64() + 15000;
                 automaticFull = false;
                 fullHeadroomFrames = 0;
-            } else if (gpuMs < content.targetFrameMs * .45 && s.compositionScale >= 95 &&
-                       SDL_GetTicks64() >= shaderUpgradeAfter) {
+            } else if (gpuMs < content.targetFrameMs * (1. - s.performanceHeadroom * .01) * .60 &&
+                       s.stereoScale >= 95 && SDL_GetTicks64() >= shaderUpgradeAfter) {
                 if (++fullHeadroomFrames > 300)
                     automaticFull = true;
             } else
@@ -907,11 +963,13 @@ struct XrStageRenderer::Impl {
         glDepthFunc(GL_LEQUAL);
         glDepthMask(GL_TRUE);
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-        glEnable(GL_BLEND);
+        glDisable(GL_BLEND);
+        blendEnabled = false;
         glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         glBlendEquation(GL_FUNC_ADD);
         glUniform1i(crtUniform, s.questCrt);
-        glUniform1i(maskUniform, s.questCrtMask);
+        glUniform1i(maskUniform, s.effectsLevel >= 2 ? s.questCrtMask : 0);
+        glUniform1i(effectUniform, s.effectsLevel);
         glUniform2f(rasterUniform, content.nativeWidth, content.nativeHeight);
         glUniform1f(intensityUniform, s.questCrtStrength * .01f);
         glUniform1f(glassUniform, s.questGlass * .01f);
@@ -970,12 +1028,15 @@ struct XrStageRenderer::Impl {
                                    e.images[index].image, 0);
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
                                       e.depth);
-            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-                throw std::runtime_error("Incomplete XR stereo framebuffer");
+            if (!e.validated[index]) {
+                if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+                    throw std::runtime_error("Incomplete XR stereo framebuffer");
+                e.validated[index] = 1;
+            }
             // The swapchains/depth storage stay allocated. Only the viewport and
             // submitted image rectangle change, avoiding driver allocation hitches.
             float scale = s.autoPerformance && s.questAdaptive
-                              ? std::clamp(s.compositionScale, 25, 100) * .01f
+                              ? std::clamp(s.stereoScale, 25, 100) * .01f
                               : 1.f;
             int renderWidth = std::max(64, int(e.width * scale) / 8 * 8);
             int renderHeight = std::max(64, int(e.height * scale) / 8 * 8);
@@ -1088,7 +1149,7 @@ struct XrStageRenderer::Impl {
                                                   std::max(1, content.nativeHeight),
                                               backH, 1})),
                      2, nativeImage);
-                if (s.questGlass) {
+                if (s.questGlass && s.effectsLevel >= 2) {
                     glDepthMask(GL_FALSE);
                     draw(plain, product(root, glassLocal), 4);
                     glDepthMask(GL_TRUE);
@@ -1173,8 +1234,9 @@ struct XrStageRenderer::Impl {
 };
 XrStageRenderer::XrStageRenderer() : impl(std::make_unique<Impl>()) {}
 XrStageRenderer::~XrStageRenderer() = default;
-void XrStageRenderer::initialise(XrInstance i, XrSystemId s, XrSession session, int detail) {
-    impl->initialise(i, s, session, detail);
+void XrStageRenderer::initialise(XrInstance i, XrSystemId s, XrSession session, int detail,
+                                 bool foveation) {
+    impl->initialise(i, s, session, detail, foveation);
 }
 const XrCompositionLayerProjection *XrStageRenderer::render(XrSpace space, XrTime time,
                                                             XrPosef origin, const Settings &s,

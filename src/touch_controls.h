@@ -27,7 +27,8 @@ enum class Action {
     Previous,
     Next,
     ScrollUp,
-    ScrollDown
+    ScrollDown,
+    Utility
 };
 struct Button {
     Rect rect;
@@ -37,6 +38,7 @@ struct Options {
     int layout = 0; // Auto, overlay, separate deck
     float scale = 1, margin = 8;
     bool leftHanded = false, controls = true, menu = false, pinball = false;
+    bool watch = false, circular = false, utilityBank = false;
     float stickX = 0, stickY = 0, buttonsX = 0, buttonsY = 0; // offsets in dp
 };
 struct Layout {

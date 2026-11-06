@@ -4,10 +4,19 @@
 namespace scu {
 struct Settings {
     bool autoPerformance = true, performancePixelLock = false, thermalAware = true;
+    bool adaptiveEffects = true, advancedOptions = false;
+    int performanceHeadroom = 25;
     int performanceTarget = 60, minimumRenderScale = 35, maximumRenderScale = 100;
     int questShaderQuality = 0;
+    int questFoveation = 0;
     // Per-frame composition budgets. Display coordinates/native pixels/UI stay independent.
     int compositionScale = 100, compositionPixels = 0;
+    int stereoScale = 100, effectsLevel = 3;
+    // Device facts and smoothed crown value are transient, never saved as user choices.
+    bool wearActive = false, wearRound = false;
+    double wearZoomValue = 0;
+    int wearZoom = 0, wearCrownSpeed = 1, wearLensStrength = 75;
+    bool wearFisheye = true, wearCrownReverse = false;
     int language = -1, view = 2, zoom = 1, camera = 0, background = 0, blur = 7, brightness = 60;
     int hud = 0, hudScale = 0, nativeScale = 0, workers = 0, volume = 70, quality = 1, uiScale = 0;
     int slot = 1, region = 0, renderer = 0, scanlines = 0, panSpeed = 6, deadzone = 12000;
@@ -59,6 +68,10 @@ struct Settings {
         return double(std::clamp(zoom, 1, 8)) / (1 << std::clamp(zoomOut, 0, 3));
     }
     void stepZoom(int direction) {
+        if (wearActive) {
+            wearZoom = std::clamp(wearZoom + (direction > 0 ? 80 : -80), 0, 1000);
+            return;
+        }
         if (direction > 0) {
             if (zoomOut)
                 --zoomOut;

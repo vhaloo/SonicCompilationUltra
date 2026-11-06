@@ -1,5 +1,7 @@
 # Automatic performance
 
+**For current 0.10 quality/reserve controls and Wear OS, read [Fluidity and automatic quality](AUTOMATIC_QUALITY.md).** The material below records the original 0.9 performance pass and its historical measurements.
+
 **0.9 targets 60 fps presentation by default, with adaptive scene resolution enabled on every platform and view mode.** It preserves console timing, camera coverage, the native game image, rewind and spawn previews. Quest keeps the selected headset refresh rate (90 Hz by default) and updates stereo tracking at that rate. A PAL title retains its original timing; rendering more display frames does not speed up the game.
 
 Open **Video** or the Quest options to change:

@@ -3,6 +3,7 @@ from pathlib import Path,PurePosixPath
 import argparse,hashlib,io,json,os,re,subprocess,tempfile,zipfile,zlib
 p=argparse.ArgumentParser();p.add_argument('apk',type=Path);p.add_argument('--sdk',type=Path,required=True)
 p.add_argument('--jdk',type=Path);p.add_argument('--out',type=Path,required=True);p.add_argument('--allow-private',action='store_true')
+p.add_argument('--wear',action='store_true',help='Audit the separate standalone Wear OS edition')
 a=p.parse_args();env=os.environ.copy()
 if a.jdk:env.update(JAVA_HOME=str(a.jdk),PATH=str(a.jdk/'bin')+os.pathsep+env.get('PATH',''))
 def run(args):
@@ -12,15 +13,23 @@ def run(args):
     if result.returncode:raise RuntimeError(result.stdout)
     return result.stdout
 build=a.sdk/'build-tools/36.0.0';suffix='.exe' if os.name=='nt' else ''
+edition='wear' if a.wear else 'mobile'
+package='com.vhaloo.soniccompilationultra.'+edition
+version='0.10.0-'+edition+'-preview'
 signature=run([build/('apksigner.bat' if os.name=='nt' else 'apksigner'),'verify','--verbose','--print-certs',a.apk])
 badging=run([build/('aapt2'+suffix),'dump','badging',a.apk])
-for expected in ["name='com.vhaloo.soniccompilationultra.mobile'","versionCode='900'","versionName='0.9.0-mobile-preview'","minSdkVersion:'24'","targetSdkVersion:'36'",'MobileActivity']:
+for expected in [f"name='{package}'","versionCode='1000'",f"versionName='{version}'",f"minSdkVersion:'{26 if a.wear else 24}'","targetSdkVersion:'36'",'MobileActivity']:
     assert expected in badging,expected
 manifest=run([build/('aapt2'+suffix),'dump','xmltree','--file','AndroidManifest.xml',a.apk])
 for banned in ['oculus','openxr','IMMERSIVE_HMD','android.permission.CAMERA','android.permission.RECORD_AUDIO',
                'android.permission.INTERNET','android.permission.READ_EXTERNAL_STORAGE','android.permission.WRITE_EXTERNAL_STORAGE']:
     assert banned not in manifest,banned
 assert re.search(r'resizeableActivity[^\n]*=(?:true|0xffffffff)',manifest)
+if a.wear:
+    assert 'android.hardware.type.watch' in manifest and 'com.google.android.wearable.standalone' in manifest
+    assert re.search(r'android:value[^\n]*=(?:true|0xffffffff)',manifest)
+else:
+    assert 'android.hardware.type.watch' not in manifest
 alignment=run([build/('zipalign'+suffix),'-c','-P','16','-v','4',a.apk])
 assert 'Verification successful' in alignment
 host='windows-x86_64' if os.name=='nt' else 'linux-x86_64'
@@ -53,9 +62,13 @@ with zipfile.ZipFile(a.apk) as z,tempfile.TemporaryDirectory(prefix='scu-mobile-
             if elf_class==2:
                 loads=[line for line in run([readelf,'--program-headers','--wide',f]).splitlines() if line.strip().startswith('LOAD ')]
                 assert loads and all(int(line.split()[-1],16)>=16384 for line in loads),name
-            if f.name=='libmain.so':assert re.search(r'\bSDL_main$',run([nm,'--dynamic','--defined-only',f]),re.M)
+            if f.name=='libmain.so':
+                symbols=run([nm,'--dynamic','--defined-only',f])
+                assert re.search(r'\bSDL_main$',symbols,re.M)
+                assert 'Java_com_vhaloo_soniccompilationultra_mobile_MobileActivity_nativeRotary' in symbols
     prefix='assets/scu/';private=[n for n in names if n.startswith(prefix+'ROMs/') or n.startswith(prefix+'UserData/')]
     font=z.read(prefix+'assets/SCUInterface.ttf');assert len(font)>100000
+    assert len(z.read(prefix+'assets/settings-preview.bmp'))<1300000
     if not a.allow_private:assert not private,'Personal data in public APK'
     else:
         lines=z.read(prefix+'UserData/library.tsv').decode('utf-8').splitlines()
@@ -68,10 +81,11 @@ with zipfile.ZipFile(a.apk) as z,tempfile.TemporaryDirectory(prefix='scu-mobile-
         assert len(cartridges)==12
         settings=dict(line.split('=',1) for line in z.read(prefix+'UserData/settings.ini').decode('utf-8').splitlines() if '=' in line)
         assert settings['mobileLayout']=='0' and settings['mobileTouch']=='0' and settings['view']=='2'
+        if a.wear:assert settings['wearZoom']=='0' and settings['wearFisheye']=='1'
     for n in names:
         if n.startswith('assets/'):
             raw=z.read(n);assert b'C:\\Users\\' not in raw and b'E:\\Emulation' not in raw,n
-report={'version':'0.9.0-mobile-preview','package':'com.vhaloo.soniccompilationultra.mobile',
+report={'version':version,'package':package,'wear_standalone':a.wear,
         'bytes':a.apk.stat().st_size,'sha256':hashlib.sha256(a.apk.read_bytes()).hexdigest(),
         'signature_verified':True,'signature':signature,'abis':list(abis),'native_dependencies':deps,
         'elf64_load_alignment_minimum':16384,'zip_16k_alignment_verified':True,'font_bytes':len(font),

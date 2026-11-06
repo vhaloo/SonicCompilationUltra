@@ -322,6 +322,8 @@ void spatialAction(int action, float dt) {
     case DetailBalanced:
     case DetailHigh:
         s.questWallDetail = action - DetailLow;
+        s.performanceHeadroom = 35 - 10 * (action - DetailLow);
+        s.autoPerformance = s.adaptiveEffects = s.questAdaptive = true;
         break;
     case EyeLow:
     case EyeBalanced:

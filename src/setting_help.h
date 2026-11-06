@@ -19,7 +19,8 @@ enum class HelpPicture {
     Rewind,
     Save,
     Assist,
-    Library
+    Library,
+    Wear
 };
 struct SettingHelp {
     const char *key;

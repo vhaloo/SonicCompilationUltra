@@ -17,6 +17,7 @@ class Core {
     std::string systemDir, saveDir, romDir, contentPath, contentName;
     retro_game_info_ext infoExt{};
     std::vector<uint8_t> romBytes;
+    std::vector<uint8_t> rewindScratch;
     RewindHistory history;
     std::vector<int16_t> frameAudio;
     bool captureAudio = false, rewinding = false;
@@ -26,6 +27,7 @@ class Core {
     void saveSram();
     void loadSram();
     void gameplayMods(uint16_t pressed);
+    void captureState(std::vector<uint8_t> &buffer) const;
 
   public:
     Settings &settings;
@@ -67,7 +69,7 @@ class Core {
         return history.size() / fps;
     }
     size_t rewindBytes() const {
-        return history.bytes();
+        return history.bytes() + rewindScratch.capacity();
     }
     const std::vector<int16_t> &audioSamples() const {
         return frameAudio;

@@ -9,6 +9,127 @@ namespace scu {
         }                                                                                          \
     }
 static const SettingHelp entries[] = {
+    H("qualityprofile", Performance,
+      "Fluidity keeps 35% of each frame in reserve; Balanced keeps 25%; Detail keeps 15%. "
+      "Resolution and effects recover slowly when measurements show enough room. These preferences "
+      "do not change game speed.",
+      "Fluidité réserve 35 % du temps par image, Équilibré 25 %, Détails 15 %. Résolution et "
+      "effets remontent progressivement quand les mesures laissent assez de marge. La vitesse du "
+      "jeu reste intacte.",
+      "Fluidez reserva el 35% del tiempo por imagen; Equilibrado el 25%; Detalle el 15%. "
+      "Resolución y efectos se recuperan lentamente al medir margen suficiente. No cambia la "
+      "velocidad del juego.",
+      "滑らかさは35%、バランスは25%、細部は15%"
+      "の処理時間を確保します。余裕が続くと画質をゆっくり戻します。ゲーム速度は変更しません。"),
+    H("performanceheadroom", Performance,
+      "Reserve part of each frame for sudden load, tracking and system work. 25% at 90 Hz leaves "
+      "about 8.3 ms for app work. CPU terrain and stereo sampling adjust independently. Measured "
+      "margin is an estimate, not a guaranteed FPS rate.",
+      "Réserve du temps pour les pics de charge, le suivi et le système. À 90 Hz, 25 % de réserve "
+      "laisse environ 8,3 ms de travail à l’application. Terrain CPU et résolution stéréo varient "
+      "séparément. La marge mesurée reste une estimation.",
+      "Reserva tiempo para picos, seguimiento y tareas del sistema. A 90 Hz, una reserva del 25% "
+      "deja unos 8,3 ms para la app. Terreno CPU y resolución estéreo se ajustan por separado. El "
+      "margen medido es una estimación.",
+      "負荷の急増・トラッキング・OSの処理に時間を残します。90 Hzで25%を残すとアプリの予算は約8.3 "
+      "msです。CPU側の地形とステレオ解像度を別々に調整します。実際のFPSを保証する値ではありません"
+      "。"),
+    H("adaptiveeffects", Performance,
+      "Reduce optional CRT masks, glass and floor detail before lowering scene resolution. At the "
+      "lowest level map filtering becomes cheaper. Camera coverage, original game timing, controls "
+      "and sharp menu layers are preserved. Turn off to keep your selected effects.",
+      "Réduit d’abord le masque CRT, la vitre et les détails du sol, puis la résolution si "
+      "nécessaire. Au minimum, le filtrage de carte devient plus léger. Cadrage, cadence du jeu et "
+      "menus nets sont conservés. Désactive pour garder les effets choisis.",
+      "Reduce primero máscaras CRT, cristal y detalle del suelo, después la resolución si hace "
+      "falta. En el mínimo simplifica el filtro del mapa. Conserva encuadre, ritmo original, "
+      "controles y menús nítidos. Desactiva para mantener los efectos elegidos.",
+      "最初にCRTマスク・ガラス・床の効果を抑え、必要なら解像度を下げます。最低段階では地形フィルタ"
+      "ーも軽くします。表示範囲・ゲーム速度・操作・鮮明なメニューは保ちます。"),
+    H("questfoveation", Quest,
+      "Where supported, OpenXR shades fewer pixels near the edges while keeping the center "
+      "detailed. Auto follows the available performance margin. Off / Light / Balanced / Strong "
+      "also work as manual choices. Unsupported runtimes fall back to normal rendering; this is "
+      "fixed peripheral rendering, not eye tracking.",
+      "Si OpenXR le permet, réduit le travail en périphérie en gardant le centre détaillé. Auto "
+      "suit la marge disponible ; les autres choix sont manuels. Un système incompatible conserve "
+      "le rendu normal. Ce réglage ne suit pas les yeux.",
+      "Si OpenXR lo permite, reduce trabajo en la periferia y conserva detalle central. Auto sigue "
+      "el margen; los otros niveles son manuales. Un sistema incompatible mantiene el renderizado "
+      "normal. No usa seguimiento ocular.",
+      "対応するOpenXRでは周辺の画素処理を減らし、中央を詳しく保ちます。自動は余裕に応じて切り替えま"
+      "す。非対応なら通常描画を使います。視線追跡ではありません。"),
+    H("advancedoptions", Controller,
+      "Keep the main choices visible and expand the detailed screen, camera and rendering controls "
+      "when needed. Every advanced choice remains available. The icon beside a setting opens its "
+      "illustrated explanation; mouse hover and gamepad focus also select help.",
+      "Garde les choix principaux visibles et développe les réglages détaillés au besoin. Toutes "
+      "les options avancées restent accessibles. L’icône ouvre l’explication illustrée ; le survol "
+      "et le focus de la manette sélectionnent aussi l’aide.",
+      "Mantén visibles las opciones principales y abre los controles detallados cuando hagan "
+      "falta. Todas las opciones avanzadas siguen disponibles. El icono abre ayuda ilustrada; el "
+      "cursor y el foco del mando también seleccionan la ayuda.",
+      "主な設定を見やすくし、必要なときだけ詳細設定を開きます。詳細な項目もすべて利用できます。各ア"
+      "イコンから図解を開き、マウスやゲームパッドの選択でも説明を表示します。"),
+    H("wearzoom", Wear,
+      "0 shows the complete known stage. Rotate towards 100% to approach the original console "
+      "screen, following its camera. The transition is continuous and the maximum uses the exact "
+      "native viewport. Stages without a supported map decoder keep the native view.",
+      "0 montre le niveau connu entier. Tourne vers 100 % pour rejoindre l’écran de la console et "
+      "suivre sa caméra. La transition est continue ; le maximum retrouve le cadrage natif exact. "
+      "Sans décodeur de carte compatible, le jeu conserve sa vue native.",
+      "0 muestra todo el nivel conocido. Gira hacia 100% para llegar a la pantalla original y "
+      "seguir su cámara. La transición es continua y el máximo coincide con el encuadre nativo. "
+      "Sin un mapa compatible se conserva la vista original.",
+      "0で既知のステージ全体を表示します。100%"
+      "へ回すと元の画面とカメラに近づきます。最大では元と同じ表示範囲になります。対応する地形デコー"
+      "ダーがない場面は元の画面を表示します。"),
+    H("wearfisheye", Wear,
+      "On a round watch, a cached square-to-disc lens keeps all game edges visible while "
+      "magnifying the center. Only the picture bends: touch controls and menus remain flat. Turn "
+      "off for a conventional aspect-correct rectangle inside the round screen.",
+      "Sur une montre ronde, le fisheye conserve les bords du jeu et grossit le centre. Seule "
+      "l’image est courbée : commandes et menus restent plats. Désactive pour un rectangle aux "
+      "proportions normales à l’intérieur du cercle.",
+      "En un reloj redondo, la lente conserva los bordes y amplía el centro. Solo curva la imagen: "
+      "controles y menús permanecen planos. Desactiva para un rectángulo de proporción normal "
+      "dentro del círculo.",
+      "丸型画面の魚眼レンズは端を残して中央を拡大します。曲げるのはゲーム画像だけで、操作とメニュー"
+      "は平面です。無効にすると縦横比を保つ長方形で表示します。"),
+    H("wearlensstrength", Wear,
+      "Blend between the aspect-correct rectangle and the round lens. Higher values fill more of "
+      "the circular display and emphasize the center. Source corners remain inside the display at "
+      "every strength; no game edge is intentionally cropped.",
+      "Dose le passage du rectangle au fisheye rond. Une valeur haute remplit davantage le cercle "
+      "et agrandit le centre. Les coins de l’image restent dans l’écran à toutes les intensités.",
+      "Mezcla el rectángulo normal y la lente circular. Los valores altos llenan más el círculo y "
+      "destacan el centro. Las esquinas se conservan dentro de la pantalla en cualquier "
+      "intensidad.",
+      "縦横比を保つ長方形と円形レンズの割合です。強めると円を広く使い中央を大きくします。どの強さで"
+      "も元画像の四隅を画面内に残します。"),
+    H("wearcrownspeed", Wear,
+      "Choose how far one crown or rotating-bezel step travels along the whole-stage/native-screen "
+      "zoom range. Works with Android rotary-encoder events on compatible Pixel Watch and Galaxy "
+      "Watch models. In menus the same rotation scrolls the page.",
+      "Règle la distance parcourue par cran entre niveau entier et écran natif. Utilise les "
+      "événements rotatifs Android des Pixel Watch et Galaxy Watch compatibles. Dans les menus, la "
+      "rotation fait défiler la page.",
+      "Ajusta cuánto avanza cada paso entre nivel completo y pantalla original. Usa los eventos "
+      "rotativos de Android en Pixel Watch y Galaxy Watch compatibles. En menús, la misma rotación "
+      "desplaza la página.",
+      "回転の1ステップで動くズーム量です。対応するPixel WatchやGalaxy "
+      "WatchのAndroid回転入力を使います。設定画面では同じ操作でスクロールします。"),
+    H("wearcrownreverse", Wear,
+      "Swap which direction zooms towards the native screen. This changes gameplay zoom only; "
+      "ordinary menu scrolling keeps the system direction. Touch + / − and the two endpoint "
+      "buttons still work without a crown.",
+      "Inverse le sens qui rapproche de l’écran natif. Ce choix concerne seulement le zoom ; le "
+      "défilement des menus garde son sens normal. + / − et les boutons des deux extrêmes "
+      "fonctionnent aussi sans couronne.",
+      "Invierte la dirección hacia la pantalla original. Solo cambia el zoom: los menús conservan "
+      "su desplazamiento normal. + / − y los botones de ambos extremos funcionan sin corona.",
+      "元の画面へ近づく回転方向を反転します。設定のスクロール方向は変えません。回転入力がなくても＋"
+      "／−と両端のボタンを使えます。"),
     H("autoperformance", Resize,
       "Shared across all game/view modes and platforms. The governor observes active CPU work and "
       "available GPU timings, ignores menu/idle waits and uses a short peak envelope so occasional "

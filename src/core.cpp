@@ -364,6 +364,7 @@ void Core::unload() {
         audioDevice = 0;
     }
     history.clear();
+    std::vector<uint8_t>().swap(rewindScratch);
     rewinding = false;
     captureAudio = false;
     frameAudio.clear();
@@ -435,11 +436,12 @@ void Core::tick() {
     if (!loaded)
         return;
     setRewinding(false);
-    std::vector<uint8_t> before;
     if (settings.rewind)
-        before = state();
-    else
+        captureState(rewindScratch);
+    else {
         history.clear();
+        std::vector<uint8_t>().swap(rewindScratch);
+    }
     frameAudio.clear();
     captureAudio = true;
     uint16_t pressed = buttons[0] & ~lastButtons;
@@ -450,9 +452,11 @@ void Core::tick() {
     ++imageVersion;
     ++frame;
     lastButtons = buttons[0];
-    if (!before.empty()) {
+    if (settings.rewind && !rewindScratch.empty()) {
         try {
-            history.push(before, frameAudio, rewindLimit());
+            size_t budget = rewindLimit();
+            history.push(rewindScratch, frameAudio,
+                         budget > rewindScratch.capacity() ? budget - rewindScratch.capacity() : 0);
         } catch (const std::exception &e) {
             history.clear();
             status = e.what();
@@ -470,6 +474,11 @@ static uint32_t get32(const std::vector<uint8_t> &b, size_t p) {
            (uint32_t(b[p + 3]) << 24);
 }
 std::vector<uint8_t> Core::state() const {
+    std::vector<uint8_t> buffer;
+    captureState(buffer);
+    return buffer;
+}
+void Core::captureState(std::vector<uint8_t> &b) const {
     if (!loaded)
         throw std::runtime_error("No running game");
     size_t n = retro_serialize_size();
@@ -480,7 +489,7 @@ std::vector<uint8_t> Core::state() const {
     const auto *image = reinterpret_cast<const uint8_t *>(&snapshot);
     unsigned width = native.empty() ? 0 : nativeW, height = native.empty() ? 0 : nativeH;
     const auto *pixels = reinterpret_cast<const uint8_t *>(native.data());
-    std::vector<uint8_t> b{'S', 'C', 'U', '2'};
+    b.assign({'S', 'C', 'U', '2'});
     b.reserve(40 + n + sizeof snapshot + native.size() * sizeof(uint32_t));
     put32(b, runningCrc);
     put32(b, (uint32_t)n);
@@ -500,7 +509,6 @@ std::vector<uint8_t> Core::state() const {
     const uint32_t crc = (uint32_t)crc32(0, b.data() + 40, (uInt)(b.size() - 40));
     for (int i = 0; i < 4; ++i)
         b[12 + i] = uint8_t(crc >> (i * 8));
-    return b;
 }
 bool Core::restore(const std::vector<uint8_t> &b) {
     return restoreState(b, false);
@@ -589,13 +597,12 @@ bool Core::rewind() {
     if (!loaded || !settings.rewind)
         return false;
     setRewinding(true);
-    std::vector<uint8_t> before;
-    if (!history.pop(before, frameAudio)) {
+    if (!history.pop(rewindScratch, frameAudio)) {
         frameAudio.clear();
         clearAudio();
         return false;
     }
-    if (!restoreState(before, true)) {
+    if (!restoreState(rewindScratch, true)) {
         history.clear();
         frameAudio.clear();
         clearAudio();

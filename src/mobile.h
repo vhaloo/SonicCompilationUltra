@@ -2,6 +2,9 @@
 #ifdef SCU_MOBILE
 #include "touch_controls.h"
 #include "performance.h"
+#include "wear_display.h"
+#include <imgui.h>
+#include <memory>
 #include <SDL.h>
 #include <cstdint>
 namespace scu {
@@ -22,6 +25,12 @@ class MobilePresentation {
     uint64_t metricsAt = 0;
     float safeLeft = 0, safeTop = 0, safeRight = 0, safeBottom = 0;
     FrameDeadline pacing;
+    wear::LensMesh lens;
+    std::unique_ptr<ImDrawList> controlsDraw;
+    uint64_t layoutKey = 0;
+    bool utilityBank = false, zoomInitialised = false, crownDetected = false;
+    double smoothedZoom = 0;
+    uint64_t zoomAt = 0, zoomHintUntil = 0;
     int scroll = 0;
     void clearInput();
     void action(touch::Action action);
@@ -36,9 +45,13 @@ class MobilePresentation {
     void prepareUi();
     void logicalSize(int &width, int &height) const;
     void options();
-    void chooseRom();
+    bool chooseRom();
     void poll();
     double refreshLimit() const;
+    bool isWatch() const {
+        return appIsWatch;
+    }
+    bool appIsWatch = false;
     double lastSubmissionMs = 0;
     float scrollDirection() const {
         return float(scroll);

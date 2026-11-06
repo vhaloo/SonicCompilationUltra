@@ -10,6 +10,7 @@
 *.rom
 *.ram
 *.bmp
+!assets/settings-preview.bmp
 *.bak
 settings.ini
 library.tsv
@@ -19,6 +20,7 @@ quest-wall-anchor.txt
 *.png
 *.jpg
 !docs/screenshots/*.png
+!docs/illustrations/settings-preview-gallery.png
 *.wav
 *.mp4
 imgui.ini
@@ -29,6 +31,8 @@ imgui.ini
 /android/app/build/
 /android/mobile/.cxx/
 /android/mobile/build/
+/android/wear/.cxx/
+/android/wear/build/
 /android/build/
 /android/local.properties
 /android/quest-local.properties

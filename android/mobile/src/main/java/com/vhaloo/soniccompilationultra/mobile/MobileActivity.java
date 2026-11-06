@@ -11,9 +11,23 @@ import java.io.*;
 
 /** Local-only storage and Android's document picker. No camera frames or network access. */
 public final class MobileActivity extends SDLActivity {
-    private volatile int[] display = {1000,0,0,0,0,0,0,60000,0};
+    private volatile int[] display = {1000,0,0,0,0,0,0,60000,0,0};
+    private volatile boolean nativeReady, rotarySeen;
+    private final java.util.concurrent.atomic.AtomicBoolean importingInbox=new java.util.concurrent.atomic.AtomicBoolean();
+    public static native void nativeRotary(float value);
+    private boolean isWatch() { return getPackageManager().hasSystemFeature(android.content.pm.PackageManager.FEATURE_WATCH); }
+    private int deviceFlags() {
+        boolean rotary=rotarySeen;
+        for(int id:android.view.InputDevice.getDeviceIds()) {
+            android.view.InputDevice input=android.view.InputDevice.getDevice(id);
+            if(input!=null&&input.supportsSource(android.view.InputDevice.SOURCE_ROTARY_ENCODER)) rotary=true;
+        }
+        return (isWatch()?1:0)|(getResources().getConfiguration().isScreenRound()?2:0)|(rotary?4:0);
+    }
     public int[] displayInfo() {
+        nativeReady=true;
         int[] info=display.clone();
+        info[9]=deviceFlags();
         if(android.os.Build.VERSION.SDK_INT>=29) {
             android.os.PowerManager power=(android.os.PowerManager)getSystemService(POWER_SERVICE);
             if(power!=null) info[8]=power.getCurrentThermalStatus();
@@ -46,14 +60,14 @@ public final class MobileActivity extends SDLActivity {
             Math.max(0,l-pos[0]),Math.max(0,t-pos[1]),
             Math.max(0,r-(decor.getWidth()-pos[0]-view.getWidth())),
             Math.max(0,b-(decor.getHeight()-pos[1]-view.getHeight())),view.getWidth(),view.getHeight(),
-            Math.round(view.getDisplay()!=null ? view.getDisplay().getRefreshRate()*1000 : 60000),0};
+            Math.round(view.getDisplay()!=null ? view.getDisplay().getRefreshRate()*1000 : 60000),0,deviceFlags()};
     }
     public void configureDisplay(int orientation, int refresh, int globalTarget, boolean immersive) {
         runOnUiThread(() -> {
             int requested=orientation==1?android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE:
                 orientation==2?android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT:
                 android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_USER;
-            setRequestedOrientation(requested);
+            if(!isWatch()) setRequestedOrientation(requested);
             android.view.View decor=getWindow().getDecorView();
             if(android.os.Build.VERSION.SDK_INT>=30 && getWindow().getInsetsController()!=null) {
                 android.view.WindowInsetsController c=getWindow().getInsetsController();
@@ -107,6 +121,8 @@ public final class MobileActivity extends SDLActivity {
                     out.write("language=-1\nview=2\nquality=0\nbackground=0\nblur=3\n"
                         + "renderer=0\nfullscreen=0\nvsync=0\nrewind=1\nrewindMemory=0\n"
                         + "lastDirectory=ROMs\nmobileLayout=0\nmobileRefresh=0\nmobileRenderQuality=1\n");
+                    if(isWatch()) out.write("wearZoom=0\nwearFisheye=1\nwearLensStrength=75\n"
+                        +"performanceHeadroom=30\nrewindMemory=0\nmobileHints=0\nhelp=0\nplayerInset=0\n");
                 }
             }
         } catch (IOException failure) {
@@ -128,6 +144,19 @@ public final class MobileActivity extends SDLActivity {
     private void sendBack() {
         SDLActivity.onNativeKeyDown(android.view.KeyEvent.KEYCODE_BACK);
         SDLActivity.onNativeKeyUp(android.view.KeyEvent.KEYCODE_BACK);
+    }
+    @Override public void onDestroy() {
+        nativeReady=false;
+        super.onDestroy();
+    }
+    @Override public boolean dispatchGenericMotionEvent(android.view.MotionEvent event) {
+        if(nativeReady&&isWatch()&&event.getAction()==android.view.MotionEvent.ACTION_SCROLL
+            &&event.isFromSource(android.view.InputDevice.SOURCE_ROTARY_ENCODER)) {
+            float delta=event.getAxisValue(android.view.MotionEvent.AXIS_SCROLL);
+            if(Float.isFinite(delta)&&delta!=0) { rotarySeen=true; nativeRotary(delta); }
+            return true;
+        }
+        return super.dispatchGenericMotionEvent(event);
     }
     @Override @android.annotation.SuppressLint("GestureBackNavigation")
     public void onBackPressed() { // API 24-32 fallback; API 33+ uses the callback above.
@@ -179,12 +208,46 @@ public final class MobileActivity extends SDLActivity {
         return args.toArray(new String[0]);
     }
 
-    public void chooseRom() {
+    public boolean chooseRom() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE); intent.setType("*/*");
+        if(intent.resolveActivity(getPackageManager())==null) return false;
         runOnUiThread(() -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE); intent.setType("*/*");
             startActivityForResult(intent, IMPORT_ROM);
         });
+        return true;
+    }
+    public String romInboxPath() {
+        File external=getExternalFilesDir(null);
+        File inbox=new File(external==null?root:external,"ROMs");
+        if(!inbox.isDirectory()&&!inbox.mkdirs()) return new File(root,"ROMs").getAbsolutePath();
+        // Java makes imported files UID-owned before native scoped-storage access.
+        if(importingInbox.compareAndSet(false,true)) new Thread(() -> {
+            try {
+                File[] files=inbox.listFiles();if(files==null) return;
+                File privateRoms=new File(root,"ROMs");ensureDirectory(privateRoms);
+                int scanned=0;
+                for(File source:files) {
+                    if(++scanned>64) break;
+                    String name=source.getName(), lower=name.toLowerCase(java.util.Locale.ROOT);
+                    if(!source.isFile()||!source.getCanonicalFile().getParentFile().equals(inbox.getCanonicalFile())) continue;
+                    if(!(lower.endsWith(".zip")||lower.endsWith(".bin")||lower.endsWith(".md")||lower.endsWith(".gen")||lower.endsWith(".smd"))) continue;
+                    File target=new File(privateRoms,name);
+                    if(target.exists()||source.length()>32L*1024*1024) continue;
+                    File staging=new File(target.getPath()+".inbox");
+                    try {
+                        try(InputStream in=new FileInputStream(source);OutputStream out=new FileOutputStream(staging)) {
+                            byte[] buffer=new byte[65536];int count;long total=0;
+                            while((count=in.read(buffer))!=-1) {total+=count;if(total>32L*1024*1024) throw new IOException("Cartridge exceeds 32 MB.");out.write(buffer,0,count);}
+                        }
+                        if(!staging.renameTo(target)) throw new IOException("Could not finish cartridge import.");
+                        if(nativeReady) SDLActivity.onNativeDropFile(target.getAbsolutePath());
+                    } finally {if(staging.exists())staging.delete();}
+                }
+            } catch(IOException failure) {android.util.Log.e("SCU","Could not read ROM inbox",failure);}
+            finally {importingInbox.set(false);}
+        },"SCU-local-ROM-inbox").start();
+        return new File(root,"ROMs").getAbsolutePath();
     }
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);

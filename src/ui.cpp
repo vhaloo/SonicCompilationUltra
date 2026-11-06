@@ -19,6 +19,20 @@ void App::settingGuide(bool compact) {
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.35f, 0.9f, 0.94f, 1));
     ImGui::TextWrapped("%s", tr(help->key, language));
     ImGui::PopStyleColor();
+    if (settingsPreview) {
+        if (compact)
+            ImGui::TextWrapped("%s", help->text[std::clamp(language, 0, 3)]);
+        int index = std::clamp(int(help->picture), 0, 18);
+        float width = std::max(1.f, ImGui::GetContentRegionAvail().x);
+        ImVec2 a{(index % 4) / 4.f, (index / 4) / 5.f},
+            b{(index % 4 + 1) / 4.f, (index / 4 + 1) / 5.f};
+        ImGui::Image(reinterpret_cast<ImTextureID>(settingsPreview), {width, width * 180 / 320}, a,
+                     b);
+        ImGui::TextDisabled("%s", tr("previewexample", language));
+        if (!compact)
+            ImGui::TextWrapped("%s", help->text[std::clamp(language, 0, 3)]);
+        return;
+    }
     if (compact) {
         ImGui::TextWrapped("%s", help->text[std::clamp(language, 0, 3)]);
         ImGui::Spacing();
@@ -153,6 +167,7 @@ void App::settingGuide(bool compact) {
         draw->AddCircleFilled(point(0.18f, 0.74f), height * 0.04f, gold);
         break;
     }
+    case HelpPicture::Wear:
     case HelpPicture::Reminder: {
         rect(0.05f, 0.08f, 0.90f, 0.84f, muted, false);
         for (int i = 0; i < 9; ++i)
@@ -239,15 +254,84 @@ void App::settingGuide(bool compact) {
                                      language));
     }
 }
+void App::settingBadge(const char *key) {
+    const auto *help = settingHelp(key);
+    if (!help)
+        return;
+    ImGui::PushID(key);
+    float side = ImGui::GetTextLineHeight() + 6;
+    if (ImGui::Button("##explain", {side, side})) {
+        guideKey = key;
+        guideRequested = true;
+    }
+    auto draw = ImGui::GetWindowDrawList();
+    auto p = ImGui::GetItemRectMin();
+    ImU32 color = IM_COL32(102, 220, 231, 255);
+    float q = side * .20f;
+    auto line = [&](float x, float y, float xx, float yy) {
+        draw->AddLine({p.x + x * side, p.y + y * side}, {p.x + xx * side, p.y + yy * side}, color,
+                      1.5f);
+    };
+    int icon = int(help->picture);
+    if (icon == 11) {
+        for (int i = 0; i < 3; ++i)
+            draw->AddRectFilled({p.x + q + i * side * .22f, p.y + side * (.65f - i * .15f)},
+                                {p.x + q + i * side * .22f + side * .13f, p.y + side * .81f}, color,
+                                1);
+    } else if (icon == 18 || icon == 6 || icon == 14) {
+        draw->AddCircle({p.x + side * .5f, p.y + side * .5f}, side * .29f, color, 16, 1.5f);
+        line(.5f, .3f, .5f, .55f);
+        line(.5f, .55f, .67f, .55f);
+    } else if (icon == 1 || icon == 9) {
+        draw->AddCircle({p.x + side * .43f, p.y + side * .43f}, side * .2f, color, 16, 1.5f);
+        line(.6f, .6f, .82f, .82f);
+    } else if (icon == 12 || icon == 14) {
+        line(.25f, .35f, .25f, .65f);
+        line(.5f, .2f, .5f, .8f);
+        line(.75f, .35f, .75f, .65f);
+    } else {
+        draw->AddRect({p.x + q, p.y + q}, {p.x + side - q, p.y + side - q}, color, 2, 0, 1.5f);
+        line(.3f, .68f, .7f, .68f);
+    }
+    if (ImGui::IsItemHovered()) {
+        hoveredHeading = key;
+        headingReady = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal);
+    }
+    ImGui::PopID();
+    ImGui::SameLine();
+}
+void App::settingTitle(const char *key) {
+    hoveredHeading.clear();
+    headingReady = false;
+    settingBadge(key);
+    ImGui::TextWrapped("%s", tr(key, language));
+    if (ImGui::IsItemHovered()) {
+        hoveredHeading = key;
+        headingReady = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal);
+    }
+}
 void App::control(const char *key) {
     if (settingHelp(key) && !guideOpen && !guideRequested &&
-        (ImGui::IsItemFocused() || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)))
+        (ImGui::IsItemFocused() || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) ||
+         hoveredHeading == key))
         guideKey = key;
 #ifdef SCU_UI_TESTS
     controls.emplace(key, ImGui::GetItemID());
     auto min = ImGui::GetItemRectMin(), max = ImGui::GetItemRectMax();
     controlRects.emplace(key, ImVec4(min.x, min.y, max.x, max.y));
 #endif
+    if (settingHelp(key) && guideTooltipFrame != ImGui::GetFrameCount() && !menuVerificationOnly &&
+        !guideOpen && !guideRequested && !settings.wearActive &&
+        ((hoveredHeading == key && headingReady) ||
+         ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal |
+                              ImGuiHoveredFlags_AllowWhenDisabled))) {
+        guideTooltipFrame = ImGui::GetFrameCount();
+        ImGui::SetNextWindowSize(
+            {std::min(310.f * uiFactor, ImGui::GetIO().DisplaySize.x * .70f), 0});
+        ImGui::BeginTooltip();
+        settingGuide(true);
+        ImGui::EndTooltip();
+    }
 }
 bool App::button(const char *key, const ImVec2 &size) {
     std::string label = std::string(tr(key, language)) + "###" + key;
@@ -263,15 +347,23 @@ void App::nextButton(const char *key) {
 }
 bool App::tick(const char *key, bool &value) {
     ImGui::BeginGroup();
+    hoveredHeading.clear();
+    headingReady = false;
+    settingBadge(key);
     bool changed = ImGui::Checkbox((std::string("##") + key).c_str(), &value);
     control(key);
     ImGui::SameLine();
     ImGui::TextWrapped("%s", tr(key, language));
+    if (ImGui::IsItemClicked() && !guideRequested) {
+        value = !value;
+        changed = true;
+    }
     ImGui::EndGroup();
+    control(key);
     return changed;
 }
 bool App::choice(const char *key, int &value, std::initializer_list<const char *> keys) {
-    ImGui::TextWrapped("%s", tr(key, language));
+    settingTitle(key);
     ImGui::SetNextItemWidth(-1);
     std::vector<const char *> labels;
     for (auto k : keys)
@@ -282,7 +374,7 @@ bool App::choice(const char *key, int &value, std::initializer_list<const char *
     return changed;
 }
 bool App::slider(const char *key, int &value, int lo, int hi, const char *format) {
-    ImGui::TextWrapped("%s", tr(key, language));
+    settingTitle(key);
     ImGui::SetNextItemWidth(-1);
     bool changed = ImGui::SliderInt((std::string("##") + key).c_str(), &value, lo, hi, format,
                                     ImGuiSliderFlags_NoInput);
@@ -351,6 +443,7 @@ void App::initialise(const fs::path &base, bool hidden) {
         renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
     if (!renderer)
         throw std::runtime_error(SDL_GetError());
+    loadSettingsPreview();
     SDL_RendererInfo rendererInfo{};
     SDL_GetRendererInfo(renderer, &rendererInfo);
     SDL_Log("SCU renderer: %s; max texture %d x %d", rendererInfo.name,
@@ -442,10 +535,23 @@ App::~App() {
         SDL_DestroyTexture(nativeTexture);
     if (bgTexture)
         SDL_DestroyTexture(bgTexture);
+    if (settingsPreview)
+        SDL_DestroyTexture(settingsPreview);
     if (renderer)
         SDL_DestroyRenderer(renderer);
     if (window)
         SDL_DestroyWindow(window);
+}
+void App::loadSettingsPreview() {
+    if (settingsPreview)
+        SDL_DestroyTexture(settingsPreview);
+    settingsPreview = nullptr;
+    if (auto surface = SDL_LoadBMP((basePath / "assets/settings-preview.bmp").u8string().c_str())) {
+        settingsPreview = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_FreeSurface(surface);
+        if (settingsPreview)
+            SDL_SetTextureScaleMode(settingsPreview, SDL_ScaleModeLinear);
+    }
 }
 void App::refreshControllers() {
     // The UI and cartridge input share the same owned controller handles.
@@ -651,8 +757,7 @@ bool App::play(const std::string &id) {
 }
 void App::beginBrowser(bool folder) {
 #ifdef SCU_MOBILE
-    if (mobile) {
-        mobile->chooseRom();
+    if (mobile && mobile->chooseRom()) {
         return;
     }
 #endif
@@ -756,9 +861,12 @@ void App::event(const SDL_Event &e) {
         if (!menu && core.loaded && settings.quickControls && pads[activePad] &&
             SDL_GameControllerGetButton(pads[activePad], SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) {
             auto scene = core.world.inspect(core.snapshot, core.game);
-            if (b == SDL_CONTROLLER_BUTTON_Y)
-                settings.view = settings.view == 2 ? 0 : 2;
-            else if (b == SDL_CONTROLLER_BUTTON_DPAD_UP || b == SDL_CONTROLLER_BUTTON_DPAD_DOWN) {
+            if (b == SDL_CONTROLLER_BUTTON_Y) {
+                if (settings.wearActive)
+                    settings.wearZoom = settings.wearZoom ? 0 : 1000;
+                else
+                    settings.view = settings.view == 2 ? 0 : 2;
+            } else if (b == SDL_CONTROLLER_BUTTON_DPAD_UP || b == SDL_CONTROLLER_BUTTON_DPAD_DOWN) {
                 settings.view = 0;
                 settings.stepZoom(b == SDL_CONTROLLER_BUTTON_DPAD_UP ? 1 : -1);
             } else if (b == SDL_CONTROLLER_BUTTON_X) {
@@ -1293,17 +1401,15 @@ void App::present(bool capture) {
                                  : settings.mobileRenderQuality == 2 ? 8000000
                                                                      : 2500000;
 #endif
-    Settings transientSettings;
-    auto *projectionSettings = &settings;
+    Settings transientSettings = settings;
+    auto *projectionSettings = &transientSettings;
 #ifdef SCU_QUEST
     if (quest) {
-        transientSettings = settings;
         quest->configureRender(transientSettings);
         projectionSettings = &transientSettings;
     }
 #else
-    if (settings.desktopPresentation) {
-        transientSettings = settings;
+    if (settings.desktopPresentation && !settings.wearActive) {
         transientSettings.projectionCleanScene = true;
         transientSettings.view = 2;
         transientSettings.camera = 4;
@@ -1313,6 +1419,26 @@ void App::present(bool capture) {
     }
 #endif
     auto &renderSettings = *projectionSettings;
+#ifndef SCU_MOBILE
+    renderSettings.compositionPixels = renderSettings.autoPerformance
+                                           ? (renderSettings.quality == 0   ? 1000000
+                                              : renderSettings.quality == 2 ? 8000000
+                                                                            : 2500000)
+                                           : 0;
+#endif
+    if (renderSettings.autoPerformance && renderSettings.adaptiveEffects) {
+        renderSettings.blur =
+            std::min(renderSettings.blur, renderSettings.effectsLevel >= 2 ? 16 : 3);
+        if (renderSettings.effectsLevel == 0)
+            renderSettings.smoothMap = false;
+    }
+#ifdef SCU_MOBILE
+    if (settings.wearActive) {
+        renderSettings.view = settings.wearZoomValue >= 999.5 ? 4 : 0;
+        renderSettings.desktopPresentation = 0;
+        renderSettings.compositionPixels = std::min(renderSettings.compositionPixels, 300000);
+    }
+#endif
     SDL_GetRendererOutputSize(renderer, &drawableW, &drawableH);
     if (drawableW <= 0 || drawableH <= 0)
         return;
@@ -1342,6 +1468,8 @@ void App::present(bool capture) {
                   renderSettings.quality,
                   renderSettings.compositionScale,
                   renderSettings.compositionPixels,
+                  int(renderSettings.wearActive),
+                  int(std::round(renderSettings.wearZoomValue)),
                   int(renderSettings.performancePixelLock),
                   int(renderSettings.projectionUiOnly),
                   int(renderSettings.projectionCleanScene),
@@ -1497,10 +1625,13 @@ void App::present(bool capture) {
             if (refresh)
                 SDL_UpdateTexture(nativeTexture, nullptr, core.native.data(), core.nativeW * 4);
             int availableH = drawableH, safeW = std::min(drawableW, (int)(drawableH * 16.0 / 9));
-            float scale = renderSettings.view == 0     ? float(renderSettings.pixelScale())
-                          : renderSettings.nativeScale ? renderSettings.nativeScale
-                                                       : std::min(float(safeW) / core.nativeW,
-                                                                  float(availableH) / core.nativeH);
+            float scale =
+                renderSettings.wearActive
+                    ? std::min(float(drawableW) / core.nativeW, float(availableH) / core.nativeH)
+                : renderSettings.view == 0 ? float(renderSettings.pixelScale())
+                : renderSettings.nativeScale
+                    ? renderSettings.nativeScale
+                    : std::min(float(safeW) / core.nativeW, float(availableH) / core.nativeH);
             if (renderSettings.integerScale && scale >= 1)
                 scale = std::floor(scale);
             scale = std::min(
@@ -1526,7 +1657,8 @@ void App::present(bool capture) {
         }
     }
 #ifndef SCU_QUEST
-    if (settings.desktopPresentation && core.loaded && !core.native.empty()) {
+    if (settings.desktopPresentation && !settings.wearActive && core.loaded &&
+        !core.native.empty()) {
         bool upload = refresh;
         if (!nativeTexture || nativeTW != core.nativeW || nativeTH != core.nativeH) {
             if (nativeTexture)
@@ -1545,8 +1677,8 @@ void App::present(bool capture) {
         if (upload)
             SDL_UpdateTexture(nativeTexture, nullptr, core.native.data(), core.nativeW * 4);
         desktopFrame.draw(renderer, expanded ? worldTexture : nativeTexture, nativeTexture,
-                          core.nativeW, core.nativeH, scene, core.world.canvas, settings, drawableW,
-                          drawableH);
+                          core.nativeW, core.nativeH, scene, core.world.canvas, renderSettings,
+                          drawableW, drawableH);
     }
 #endif
     ImGui_ImplSDLRenderer2_NewFrame();
@@ -1574,20 +1706,22 @@ void App::present(bool capture) {
                : settings.uiScale == 2 ? 1.2f
                : settings.uiScale == 3 ? 1.4f
                                        : 1.f;
+    if (settings.wearActive)
+        uiFactor = settings.uiScale == 2 ? 1.f : settings.uiScale == 3 ? 1.2f : .75f;
 #endif
     ImGui::GetStyle() = baseStyle;
     ImGui::GetStyle().ScaleAllSizes(uiFactor);
 #ifdef SCU_MOBILE
-    ImGui::GetStyle().FramePadding.y = 13 * uiFactor;
+    ImGui::GetStyle().FramePadding.y = (settings.wearActive ? 4 : 13) * uiFactor;
     ImGui::GetStyle().TouchExtraPadding = {3, 3};
-    ImGui::GetStyle().ScrollbarSize = 24 * uiFactor;
+    ImGui::GetStyle().ScrollbarSize = (settings.wearActive ? 12 : 24) * uiFactor;
 #endif
     if (settings.highContrast) {
         ImGui::GetStyle().Colors[ImGuiCol_Text] = {1, 1, 1, 1};
         ImGui::GetStyle().Colors[ImGuiCol_FrameBg] = {0.02f, 0.04f, 0.08f, 1};
         ImGui::GetStyle().Colors[ImGuiCol_NavCursor] = {1, 1, 0, 1};
     }
-    io.FontGlobalScale = 0.75f * uiFactor;
+    io.FontGlobalScale = (settings.wearActive ? .65f : .75f) * uiFactor;
     ImGui::NewFrame();
     menuInput(editing);
 #ifdef SCU_UI_TESTS
@@ -1924,6 +2058,7 @@ void App::commitAction() {
 }
 void App::ui() {
     auto &io = ImGui::GetIO();
+    const bool watch = settings.wearActive;
     bool compact = settings.menuLayout == 1;
     float width = compact ? std::min(1120 * uiFactor, io.DisplaySize.x - 12) : io.DisplaySize.x;
     float height = compact ? std::min(820 * uiFactor, io.DisplaySize.y - 12) : io.DisplaySize.y;
@@ -1949,21 +2084,23 @@ void App::ui() {
         ImGui::SetNavCursorVisible(true);
     }
     const char *importKey = safe < 400 * uiFactor ? "importshort" : "import";
-    if (core.loaded) {
-        if (button("resume"))
-            toggleMenu();
-        nextButton(importKey);
-    }
-    if (button(importKey))
+    if (!watch) {
+        if (core.loaded) {
+            if (button("resume"))
+                toggleMenu();
+            nextButton(importKey);
+        }
+        if (button(importKey))
 #ifdef SCU_QUEST
-        quest->chooseRom();
+            quest->chooseRom();
 #else
-        beginBrowser(false);
+            beginBrowser(false);
 #endif
-    control("import");
-    nextButton("quit");
-    if (button("quit"))
-        requestAction(1);
+        control("import");
+        nextButton("quit");
+        if (button("quit"))
+            requestAction(1);
+    }
     focusMenu = false;
     ImGui::Separator();
     const char *tabs[] = {"library",
@@ -1983,23 +2120,29 @@ void App::ui() {
                           "mobiletab"
 #endif
     };
+    if (watch && sectionCount() > 9)
+        tabs[9] = "weartab";
     if (small) {
-        if (button("prevsection")) {
-            tab = (tab + sectionCount() - 1) % sectionCount();
-            focusPage = true;
+        if (!watch) {
+            if (button("prevsection")) {
+                tab = (tab + sectionCount() - 1) % sectionCount();
+                focusPage = true;
+            }
+            ImGui::SameLine();
         }
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(std::max(80.0f, safe - 100 * uiFactor));
+        ImGui::SetNextItemWidth(watch ? -1 : std::max(80.0f, safe - 100 * uiFactor));
         std::vector<const char *> labels;
         for (auto key : tabs)
             labels.push_back(tr(key, language));
         if (ImGui::Combo("##section", &tab, labels.data(), sectionCount()))
             focusPage = true;
         control("section");
-        ImGui::SameLine();
-        if (button("nextsection")) {
-            tab = (tab + 1) % sectionCount();
-            focusPage = true;
+        if (!watch) {
+            ImGui::SameLine();
+            if (button("nextsection")) {
+                tab = (tab + 1) % sectionCount();
+                focusPage = true;
+            }
         }
     }
     float footer =
@@ -2009,6 +2152,8 @@ void App::ui() {
         (!tiny ? ImGui::CalcTextSize(tr("autosettings", language), nullptr, false, safe).y : 0);
 #ifdef SCU_MOBILE
     footer = ImGui::GetFrameHeightWithSpacing() + 12;
+    if (watch)
+        footer = ImGui::GetFrameHeightWithSpacing() + 3;
 #endif
     float contentH = std::max(50.0f, ImGui::GetContentRegionAvail().y - footer);
     if (!small) {
@@ -2053,13 +2198,13 @@ void App::ui() {
         ImGui::EndChild();
     }
     ImGui::Separator();
-    if (button(
+    if (button(watch ? "guidebadge" :
 #ifdef SCU_QUEST
-            "questguidebutton"
+                     "questguidebutton"
 #else
-            "settingguide"
+                     "settingguide"
 #endif
-            ))
+               ))
         guideRequested = true;
 #ifndef SCU_MOBILE
     ImGui::TextWrapped("%s", navigationHint().c_str());
@@ -2193,20 +2338,45 @@ void App::libraryUi() {
         }
 }
 void App::performanceOptions() {
+    int profile = settings.performanceHeadroom == 35   ? 0
+                  : settings.performanceHeadroom == 25 ? 1
+                  : settings.performanceHeadroom == 15 ? 2
+                                                       : 3;
+    if (choice("qualityprofile", profile,
+               {"smoothpriority", "balanced", "detailpriority", "customprofile"}) &&
+        profile < 3) {
+        settings.performanceHeadroom = std::array<int, 3>{35, 25, 15}[profile];
+        settings.autoPerformance = settings.adaptiveEffects = true;
+        dirty = true;
+    }
     bool changed = tick("autoperformance", settings.autoPerformance);
+#ifndef SCU_QUEST
+#ifdef SCU_MOBILE
+    ImGui::BeginDisabled(settings.mobileRefresh != 0);
+#endif
     changed |= slider("performancetarget", settings.performanceTarget, 30, 120, "%d fps");
-    if (slider("minimumrenderscale", settings.minimumRenderScale, 25, 100, "%d%%")) {
-        settings.maximumRenderScale =
-            std::max(settings.maximumRenderScale, settings.minimumRenderScale);
-        changed = true;
+#ifdef SCU_MOBILE
+    ImGui::EndDisabled();
+#endif
+#else
+    ImGui::Text("%s: %.0f Hz", tr("questrefresh", language), quest ? quest->refreshLimit() : 90.);
+#endif
+    changed |= tick("adaptiveeffects", settings.adaptiveEffects);
+    changed |= slider("performanceheadroom", settings.performanceHeadroom, 10, 45, "%d%%");
+    if (ImGui::CollapsingHeader(tr("advancedperformance", language))) {
+        if (slider("minimumrenderscale", settings.minimumRenderScale, 25, 100, "%d%%")) {
+            settings.maximumRenderScale =
+                std::max(settings.maximumRenderScale, settings.minimumRenderScale);
+            changed = true;
+        }
+        if (slider("maximumrenderscale", settings.maximumRenderScale, 25, 100, "%d%%")) {
+            settings.minimumRenderScale =
+                std::min(settings.minimumRenderScale, settings.maximumRenderScale);
+            changed = true;
+        }
+        changed |= tick("performancepixellock", settings.performancePixelLock);
+        changed |= tick("thermalaware", settings.thermalAware);
     }
-    if (slider("maximumrenderscale", settings.maximumRenderScale, 25, 100, "%d%%")) {
-        settings.minimumRenderScale =
-            std::min(settings.minimumRenderScale, settings.maximumRenderScale);
-        changed = true;
-    }
-    changed |= tick("performancepixellock", settings.performancePixelLock);
-    changed |= tick("thermalaware", settings.thermalAware);
     ImGui::TextWrapped("%s", tr("performancehint", language));
     char gpu[48];
     if (performanceGovernor.gpuMs() >= 0)
@@ -2217,6 +2387,11 @@ void App::performanceOptions() {
                        tr("performancereadout", language), performanceGovernor.scale(),
                        performanceGovernor.cpuMs(), gpu, core.world.canvas.width,
                        core.world.canvas.height);
+    ImGui::TextWrapped("%s: %.1f%% / %s: %d%% / %s: %d / %.2f ms",
+                       tr("availableheadroom", language), performanceGovernor.availableHeadroom(),
+                       tr("stereodetail", language), performanceGovernor.stereoScale(),
+                       tr("effectdetail", language), performanceGovernor.effectLevel(),
+                       performanceGovernor.usableBudgetMs());
     if (performanceGovernor.coreLimited())
         ImGui::TextWrapped("%s", tr("performancesimbound", language));
     dirty |= changed;
@@ -2235,122 +2410,150 @@ void App::optionsUi(int section) {
             language = detectLanguage(settings.language);
             changed = true;
         }
-        int preset = settings.quality;
-        if (choice("preset", preset, {"low", "balanced", "ultra"})) {
-            settings.preset(preset);
-            backgroundStage = -1;
-            changed = true;
+        if (ImGui::CollapsingHeader(tr("quickviewgroup", language),
+                                    ImGuiTreeNodeFlags_DefaultOpen)) {
+            int preset = settings.quality;
+            if (choice("preset", preset, {"low", "balanced", "ultra"})) {
+                settings.preset(preset);
+                backgroundStage = -1;
+                changed = true;
+            }
+            if (settings.wearActive) {
+                slide("wearzoom", settings.wearZoom, 0, 1000, "%d / 1000");
+                check("wearfisheye", settings.wearFisheye);
+                changed |= choice("overviewstyle", settings.overviewStyle,
+                                  {"auto", "nativeart", "terrainmap"});
+            } else {
+                int view = settings.view == 4 ? 3 : settings.view;
+                if (choice("view", view, {"pixel", "panorama", "overview", "classic"})) {
+                    settings.view = view == 3 ? 4 : view;
+                    changed = true;
+                }
+                changed |= choice("overviewstyle", settings.overviewStyle,
+                                  {"auto", "nativeart", "terrainmap"});
+                ImGui::TextWrapped("%s", tr("maphelp", language));
+                ImGui::TextWrapped("%s", tr("overviewhelp", language));
+                if (slider("zoom", settings.zoom, 1, 8, "%d×")) {
+                    settings.view = 0;
+                    changed = true;
+                }
+                if (choice("zoomout", settings.zoomOut, {"1×", "2×", "4×", "8×"})) {
+                    settings.view = 0;
+                    changed = true;
+                }
+                ImGui::Text("%s: %.3g×", tr("effectivescale", language), settings.pixelScale());
+                if (button("pixelreset")) {
+                    settings.view = 0;
+                    settings.zoom = 1;
+                    settings.zoomOut = 0;
+                    changed = true;
+                }
+                if (slider("panoramaheight", settings.panoramaHeight, 224, 4096, "%d px")) {
+                    settings.view = 1;
+                    changed = true;
+                }
+            }
+            check("mapextension", settings.mapExtension);
+            check("smoothmap", settings.smoothMap);
+            if (core.loaded) {
+                auto scene = core.world.inspect(core.snapshot, core.game);
+                ImGui::TextWrapped("%s", tr(scene.ready ? (scene.family >= 4 ? "atlascapability"
+                                                                             : "platformcapability")
+                                                        : "nativecapability",
+                                            language));
+            }
+            if (!settings.wearActive)
+                ImGui::TextWrapped("%s", tr("pixelhelp", language));
         }
-        int view = settings.view == 4 ? 3 : settings.view;
-        if (choice("view", view, {"pixel", "panorama", "overview", "classic"})) {
-            settings.view = view == 3 ? 4 : view;
-            changed = true;
-        }
-        changed |=
-            choice("overviewstyle", settings.overviewStyle, {"auto", "nativeart", "terrainmap"});
-        ImGui::TextWrapped("%s", tr("maphelp", language));
-        ImGui::TextWrapped("%s", tr("overviewhelp", language));
-        if (slider("zoom", settings.zoom, 1, 8, "%d×")) {
-            settings.view = 0;
-            changed = true;
-        }
-        if (choice("zoomout", settings.zoomOut, {"1×", "2×", "4×", "8×"})) {
-            settings.view = 0;
-            changed = true;
-        }
-        ImGui::Text("%s: %.3g×", tr("effectivescale", language), settings.pixelScale());
-        if (button("pixelreset")) {
-            settings.view = 0;
-            settings.zoom = 1;
-            settings.zoomOut = 0;
-            changed = true;
-        }
-        if (slider("panoramaheight", settings.panoramaHeight, 224, 4096, "%d px")) {
-            settings.view = 1;
-            changed = true;
-        }
-        check("mapextension", settings.mapExtension);
-        check("smoothmap", settings.smoothMap);
-        if (core.loaded) {
-            auto scene = core.world.inspect(core.snapshot, core.game);
-            ImGui::TextWrapped("%s", tr(scene.ready ? (scene.family >= 4 ? "atlascapability"
-                                                                         : "platformcapability")
-                                                    : "nativecapability",
-                                        language));
-        }
-        ImGui::TextWrapped("%s", tr("pixelhelp", language));
+        if (ImGui::CollapsingHeader(tr("quickdisplaygroup", language),
+                                    ImGuiTreeNodeFlags_DefaultOpen)) {
 #if !defined(SCU_QUEST) && !defined(SCU_MOBILE)
-        bool full = settings.fullscreen, span = settings.span;
-        int display = settings.display;
-        check("fullscreen", settings.fullscreen);
-        check("span", settings.span);
-        ImGui::TextWrapped("%s", tr("display", language));
-        std::vector<std::string> names{tr("currentdisplay", language)};
-        for (int n = 0; n < SDL_GetNumVideoDisplays(); ++n) {
-            SDL_Rect bounds{};
-            SDL_GetDisplayBounds(n, &bounds);
-            names.push_back(std::to_string(n + 1) + " · " + SDL_GetDisplayName(n) + " · " +
-                            std::to_string(bounds.w) + " × " + std::to_string(bounds.h));
-        }
-        int chosen = std::clamp(settings.display + 1, 0, int(names.size()) - 1);
-        std::vector<const char *> list;
-        for (auto &name : names)
-            list.push_back(name.c_str());
-        ImGui::SetNextItemWidth(-1);
-        if (ImGui::Combo("##display", &chosen, list.data(), int(list.size()))) {
-            settings.display = chosen - 1;
-            changed = true;
-        }
-        control("display");
-        if (full != settings.fullscreen || span != settings.span || display != settings.display)
-            applyDisplay();
+            bool full = settings.fullscreen, span = settings.span;
+            int display = settings.display;
+            check("fullscreen", settings.fullscreen);
+            check("span", settings.span);
+            ImGui::TextWrapped("%s", tr("display", language));
+            std::vector<std::string> names{tr("currentdisplay", language)};
+            for (int n = 0; n < SDL_GetNumVideoDisplays(); ++n) {
+                SDL_Rect bounds{};
+                SDL_GetDisplayBounds(n, &bounds);
+                names.push_back(std::to_string(n + 1) + " · " + SDL_GetDisplayName(n) + " · " +
+                                std::to_string(bounds.w) + " × " + std::to_string(bounds.h));
+            }
+            int chosen = std::clamp(settings.display + 1, 0, int(names.size()) - 1);
+            std::vector<const char *> list;
+            for (auto &name : names)
+                list.push_back(name.c_str());
+            ImGui::SetNextItemWidth(-1);
+            if (ImGui::Combo("##display", &chosen, list.data(), int(list.size()))) {
+                settings.display = chosen - 1;
+                changed = true;
+            }
+            control("display");
+            if (full != settings.fullscreen || span != settings.span || display != settings.display)
+                applyDisplay();
 #endif
-        changed |= choice("menulayout", settings.menuLayout, {"fullmenu", "compactmenu"});
-        changed |=
-            choice("uiscale", settings.uiScale, {"auto", "smalltext", "largetext", "hugetext"});
-        check("contrast", settings.highContrast);
+            changed |= choice("menulayout", settings.menuLayout, {"fullmenu", "compactmenu"});
+            changed |=
+                choice("uiscale", settings.uiScale, {"auto", "smalltext", "largetext", "hugetext"});
+            check("contrast", settings.highContrast);
 #if !defined(SCU_QUEST) && !defined(SCU_MOBILE)
-        check("vsync", settings.vsync);
+            check("vsync", settings.vsync);
 #endif
-        check("nearest", settings.integerScale);
+            check("nearest", settings.integerScale);
 #ifndef SCU_QUEST
-        changed |= choice("desktoppresentation", settings.desktopPresentation,
-                          {"desktopplain", "desktopcabinet", "desktopcrt"});
-        if (settings.desktopPresentation) {
-            slide("desktopframescale", settings.desktopFrameScale, 50, 130, "%d%%");
-            if (settings.desktopPresentation == 1)
-                slide("desktopcabinetangle", settings.desktopCabinetAngle, 10, 60, "%d°");
-            else {
-                slide("desktopcrtstrength", settings.desktopCrtStrength, 0, 100, "%d%%");
-                check("desktopcrtmask", settings.desktopCrtMask);
-                check("desktopsurround", settings.desktopSurround);
-                slide("questsurroundbrightness", settings.questSurroundBrightness, 0, 100, "%d%%");
+            if (!settings.wearActive) {
+                changed |= choice("desktoppresentation", settings.desktopPresentation,
+                                  {"desktopplain", "desktopcabinet", "desktopcrt"});
+                if (settings.desktopPresentation) {
+                    slide("desktopframescale", settings.desktopFrameScale, 50, 130, "%d%%");
+                    if (settings.desktopPresentation == 1)
+                        slide("desktopcabinetangle", settings.desktopCabinetAngle, 10, 60, "%d°");
+                    else {
+                        slide("desktopcrtstrength", settings.desktopCrtStrength, 0, 100, "%d%%");
+                        check("desktopcrtmask", settings.desktopCrtMask);
+                        check("desktopsurround", settings.desktopSurround);
+                        slide("questsurroundbrightness", settings.questSurroundBrightness, 0, 100,
+                              "%d%%");
+                    }
+                }
+            }
+#endif
+            check("advancedoptions", settings.advancedOptions);
+            if (settings.advancedOptions) {
+                if (!settings.wearActive)
+                    slide("nativescale", settings.nativeScale, 0, 8);
+                slide("workers", settings.workers, 0, 16);
+#if !defined(SCU_QUEST) && !defined(SCU_MOBILE)
+                bool soft = settings.renderer != 0;
+                if (tick("soft", soft)) {
+                    settings.renderer = soft ? 1 : 0;
+                    changed = true;
+                }
+#endif
+                slide("scanlines", settings.scanlines, 0, 60);
             }
         }
-#endif
-        slide("nativescale", settings.nativeScale, 0, 8);
-        slide("workers", settings.workers, 0, 16);
-#if !defined(SCU_QUEST) && !defined(SCU_MOBILE)
-        bool soft = settings.renderer != 0;
-        if (tick("soft", soft)) {
-            settings.renderer = soft ? 1 : 0;
-            changed = true;
+        if (ImGui::CollapsingHeader(tr("quickqualitygroup", language),
+                                    ImGuiTreeNodeFlags_DefaultOpen)) {
+            performanceOptions();
+            check("performance", settings.performance);
         }
-#endif
-        slide("scanlines", settings.scanlines, 0, 60);
-        performanceOptions();
-        check("performance", settings.performance);
         if (button("defaults"))
             requestAction(3);
         break;
     }
     case 2:
         if (button("showstage")) {
+            if (settings.wearActive)
+                settings.wearZoom = 0;
             settings.view = 2;
             settings.locator = true;
             changed = true;
         }
         if (button("focusplayer")) {
+            if (settings.wearActive)
+                settings.wearZoom = 1000;
             settings.view = 0;
             settings.camera = 1;
             changed = true;
@@ -2371,24 +2574,26 @@ void App::optionsUi(int section) {
         check("fitspawns", settings.fitSpawns);
         ImGui::EndDisabled();
         ImGui::TextWrapped("%s", tr("enemyhelp", language));
-        if (choice("cameramode", settings.camera,
-                   {"bounded", "centred", "fixed", "free", "level"})) {
-            settings.view = settings.camera == 4 ? 2 : 0;
-            changed = true;
+        if (!settings.wearActive) {
+            if (choice("cameramode", settings.camera,
+                       {"bounded", "centred", "fixed", "free", "level"})) {
+                settings.view = settings.camera == 4 ? 2 : 0;
+                changed = true;
+            }
+            ImGui::TextWrapped("%s", tr("overviewcamera", language));
+            ImGui::BeginDisabled(settings.view == 2);
+            if (button("freeze")) {
+                core.world.freeze(core.world.inspect(core.snapshot, core.game), settings);
+                changed = true;
+            }
+            ImGui::EndDisabled();
+            if (button("follow")) {
+                settings.camera = 0;
+                settings.view = 0;
+                changed = true;
+            }
+            slide("panspeed", settings.panSpeed, 1, 32);
         }
-        ImGui::TextWrapped("%s", tr("overviewcamera", language));
-        ImGui::BeginDisabled(settings.view == 2);
-        if (button("freeze")) {
-            core.world.freeze(core.world.inspect(core.snapshot, core.game), settings);
-            changed = true;
-        }
-        ImGui::EndDisabled();
-        if (button("follow")) {
-            settings.camera = 0;
-            settings.view = 0;
-            changed = true;
-        }
-        slide("panspeed", settings.panSpeed, 1, 32);
         changed |= choice("hud", settings.hud, {"hudcentre", "hudplayer", "hudedge", "hidden"});
         slide("hudsize", settings.hudScale, 0, 6);
         check("locator", settings.locator);

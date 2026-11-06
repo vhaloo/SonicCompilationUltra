@@ -1,4 +1,5 @@
 #include "world.h"
+#include "wear_display.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -402,7 +403,8 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
     }
     int w, h;
     double coverW = 0, coverH = 0;
-    bool overview = cfg.view == 2;
+    wear::View watchView;
+    bool overview = cfg.view == 2 || cfg.wearActive;
     if (overview && cfg.fixedMapWidth > 0 && cfg.fixedMapHeight > 0) {
         v.width = cfg.fixedMapWidth;
         v.height = cfg.fixedMapHeight;
@@ -417,7 +419,14 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
             }
     } else
         enemies.visible.clear();
-    if (cfg.view == 1) {
+    if (cfg.wearActive) {
+        watchView = wear::camera(cfg.wearZoomValue / 1000., v.width, v.height, nw, nh, v.cameraX,
+                                 v.cameraY, double(dw) / std::max(1, dh));
+        coverW = watchView.width;
+        coverH = watchView.height;
+        w = std::max(1, std::min(dw, int(std::ceil(coverW))));
+        h = std::max(1, std::min(dh, int(std::ceil(coverH))));
+    } else if (cfg.view == 1) {
         coverH = clampi(cfg.panoramaHeight, 224, 4096);
         coverW = double(dw) * coverH / std::max(1, dh);
         w = std::max(1, std::min(dw, int(std::ceil(coverW))));
@@ -426,7 +435,9 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
         double scale = std::min(double(dw) / v.width, double(dh) / v.height);
         coverW = dw / scale;
         coverH = dh / scale;
-        int sample = cfg.quality == 0 ? 3 : cfg.quality == 1 ? 2 : 1;
+        // Auto explores the full selected pixel budget, instead of permanently
+        // halving both dimensions even when the device has plenty of headroom.
+        int sample = cfg.autoPerformance ? 1 : cfg.quality == 0 ? 3 : cfg.quality == 1 ? 2 : 1;
         w = std::max(1, dw / sample);
         h = std::max(1, dh / sample);
     } else {
@@ -459,7 +470,10 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
         cfg.top = int(v.playerY - coverH / 2);
         cameraValid = true;
     }
-    if (overview || cfg.camera == 4) {
+    if (cfg.wearActive) {
+        canvas.left = int(std::floor(watchView.left));
+        canvas.top = int(std::floor(watchView.top));
+    } else if (overview || cfg.camera == 4) {
         canvas.left = (int)((v.width - coverW) / 2);
         canvas.top = (int)((v.height - coverH) / 2);
     } else if (cfg.camera == 2 || cfg.camera == 3) {
@@ -489,8 +503,8 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
     }
     patternsValid = true;
     uint64_t shape = 1469598103934665603ull;
-    for (int value : {v.family, v.stage, v.width, v.height, w, h, canvas.left, canvas.top,
-                      v.cameraY, cfg.view, cfg.overviewStyle, int(cfg.smoothMap)})
+    for (int value : {v.family, v.stage, v.width, v.height, w, h, canvas.left, canvas.top, cfg.view,
+                      cfg.overviewStyle, int(cfg.smoothMap)})
         shape = hashTerrain(shape, &value, sizeof value);
     shape = hashTerrain(shape, &coverW, sizeof coverW);
     shape = hashTerrain(shape, &coverH, sizeof coverH);
@@ -520,12 +534,20 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
     shapeSignature = shape;
     bool schematic =
         overview && (cfg.overviewStyle == 2 || (cfg.overviewStyle == 0 && v.family == 3));
-    uint64_t signature = schematic ? shape : hashTerrain(shape, s.palettes, sizeof s.palettes);
+    uint64_t rasterSignature = shape;
     if (v.family <= 3)
         for (unsigned tile = 0; tile < 2048; ++tile)
             if (terrainUsed[tile])
-                signature = schematic ? hashTerrain(signature, &visibleTile[tile], sizeof(bool))
-                                      : hashTerrain(signature, s.vram + tile * 32, 32);
+                rasterSignature =
+                    schematic ? hashTerrain(rasterSignature, &visibleTile[tile], sizeof(bool))
+                              : hashTerrain(rasterSignature, s.vram + tile * 32, 32);
+    uint64_t signature =
+        schematic ? rasterSignature : hashTerrain(rasterSignature, s.palettes, sizeof s.palettes);
+    if (!schematic)
+        signature = hashTerrain(signature, &v.cameraY, sizeof(v.cameraY));
+    const bool sampleEligible = !schematic && size_t(w) * h <= 2500000;
+    const bool sampleCached = sampleEligible && rasterSignature == sampleSignature &&
+                              terrainSamples.size() == size_t(w) * h;
     bool terrainCached = signature == terrainSignature && terrainPixels.size() == size_t(w) * h;
     actorsDamage.resize(w, h);
     textureDamage.resize(w, h);
@@ -537,7 +559,8 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
         ++terrainCacheHits;
     } else {
         canvas.pixels.assign(size_t(w) * h, 0);
-        priority.assign(size_t(w) * h, 0);
+        if (!sampleCached)
+            priority.assign(size_t(w) * h, 0);
         ++terrainCacheMisses;
         textureDamage.full();
     }
@@ -554,11 +577,50 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
     omp_set_num_threads(workers);
 #endif
     if (!terrainCached) {
+        if (sampleEligible && !sampleCached) {
+            terrainSamples.assign(size_t(w) * h, {64, 64, 64, 64});
+            samplesFiltered = cfg.smoothMap && (coverW > w * 1.01 || coverH > h * 1.01);
+        } else if (!sampleEligible && !terrainSamples.empty()) {
+            std::vector<std::array<uint8_t, 4>>().swap(terrainSamples);
+            sampleSignature = 0;
+        }
         int xBegin = clampi(int(std::floor(-canvas.left * w / coverW)) - 1, 0, w),
             xEnd = clampi(int(std::ceil((v.width - canvas.left) * w / coverW)) + 1, 0, w),
             yBegin = clampi(int(std::floor(-canvas.top * h / coverH)) - 1, 0, h),
             yEnd = clampi(int(std::ceil((v.height - canvas.top) * h / coverH)) + 1, 0, h);
-        if (v.family >= 4) {
+        if (sampleCached) {
+            ++paletteCacheHits;
+            int row;
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static) if (w * h > 500000)
+#endif
+            for (row = 0; row < h; ++row) {
+                int wy = canvas.top + int(row * coverH / h);
+                const auto pal = s.palettes[clampi(wy - v.cameraY, 0, 223)];
+                for (int x = 0; x < w; ++x) {
+                    const size_t at = size_t(row) * w + x;
+                    const auto &indices = terrainSamples[at];
+                    if (!samplesFiltered) {
+                        canvas.pixels[at] = indices[0] < 64 ? pal[indices[0]] : 0;
+                        continue;
+                    }
+                    unsigned r = 0, g = 0, b = 0, alpha = 0, count = 0;
+                    for (auto index : indices) {
+                        uint32_t color = index < 64 ? pal[index] : 0;
+                        if (color >> 24) {
+                            r += (color >> 16) & 255;
+                            g += (color >> 8) & 255;
+                            b += color & 255;
+                            alpha += color >> 24;
+                            ++count;
+                        }
+                    }
+                    canvas.pixels[at] = count ? ((alpha / 4) << 24) | ((r / count) << 16) |
+                                                    ((g / count) << 8) | (b / count)
+                                              : 0;
+                }
+            }
+        } else if (v.family >= 4) {
             bool smooth = !schematic && cfg.smoothMap && (coverW > w * 1.01 || coverH > h * 1.01);
             int row;
 #ifdef _OPENMP
@@ -571,8 +633,12 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
                     int wx = canvas.left + int(x * coverW / w);
                     uint8_t p = atlas.sample(wx, wy);
                     size_t at = size_t(row) * w + x;
+                    auto indices = sampleEligible ? &terrainSamples[at] : nullptr;
+                    unsigned tap = 0;
                     auto sample = [&](int xx, int yy) -> uint32_t {
                         unsigned index = atlas.sample(xx, yy) & 63;
+                        if (indices)
+                            (*indices)[tap++] = index ? uint8_t(index) : 64;
                         return index ? (schematic ? 0xD03F8C9D : pal[index]) : 0;
                     };
                     canvas.pixels[at] =
@@ -595,18 +661,25 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
                 for (int x = xBegin; x < xEnd; x++) {
                     int wx = canvas.left + (int)(x * coverW / w);
                     uint16_t a = terrainAttributes.sample(wx, wy);
+                    size_t at = (size_t)row * w + x;
+                    auto indices = sampleEligible ? &terrainSamples[at] : nullptr;
+                    unsigned tap = 0;
                     auto sample = [&](int xx, int yy) -> uint32_t {
                         unsigned attr = terrainAttributes.sample(xx, yy);
-                        if (!attr)
+                        if (!attr) {
+                            if (indices)
+                                (*indices)[tap++] = 64;
                             return 0;
+                        }
                         if (map)
                             return (attr & 2047) && visibleTile[attr & 2047] ? 0xD03F8C9D : 0;
                         int ix = (xx & 7) ^ ((attr & 0x800) ? 7 : 0),
                             iy = (yy & 7) ^ ((attr & 0x1000) ? 7 : 0);
                         unsigned p = patterns[attr & 2047][iy * 8 + ix];
+                        if (indices)
+                            (*indices)[tap++] = p ? uint8_t(((attr >> 9) & 48) | p) : 64;
                         return p ? pal[((attr >> 9) & 48) | p] : 0;
                     };
-                    size_t at = (size_t)row * w + x;
                     canvas.pixels[at] =
                         filteredPixel(canvas.left + x * coverW / w, canvas.top + row * coverH / h,
                                       coverW / w, coverH / h, smooth, sample);
@@ -640,6 +713,8 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
                             if (p) {
                                 auto i = offset + ox + px;
                                 canvas.pixels[i] = pal[pi | p];
+                                if (sampleEligible)
+                                    terrainSamples[i][0] = uint8_t(pi | p);
                                 priority[i] = (a & 0x8000) ? 1 : 0;
                             }
                         }
@@ -650,6 +725,8 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
         terrainPixels = canvas.pixels;
         // Retain one priority buffer instead of copying it every game frame.
         terrainSignature = signature;
+        if (sampleEligible)
+            sampleSignature = rasterSignature;
     }
     captureActors(v, g);
     for (auto &q : sprites) {

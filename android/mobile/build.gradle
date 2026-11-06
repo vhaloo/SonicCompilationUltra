@@ -1,24 +1,26 @@
-plugins { id 'com.android.application' }
+apply plugin: 'com.android.application'
+def wearable = project.name == 'wear'
 
 def sdl = file(providers.gradleProperty('scuSdlDir').getOrElse('../.deps/SDL2-2.32.10'))
 def generatedAssets = layout.buildDirectory.dir('generated/scu-assets')
 def generatedJava = layout.buildDirectory.dir('generated/mobile-java')
-def privateAssets = providers.gradleProperty('scuMobilePrivateAssets').orNull
+def privateAssets = providers.gradleProperty(wearable ? 'scuWearPrivateAssets' : 'scuMobilePrivateAssets').orNull
 def keyFile = providers.gradleProperty('scuKeyStore').orElse(providers.environmentVariable('SCU_QUEST_KEYSTORE')).orNull
 android {
-    namespace 'com.vhaloo.soniccompilationultra.mobile'
+    namespace wearable ? 'com.vhaloo.soniccompilationultra.wear' : 'com.vhaloo.soniccompilationultra.mobile'
     compileSdk 36
     ndkVersion '29.0.14206865'
     defaultConfig {
-        applicationId 'com.vhaloo.soniccompilationultra.mobile'
-        minSdk 24
+        applicationId wearable ? 'com.vhaloo.soniccompilationultra.wear' : 'com.vhaloo.soniccompilationultra.mobile'
+        minSdk wearable ? 26 : 24
         targetSdk 36
-        versionCode 900
-        versionName '0.9.0-mobile-preview'
+        versionCode 1000
+        versionName wearable ? '0.10.0-wear-preview' : '0.10.0-mobile-preview'
         ndk { abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64' }
         externalNativeBuild {
             cmake {
                 arguments '-DBUILD_TESTING=OFF', '-DSCU_QUEST_BUILD=OFF', '-DANDROID_STL=c++_shared',
+                    "-DSCU_WEAR_BUILD=${wearable ? 'ON' : 'OFF'}",
                     "-DSCU_SDL_SOURCE=${sdl.absolutePath.replace('\\','/')}", '-DSCU_FETCH_SDL=OFF'
                 targets 'SonicCompilationUltra', 'SDL2'
                 cppFlags '-std=c++17'
@@ -45,6 +47,10 @@ android {
     buildFeatures { buildConfig false }
     sourceSets {
         main {
+            if (wearable) {
+                java.srcDir '../mobile/src/main/java'
+                res.srcDir '../mobile/src/main/res'
+            }
             java.srcDir generatedJava.get().asFile
             assets.srcDir generatedAssets.get().asFile
             if (privateAssets) assets.srcDir file(privateAssets)

@@ -1,4 +1,13 @@
-# Validation report — 29 October 2026
+# Validation report — 6 November 2026
+
+## 0.10 quality / Wear OS development preview
+
+- Independent CPU/stereo adaptation, reserved frame time, tail-cost history, adaptive effects, manual/thermal limits and fractional pacing are checked with generated timings. Actual application/device frame rate is not measured.
+- Retained and fresh full compositor output/upload regions are compared with generated RAM/VRAM/palettes, including alpha-changing palette animation. No SDL, console core or cartridge is linked into this executable.
+- The watch helper checks 288 lens variants, 1,001 continuous camera zoom positions and 48 round control layouts, including simultaneous direction/action input. The rewind helper checks 640 exact sparse/dense/variable-length state and reversed-audio round trips, trimming and workspace memory. These are not physical crown, touch, speaker or gameplay tests.
+- Standalone Wear OS uses a separate package, API 26 minimum and ARM64/ARMv7/x86-64 libraries. Phone/tablet remains API 24 minimum and independent of OpenXR. Source and APK audits cover the crown bridge, manifests, dependencies, signatures and 16 KB alignment; lint checks our Activity and narrowly excludes the same unused optional upstream BLE/audio paths as the phone module.
+- Optional foveation is extension/function guarded, uses cached profiles and rolls both eyes back to ordinary buffers before any image acquisition if an update fails. Both GLSL variants compile offline; actual GPU output and runtime extension behavior require later headset tests.
+- No app, game, emulator, installer, ADB operation or watch/headset session is used for this release. Prior screenshots below are historical. **Wear OS and macOS are experimental; startup, thermals, physical controls and sustained FPS remain unqualified.** See [automatic quality](AUTOMATIC_QUALITY.md) and [watch scope](WEAR.md).
 
 
 ## 0.9 performance development preview

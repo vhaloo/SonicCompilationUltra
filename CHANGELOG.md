@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.0 Quality / Wear OS development preview — 2026-11-06
+
+- Configurable 15/25/35% performance reserve, bounded tail-cost history, independent CPU/stereo resolution, adaptive effects and gradual quality recovery. Auto overview can use the full selected scene budget. Quest retains 90 Hz by default.
+- Optional OpenXR peripheral rendering with cached profiles, ordinary-buffer fallback for both eyes, fewer opaque blend passes and cached framebuffer validation.
+- Exact palette-index sample reuse for color animation; retained rewind buffers and zlib streams with workspace accounting, unchanged disk state format and reverse stereo order.
+- Separate standalone Wear OS APK with three ABIs, automatic crown/bezel detection, continuous whole-stage/native zoom, optional cached round fisheye, flat round-safe control banks, compact menus and a local ROM inbox fallback.
+- Retained mobile control geometry/layouts. Every setting has a clickable icon, original A/B examples and four-language help; hover, gamepad focus, touch and VR remain supported.
+- Pure generated-data rendering/quality/lens/touch/rewind checks, offline GLSL compilation, platform builds and Android lint/static audits. No application, emulator, game or device session; physical performance and compatibility remain unqualified. Wear OS and macOS are experimental.
+
 ## 0.9.0 Performance development preview — 2026-11-05
 
 - Shared automatic CPU/GPU/thermal resolution governor across every platform and view, 60 fps presentation target, independent native/UI layers and a literal-pixel lock.

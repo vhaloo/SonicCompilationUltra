@@ -42,6 +42,7 @@ jobs:
           python tools/audit_performance.py
           python tools/audit_xr_development.py
           python tools/audit_mobile_development.py
+          python tools/audit_wear_development.py
       - name: Configure Windows
         if: runner.os == 'Windows'
         run: cmake -S . -B build -A x64 -DBUILD_TESTING=OFF -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON
@@ -67,6 +68,12 @@ jobs:
           cmake -S tests/rendering -B build-generated-rendering
           cmake --build build-generated-rendering --config Release --parallel 3
           ctest --test-dir build-generated-rendering -C Release --output-on-failure
+          cmake -S tests/wear -B build-wear-math
+          cmake --build build-wear-math --config Release
+          ctest --test-dir build-wear-math -C Release --output-on-failure
+          cmake -S tests/rewind -B build-rewind-bytes
+          cmake --build build-rewind-bytes --config Release --parallel 3
+          ctest --test-dir build-rewind-bytes -C Release --output-on-failure
       - name: Package ROM-free software
         run: python tools/package.py --build build --platform ${{ matrix.platform }} --arch ${{ matrix.arch }} --out dist --source
       - uses: actions/upload-artifact@v4

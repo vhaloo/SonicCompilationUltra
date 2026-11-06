@@ -1,24 +1,32 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include <array>
 #include <vector>
 
 namespace scu {
 struct PerformancePolicy {
-    bool enabled = true, thermalAware = true;
+    bool enabled = true, thermalAware = true, effects = true, stereo = false;
     int minimum = 35, maximum = 100;
+    int reservePercent = 25;
     double targetHz = 60;
 };
 struct PerformanceSample {
     double simulationMs = 0, renderMs = 0, gpuMs = -1;
     bool active = true;
     int thermal = 0;
+    double presentationMs = 0;
 };
 class PerformanceGovernor {
     PerformancePolicy policy;
-    double cpu = 0, peak = 0, gpu = -1, simulation = 0, clock = 0, changedAt = -100;
-    unsigned samples = 0, overloaded = 0, spare = 0;
-    int percentage = 100, heatLimit = 100;
+    double cpu = 0, peak = 0, gpu = -1, gpuPeak = 0, simulation = 0, clock = 0, changedAt = -100,
+           eyeChangedAt = -100, effectChangedAt = -100, pressure = 0;
+    double scenePeak = 0, presentationPeak = 0, percentile = 0;
+    std::array<double, 90> history{};
+    unsigned historyAt = 0, historyCount = 0;
+    unsigned samples = 0, overloaded = 0, spare = 0, eyeOverloaded = 0, eyeSpare = 0,
+             effectOverloaded = 0, effectSpare = 0;
+    int percentage = 100, eyePercentage = 100, heatLimit = 100, effectsLevel = 3;
     bool simulationBound = false;
 
   public:
@@ -26,6 +34,12 @@ class PerformanceGovernor {
     void observe(const PerformanceSample &sample, double elapsedSeconds);
     void reset();
     int scale() const;
+    int stereoScale() const;
+    int effectLevel() const;
+    double availableHeadroom() const;
+    double usableBudgetMs() const {
+        return 1000. / policy.targetHz * (1. - policy.reservePercent / 100.);
+    }
     double cpuMs() const {
         return cpu;
     }

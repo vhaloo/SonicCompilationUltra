@@ -13,7 +13,7 @@ add_library(reference_zlib STATIC
 add_executable(generated_compositor_checks generated.cpp
     ${ROOT}/src/world.cpp ${ROOT}/src/terrain_atlas.cpp ${ROOT}/src/enemies.cpp
     ${ROOT}/src/spawn_catalogue.cpp ${ROOT}/src/rom_graphics.cpp ${ROOT}/src/rom_code.cpp
-    ${ROOT}/src/rom.cpp ${ROOT}/src/performance.cpp)
+    ${ROOT}/src/rom.cpp ${ROOT}/src/performance.cpp ${ROOT}/src/wear_display.cpp)
 target_include_directories(generated_compositor_checks PRIVATE ${ROOT}/src ${ROOT}/vendor/zlib)
 target_link_libraries(generated_compositor_checks PRIVATE reference_zlib reference_disassembler)
 if(MSVC)

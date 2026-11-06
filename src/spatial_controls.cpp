@@ -70,9 +70,9 @@ std::vector<SpatialButton> spatialButtons(int page) {
         grid(Refresh72, "remote_72");
         grid(Refresh90, "remote_90");
         grid(Refresh120, "remote_120");
-        grid(DetailLow, "light");
+        grid(DetailLow, "smoothpriority");
         grid(DetailBalanced, "balanced");
-        grid(DetailHigh, "ultra");
+        grid(DetailHigh, "detailpriority");
         grid(EyeLow, "remote_eye_low");
         grid(EyeBalanced, "remote_eye_balanced");
         grid(EyeHigh, "remote_eye_high");

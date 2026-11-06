@@ -2,6 +2,10 @@
 
 The source builds without a game ROM. A C99/C++17 compiler and CMake 3.20+ are required. SDL2 2.28+ can be supplied by the system; otherwise CMake obtains a SHA-256-pinned SDL2 2.32.10 source archive. Genesis Plus GX, Dear ImGui and zlib sources are included.
 
+For the **0.10 development preview**, platform CI configures `-DBUILD_TESTING=OFF` and compiles the app without starting it. Only the standalone generated-data projects in `tests/performance`, `tests/rendering`, `tests/wear`, `tests/rewind`, `tests/touch` and `tests/spatial` are executed. General test/run commands below are optional and are outside this release's no-app validation scope.
+
+Android has three modules: `:mobile` (phone/tablet), `:wear` (standalone watch) and `:app` (Quest). Use `./gradlew :wear:assembleRelease :wear:lintRelease` for the watch APK; the shared mobile script selects its own package, API floor, label and native version. [Wear setup](WEAR.md) · [Android build](ANDROID.md). Regenerate original setting examples with `python tools/generate_setting_previews.py` (Pillow); regenerate the renamed OFL font subset using `tools/subset_font.py` and its pinned source. Neither Python package is a runtime dependency.
+
 ## Windows
 
 Install Visual Studio 2022 Build Tools with the C++ desktop workload and Windows SDK. In a developer terminal:

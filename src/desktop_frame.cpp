@@ -88,15 +88,16 @@ void DesktopFrame::draw(SDL_Renderer *r, SDL_Texture *level, SDL_Texture *native
             SDL_SetTextureColorMod(level, oldR, oldG, oldB);
         }
         float frame = std::max(8.f, h * .065f);
-        for (int i = 6; i > 0; --i)
+        for (int i = s.effectsLevel >= 2 ? 6 : 2; i > 0; --i)
             rect(r, x - frame - i * 3, y - frame - i * 3, w + 2 * frame + i * 6,
                  h + 2 * frame + i * 6, {18, 79, 102, Uint8(10 + i)});
         rect(r, x - frame, y - frame, w + frame * 2, h + frame * 2, metal);
         rect(r, x - frame * .9f, y - frame * .9f, w + frame * 1.8f, h + frame * 1.8f, body);
         rect(r, x - frame * .35f, y - frame * .35f, w + frame * .7f, h + frame * .7f, ink);
         image(r, native, x, y, w, h);
+        bool mask = s.desktopCrtMask && s.effectsLevel >= 2;
         auto key = std::array<int, 7>{
-            {int(x), int(y), int(w), int(h), nh, s.desktopCrtStrength, int(s.desktopCrtMask)}};
+            {int(x), int(y), int(w), int(h), nh, s.desktopCrtStrength, int(mask)}};
         if (key != effectKey) {
             effectKey = key;
             effects.clear();
@@ -104,7 +105,7 @@ void DesktopFrame::draw(SDL_Renderer *r, SDL_Texture *level, SDL_Texture *native
             for (float row = y + step * .65f; row < y + h; row += step)
                 effectRect(effects, x, row, w, std::max(.7f, step * .26f),
                            {0, 0, 0, Uint8(s.desktopCrtStrength)});
-            if (s.desktopCrtMask && w > nw * 2)
+            if (mask && w > nw * 2)
                 for (float col = x; col < x + w; col += 3)
                     effectRect(effects, col, y, 1, h,
                                {20, 70, 95, Uint8(s.desktopCrtStrength / 7)});

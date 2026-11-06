@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.20)
+project(WearPresentationMath LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+add_executable(wear_checks checks.cpp ../../src/wear_display.cpp ../../src/touch_controls.cpp)
+target_include_directories(wear_checks PRIVATE ../../src)
+enable_testing()
+add_test(NAME generated_round_lens_crown_layout COMMAND wear_checks)

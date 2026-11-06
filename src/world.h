@@ -33,6 +33,11 @@ class World {
     bool patternsValid = false;
     std::array<bool, 2048> terrainUsed{};
     std::vector<uint32_t> terrainPixels;
+    // Four palette indices retain the exact 2x2 filter taps. Palette cycling
+    // recolors these samples without decoding terrain or running the filter again.
+    std::vector<std::array<uint8_t, 4>> terrainSamples;
+    uint64_t sampleSignature = 0;
+    bool samplesFiltered = false;
     DamageMap actorsDamage, textureDamage;
     TileAttributeCache terrainAttributes;
 
@@ -56,6 +61,7 @@ class World {
     int enemySpriteCount = 0, enemyMarkerCount = 0;
     Canvas canvas;
     uint64_t terrainCacheHits = 0, terrainCacheMisses = 0;
+    uint64_t paletteCacheHits = 0;
     uint64_t restoredBytes = 0;
     std::vector<DamageRect> uploadRegions;
     std::array<uint32_t, 320 * 224> backdrop{};
@@ -66,6 +72,8 @@ class World {
         patternsValid = false;
         shapeSignature = terrainSignature = 0;
         terrainPixels.clear();
+        std::vector<std::array<uint8_t, 4>>().swap(terrainSamples);
+        sampleSignature = 0;
         terrainAttributes.clear();
         actorsDamage.clear();
         textureDamage.clear();
