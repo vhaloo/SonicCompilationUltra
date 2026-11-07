@@ -31,6 +31,9 @@ struct XrStageContent {
     double targetFrameMs = 11.111;
     bool loaded = false;
     Scene scene;
+    const voxel::Frame *volume = nullptr;
+    const voxel::Mesher *volumeMesh = nullptr;
+    XrExtent2Df surfaceSize{1, 1};
     int left = 0, top = 0;
     double coverageWidth = 320, coverageHeight = 224;
 };

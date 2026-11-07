@@ -33,4 +33,4 @@ bmp=(r/'assets/settings-preview.bmp').read_bytes()
 assert bmp[:2]==b'BM' and struct.unpack_from('<ii',bmp,18)==(1280,900) and len(bmp)<1300000
 assert 'SDL_RenderGeometryRaw' in read('src/mobile.cpp') and 'controlsDraw' in read('src/mobile.cpp')
 assert 'LensMesh::update' in read('src/wear_display.cpp') and 'crownZoom' in read('src/wear_display.cpp')
-print(f'PASS Wear/source guide audit: {len(controls)} explained localized controls, 19 original examples, crown detection, standalone non-XR watch manifest and transient device facts.')
+print(f'PASS Wear/source guide audit: {len(controls)} explained localized controls, 20 original examples, crown detection, standalone non-XR watch manifest and transient device facts.')

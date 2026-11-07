@@ -21,6 +21,9 @@ quest-wall-anchor.txt
 *.jpg
 !docs/screenshots/*.png
 !docs/illustrations/settings-preview-gallery.png
+!docs/illustrations/voxel-flat.png
+!docs/illustrations/voxel-layered.png
+!docs/illustrations/voxel-sculpted.png
 *.wav
 *.mp4
 imgui.ini

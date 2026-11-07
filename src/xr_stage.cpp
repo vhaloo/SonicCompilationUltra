@@ -235,6 +235,7 @@ out vec4 tint;
 out float roughness;
 void main(){vec4 p=model*vec4(position,1);worldPosition=p.xyz;worldNormal=normalize(mat3(model)*normal);texcoord=uv;tint=color;roughness=finish;gl_Position=vp*p;}
 )GLSL";
+static_assert(voxel::planeCount == 7, "Keep the shader's two-column/four-row atlas in sync");
 const char *fragmentSource = R"GLSL(#version 300 es
 precision highp float;
 in vec3 worldPosition,worldNormal;
@@ -247,14 +248,14 @@ uniform int kind,crt,maskMode,effectDetail;
 uniform vec2 raster;
 uniform vec4 nativeHole;
 uniform bool clipNative;
-uniform float intensity,glassStrength,surroundBrightness;
+uniform float intensity,glassStrength,surroundBrightness,voxelLight;
 uniform bool flipImage,srgbTarget;
 out vec4 result;
 vec3 displayColor(vec2 uv){return texture(image,vec2(uv.x,flipImage?1.0-uv.y:uv.y)).rgb;}
 void main(){
 #ifdef SCU_FAST
  vec3 n=vec3(0,0,1),v=vec3(0,0,1);float facing=1.0;
- if(kind==0||kind==4||(kind==2&&crt>0)){n=normalize(worldNormal);v=normalize(eye-worldPosition);facing=max(dot(n,v),0.0);}
+ if(kind==0||kind==4||kind==7||kind==8||(kind==2&&crt>0)){n=normalize(worldNormal);v=normalize(eye-worldPosition);facing=max(dot(n,v),0.0);}
 #else
  vec3 n=normalize(worldNormal);vec3 v=normalize(eye-worldPosition);float facing=max(dot(n,v),0.0);
 #endif
@@ -289,6 +290,12 @@ void main(){
 #endif
   }
   if(kind==3)c*=surroundBrightness;
+ }else if(kind==7||kind==8){
+  vec2 localUv=fract(texcoord*vec2(2.0,4.0));
+  if(clipNative&&all(greaterThanEqual(localUv,nativeHole.xy))&&all(lessThan(localUv,nativeHole.xy+nativeHole.zw)))discard;
+  vec4 pixel=texture(image,texcoord).bgra;a=pixel.a;if(a<.002)discard;
+  float diffuse=max(dot(n,normalize(vec3(-.35,.7,.85))),0.0);
+  c=pixel.rgb*mix(1.0,.48+.52*diffuse,clamp(voxelLight,0.0,1.0));
  }else if(kind==6){
   vec2 uv=vec2(fract(texcoord.x*4.0),texcoord.y);
   float fade=smoothstep(0.0,.28,uv.y)*smoothstep(0.0,.28,1.0-uv.y);
@@ -392,9 +399,18 @@ struct XrStageRenderer::Impl {
     bool backdropAllocated = false;
     uint64_t remoteHash = 0, insetHash = 0;
     Mesh remoteMesh, insetFurniture, insetScreen, cube, joystickPlate, joystickHandle;
+    std::array<std::array<Mesh, 2>, voxel::planeCount> volumeMeshes;
+    std::array<uint64_t, voxel::planeCount> volumeShapes{};
+    std::array<uint64_t, voxel::planeCount> volumePixels{};
+    std::vector<voxel::Vertex> volumeScratch;
+    Vertices volumeVertices;
+    GLuint volumeAtlas = 0;
+    int volumeWidth = 0, volumeHeight = 0;
+    uint64_t volumeVersion = ~uint64_t(0);
     int imageUniform = -1, crtUniform = -1, maskUniform = -1, rasterUniform = -1,
         intensityUniform = -1, glassUniform = -1, brightnessUniform = -1, srgbUniform = -1,
-        flipUniform = -1, holeUniform = -1, clipUniform = -1, effectUniform = -1;
+        flipUniform = -1, holeUniform = -1, clipUniform = -1, effectUniform = -1,
+        voxelLightUniform = -1;
     uint64_t nativeVersion = ~uint64_t(0), backdropVersion = ~uint64_t(0), frameCount = 0,
              meshHash = 0;
     bool srgb = false;
@@ -422,6 +438,7 @@ struct XrStageRenderer::Impl {
         flipUniform = glGetUniformLocation(program, "flipImage");
         holeUniform = glGetUniformLocation(program, "nativeHole");
         clipUniform = glGetUniformLocation(program, "clipNative");
+        voxelLightUniform = glGetUniformLocation(program, "voxelLight");
     }
     void initialise(XrInstance instance, XrSystemId system, XrSession xrSession, int detail,
                     bool useFoveation) {
@@ -874,8 +891,89 @@ struct XrStageRenderer::Impl {
         screen.upload(p);
         glass.upload(g);
     }
+    bool prepareVolume(const XrStageContent &content, const Settings &s, int mode) {
+        if (!content.volume || !content.volumeMesh || !content.volume->valid() ||
+            !content.volumeMesh->valid() ||
+            (mode == 5 && (!s.questSurround || (content.volume->nativeOnly && !s.voxelCrt))))
+            return false;
+        const auto &f = *content.volume;
+        if (!volumeAtlas)
+            glGenTextures(1, &volumeAtlas);
+        if (volumeVersion != f.revision) {
+            glBindTexture(GL_TEXTURE_2D, volumeAtlas);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            if (volumeWidth != f.textureWidth() || volumeHeight != f.textureHeight()) {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, f.textureWidth(), f.textureHeight(), 0,
+                             GL_RGBA, GL_UNSIGNED_BYTE, f.pixels.data());
+                volumeWidth = f.textureWidth();
+                volumeHeight = f.textureHeight();
+            } else {
+                glPixelStorei(GL_UNPACK_ROW_LENGTH, volumeWidth);
+                for (size_t p = 0; p < voxel::planeCount; ++p) {
+                    if (volumePixels[p] == content.volumeMesh->layers()[p].pixelSignature)
+                        continue;
+                    int x = int(p % 2) * f.width, y = int(p / 2) * f.height;
+                    glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, f.width, f.height, GL_RGBA,
+                                    GL_UNSIGNED_BYTE,
+                                    f.pixels.data() + size_t(y) * volumeWidth + x);
+                }
+                glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+            }
+            for (size_t p = 0; p < voxel::planeCount; ++p)
+                volumePixels[p] = content.volumeMesh->layers()[p].pixelSignature;
+            volumeVersion = f.revision;
+        }
+        voxel::Options options;
+        options.mode = s.voxelMode;
+        options.thickness = float(s.voxelThickness);
+        options.spacing = float(s.voxelSpacing);
+        options.relief = float(s.voxelRelief);
+        for (size_t p = 0; p < voxel::planeCount; ++p) {
+            const auto &layer = content.volumeMesh->layers()[p];
+            uint64_t key = layer.signature ^
+                           (uint64_t(mode == 6 ? std::clamp(s.questCurve, 10, 220) : 0) << 40);
+            if (volumeShapes[p] == key)
+                continue;
+            for (size_t alpha = 0; alpha < 2; ++alpha) {
+                const auto &source = alpha ? layer.translucent : layer.opaque;
+                voxel::panelTriangles(source, f, options, mode == 6, float(s.questCurve),
+                                      volumeScratch);
+                volumeVertices.clear();
+                volumeVertices.reserve(volumeScratch.size());
+                for (const auto &v : volumeScratch)
+                    volumeVertices.push_back({{v.position.x, v.position.y, v.position.z},
+                                              {v.normal.x, v.normal.y, v.normal.z},
+                                              v.u,
+                                              v.v,
+                                              white,
+                                              .8f});
+                volumeMeshes[p][alpha].upload(volumeVertices);
+            }
+            volumeShapes[p] = key;
+        }
+        return true;
+    }
+    void drawVolume(const Matrix &m, bool clip) {
+        glUniform1i(clipUniform, clip);
+        glEnable(GL_CULL_FACE);
+        glFrontFace(GL_CCW);
+        glCullFace(GL_BACK);
+        for (size_t alpha = 0; alpha < 2; ++alpha) {
+            glDepthMask(alpha ? GL_FALSE : GL_TRUE);
+            for (auto &layer : volumeMeshes)
+                draw(layer[alpha], m, alpha ? 7 : 8, volumeAtlas);
+        }
+        glDepthMask(GL_TRUE);
+        glDisable(GL_CULL_FACE);
+        glUniform1i(clipUniform, 0);
+    }
     void draw(const Mesh &mesh, const Matrix &m, int shaderKind, GLuint texture = 0) {
-        const bool alpha = shaderKind == 1 || shaderKind == 3 || shaderKind == 4;
+        const bool alpha = shaderKind == 1 || shaderKind == 3 || shaderKind == 4 || shaderKind == 7;
         if (alpha != blendEnabled) {
             if (alpha)
                 glEnable(GL_BLEND);
@@ -976,6 +1074,7 @@ struct XrStageRenderer::Impl {
         glUniform1f(brightnessUniform, s.questSurroundBrightness * .01f);
         glUniform1i(srgbUniform, srgb);
         glUniform1i(flipUniform, s.questFlip);
+        glUniform1f(voxelLightUniform, s.voxelLight * .01f);
         GLuint nativeImage = native(content), expanded = demoTexture;
         GLuint backdropImage = !ar && mode == 5 && s.questWorldBackdrop && s.background != 6
                                    ? backdrop(content)
@@ -995,6 +1094,9 @@ struct XrStageRenderer::Impl {
                           : .5f;
         if (mode != 4 && !content.loaded)
             ratio = 16.f / 9;
+        const bool volumeReady = prepareVolume(content, s, mode);
+        if (mode == 6 && volumeReady)
+            ratio = float(content.volume->coverageWidth / content.volume->coverageHeight);
         if (mode >= 4)
             geometry(s, mode, ratio, content.nativeWidth, content.nativeHeight);
         controlsGeometry(controls, s, content.nativeWidth, content.nativeHeight);
@@ -1014,6 +1116,46 @@ struct XrStageRenderer::Impl {
         glUniform4f(holeUniform, hole.x, hole.y, hole.width, hole.height);
         glUniform1i(clipUniform, 0);
         Matrix root = poseMatrix(origin, s.questScale * .01f);
+        Matrix volumeModel = Matrix::identity();
+        if (volumeReady) {
+            const auto &f = *content.volume;
+            float sourceRatio = float(f.coverageWidth / f.coverageHeight);
+            if (mode < 4) {
+                const float w =
+                    std::min(content.surfaceSize.width, content.surfaceSize.height * sourceRatio);
+                volumeModel =
+                    product(poseMatrix(origin), placement({0, 0, 0}, {w, w / sourceRatio, w}));
+            } else if (mode == 4) {
+                const float boardRatio = std::clamp(ratio, .25f, 2.f);
+                const float sx = std::min(1.f, sourceRatio / boardRatio),
+                            sy = std::min(1.f, boardRatio / sourceRatio);
+                volumeModel = product(
+                    root, product(screenLocal,
+                                  placement({0, 0, 0}, {sx, sy, s.questCabinetWidth * .01f * sx})));
+            } else if (mode == 6) {
+                float h = s.questWallHeight * .01f, w = h * ratio;
+                volumeModel = product(root, placement({0, 0, 0}, {w, h, w}));
+            } else {
+                float unit = s.questTvWidth * .01f / std::max(1, content.nativeWidth),
+                      h = s.questTvWidth * .01f * content.nativeHeight /
+                          std::max(1, content.nativeWidth),
+                      x = f.nativeOnly ? 0.f
+                                       : float(f.left + f.coverageWidth / 2 -
+                                               content.scene.cameraX - content.nativeWidth / 2) *
+                                             unit,
+                      y = h / 2 + .72f +
+                          (f.nativeOnly ? 0.f
+                                        : float(content.scene.cameraY + content.nativeHeight / 2 -
+                                                f.top - f.coverageHeight / 2) *
+                                              unit);
+                const float front =
+                    s.questCrtCoplanar || s.voxelCrt ? s.questTvWidth * .0016f : -.7f;
+                volumeModel =
+                    product(root, placement({x, y, front}, {float(f.coverageWidth) * unit,
+                                                            float(f.coverageHeight) * unit,
+                                                            float(f.coverageWidth) * unit}));
+            }
+        }
         bool alphaLayer = ar || mode < 4;
         for (int i = 0; i < 2; ++i) {
             auto &e = eyes[i];
@@ -1069,7 +1211,8 @@ struct XrStageRenderer::Impl {
             }
             // The surrounding expanded level follows the native camera. The CRT
             // face always keeps the unmodified cartridge viewport and aspect.
-            if (mode == 5 && s.questSurround && content.loaded && content.scene.ready && bound) {
+            if (!volumeReady && mode == 5 && s.questSurround && content.loaded &&
+                content.scene.ready && bound) {
                 float unit = s.questTvWidth * .01f / std::max(1, content.nativeWidth),
                       h = s.questTvWidth * .01f * content.nativeHeight /
                           std::max(1, content.nativeWidth),
@@ -1089,10 +1232,13 @@ struct XrStageRenderer::Impl {
                      3, expanded);
             }
             glUniform1i(clipUniform, 0);
+            if (volumeReady)
+                drawVolume(volumeModel, mode == 5 && s.questCrtCoplanar && !s.voxelCrt);
             if (mode >= 4) {
                 draw(furniture, root, 0);
-                draw(screen, product(root, screenLocal), mode == 5 ? 2 : 1,
-                     mode == 5 ? nativeImage : expanded);
+                if (!volumeReady || (mode == 5 && !s.voxelCrt))
+                    draw(screen, product(root, screenLocal), mode == 5 ? 2 : 1,
+                         mode == 5 ? nativeImage : expanded);
             }
             if (controls.nativeVisible) {
                 auto mini = poseMatrix(controls.nativePose, s.questInsetWidth * .01f);
@@ -1213,6 +1359,11 @@ struct XrStageRenderer::Impl {
         glass.clear();
         plain.clear();
         surroundings.clear();
+        for (auto &layer : volumeMeshes)
+            for (auto &mesh : layer)
+                mesh.clear();
+        if (volumeAtlas)
+            glDeleteTextures(1, &volumeAtlas);
         for (auto id : programs)
             if (id)
                 glDeleteProgram(id);

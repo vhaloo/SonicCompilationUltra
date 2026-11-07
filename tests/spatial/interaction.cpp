@@ -9,7 +9,7 @@ void require(bool b) {
         std::abort();
 }
 int main() {
-    for (int page = 0; page < 7; ++page) {
+    for (int page = 0; page < 8; ++page) {
         auto buttons = spatialButtons(page);
         for (size_t i = 0; i < buttons.size(); ++i) {
             auto b = buttons[i];

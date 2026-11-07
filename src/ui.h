@@ -4,6 +4,7 @@
 #include "setting_help.h"
 #include "desktop_frame.h"
 #include "performance.h"
+#include "voxel_gpu.h"
 #include <imgui.h>
 #ifdef SCU_UI_TESTS
 #include <map>
@@ -25,6 +26,8 @@ class App {
     SDL_Texture *worldTexture = nullptr, *nativeTexture = nullptr, *bgTexture = nullptr;
     SDL_Texture *settingsPreview = nullptr;
     DesktopFrame desktopFrame;
+    VoxelGpu volumeGpu;
+    bool cachedVolume = false, voxelWasEnabled = false, worldTextureStale = false;
     ImGuiContext *uiContext = nullptr;
     bool uiPlatformReady = false, uiRendererReady = false;
     int textureW = 0, textureH = 0, nativeTW = 0, nativeTH = 0;
@@ -74,6 +77,7 @@ class App {
     void ui();
     void libraryUi();
     void optionsUi(int section);
+    void voxelOptions();
     void browserUi();
     void hud();
     void logicalWindowSize(int &width, int &height) const;

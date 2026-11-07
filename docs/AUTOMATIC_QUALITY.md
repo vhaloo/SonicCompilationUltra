@@ -1,6 +1,6 @@
 # Fluidity and automatic quality
 
-**0.10 aims for the highest picture quality that leaves a useful performance reserve.** Ordinary screens target 60 fps by default. Quest retains 90 Hz by default for stereo presentation and tracking. Console timing, level coverage, rewind audio and spawn previews remain independent of display quality.
+**Automatic quality aims for the highest picture quality that leaves a useful performance reserve.** Ordinary screens target 60 fps by default. Quest retains 90 Hz by default for stereo presentation and tracking. Console timing, level coverage, rewind audio and spawn previews remain independent of display quality.
 
 Open **Video → Fluidity and quality**, or the Quest options:
 
@@ -21,6 +21,8 @@ At 90 Hz, a 25% reserve leaves about **8.3 ms** of each 11.1 ms frame for app wo
 - **The menu and native source image stay separate from scene downsampling.** A watch lens deliberately transforms its game canvas; its controls and options remain flat.
 
 **Advanced performance limits** contains minimum/maximum sampling (35–100% by default, adjustable within 25–100%), thermal adaptation and **literal 1:1 Pixel lock**. Pixel lock preserves source sampling in Pixel view and can restrict automatic gains. Existing quality choices bound scene pixels and memory. Manual mode retains full selected resolution/effects. No setting changes PAL/NTSC simulation speed.
+
+**Voxel detail** sets an upper limit on sampling the complete picture. Effect adaptation can use coarser cells under load; Android and especially Wear have smaller ceilings. The volume renderer reuses buffers when shapes stay the same and skips texture uploads when pixels stay the same. Where the backend supports it, a change uploads only the affected atlas planes. The tilted picture disables literal 1:1 sampling and 2D map smoothing while active; switching to Flat restores your choices. [Depth and voxel settings](VOXELS.md).
 
 ## Quest VR/AR
 
@@ -47,6 +49,6 @@ Desktop vsync can use a compatible divisor, such as 72 on a 144 Hz panel. Mobile
 
 Generated-data checks cover retained/full compositor and upload equivalence, including palette alpha changes; independent CPU/stereo pressure; reserve budgets, thermal/manual/core-limit behavior; continuous crown zoom, no-fold round meshes and round-safe simultaneous touch; and byte-exact rewind/audio round trips with memory limits. GLSL variants are compiled offline. Platform builds, Android lint and static APK/dependency/signature/alignment audits are separate checks.
 
-**No app, game, emulator, installer, watch or headset session was executed for 0.10.** These checks do not certify startup, GPU output, physical controls, thermal behavior or sustained 60/90 fps on any particular device. Hardware profiling remains a later step. macOS and Wear OS remain experimental. A CPU-limited console core, sub-60-Hz display, throttling or literal-pixel lock can constrain the result.
+**No app, game, emulator, installer, watch or headset session was executed for 0.11.** These checks do not certify startup, GPU output, physical controls, thermal behavior or sustained 60/90 fps on any particular device. Hardware profiling remains a later step. macOS and Wear OS remain experimental. A CPU-limited console core, sub-60-Hz display, throttling or literal-pixel lock can constrain the result.
 
 References: [Android game performance](https://developer.android.com/games/optimize/power), [thermal feedback](https://developer.android.com/games/optimize/adpf/thermal), [OpenXR foveation](https://github.com/KhronosGroup/OpenXR-Docs/blob/main/specification/sources/chapters/extensions/fb/fb_foveation.adoc), [profile configuration](https://github.com/KhronosGroup/OpenXR-Docs/blob/main/specification/sources/chapters/extensions/fb/fb_foveation_configuration.adoc), [swapchain state](https://github.com/KhronosGroup/OpenXR-Docs/blob/main/specification/sources/chapters/extensions/fb/fb_swapchain_update_state.adoc), [disjoint timer queries](https://registry.khronos.org/OpenGL/extensions/EXT/EXT_disjoint_timer_query.txt).

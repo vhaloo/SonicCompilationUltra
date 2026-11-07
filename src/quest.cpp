@@ -534,7 +534,8 @@ struct QuestPresentation::Impl {
                    : app.settings.questMode;
     }
     bool stereo() const {
-        return mode() >= 4;
+        return mode() >= 4 ||
+               (app.core.loaded && app.settings.voxelMode && !app.menu && app.cachedVolume);
     }
     bool fixed() const {
         return mode() != 0;
@@ -587,7 +588,7 @@ struct QuestPresentation::Impl {
         return {w, w * gameScreen.height / std::max(1, gameScreen.width)};
     }
     XrPosef worldPose() const {
-        if (stereo())
+        if (mode() >= 4)
             return wallBase;
         if (!fixed()) {
             if (!app.settings.questAnchor)
@@ -1387,7 +1388,8 @@ struct QuestPresentation::Impl {
             target.mode = mode();
         }
         if (frame.shouldRender && haveHead &&
-            (stereo() || spatial.visible || spatial.nativeVisible) && (!stereo() || wallTracked)) {
+            (stereo() || spatial.visible || spatial.nativeVisible) &&
+            (!stereo() || !fixed() || wallTracked)) {
             SDL_RenderFlush(app.renderer);
             XrStageContent content;
             content.loaded = app.core.loaded;
@@ -1402,6 +1404,11 @@ struct QuestPresentation::Impl {
             content.targetFrameMs =
                 frame.predictedDisplayPeriod > 0 ? frame.predictedDisplayPeriod * 1e-6 : 11.111;
             content.scene = app.core.world.inspect(app.core.snapshot, app.core.game);
+            if (app.settings.voxelMode && !app.menu && app.cachedVolume) {
+                content.volume = &app.core.world.volume;
+                content.volumeMesh = &app.core.world.volumeMesh;
+            }
+            content.surfaceSize = physicalSize();
             if (mode() == 4 && !content.scene.ready)
                 content.expanded = nullptr;
             auto &canvas = app.core.world.canvas;
@@ -1441,7 +1448,7 @@ struct QuestPresentation::Impl {
             }
         }
         if (!stereo() && frame.shouldRender && haveHead && gameScreen.valid &&
-            gameScreen.mode == mode() && (!fixed() || wallTracked)) {
+            gameScreen.swapchain && gameScreen.mode == mode() && (!fixed() || wallTracked)) {
             screen.layerFlags =
                 passthroughActive ? XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT : 0;
             screen.space = local;
@@ -1564,6 +1571,7 @@ bool QuestPresentation::needsRedraw() const {
     auto &target = p.companion() ? p.menuScreen : p.gameScreen;
     auto size = p.canvasSize(p.companion());
     return p.app.menu || !target.valid || target.mode != p.mode() ||
+           bool(target.swapchain) != !p.stereo() ||
            target.imageVersion != p.app.core.imageVersion || p.app.dirty ||
            p.app.settings.compositionScale != p.app.performanceGovernor.scale() ||
            p.app.screenshotRequested || target.requestedWidth != size.first ||
@@ -1662,6 +1670,8 @@ void QuestPresentation::options() {
     auto &a = impl->app;
     auto &s = a.settings;
     bool changed = false;
+    if (ImGui::CollapsingHeader(tr("voxelgroup", a.language)))
+        a.voxelOptions();
     ImGui::TextWrapped("%s", tr("questintro", a.language));
     changed |= a.tick("questremote", s.questRemote);
     changed |= a.tick("questtransparent", s.questTransparent);

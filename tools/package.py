@@ -15,7 +15,7 @@ def audit_tree(root: pathlib.Path):
         if not p.is_file():
             continue
         rel = p.relative_to(root).as_posix()
-        original_preview=rel.endswith('assets/settings-preview.bmp') and hashlib.sha256(p.read_bytes()).hexdigest()=='7d776371634242135330ac3e4d51ec1b626a5bbdf2ecc52491ec0ff06fcb092e'
+        original_preview=rel.endswith('assets/settings-preview.bmp') and hashlib.sha256(p.read_bytes()).hexdigest()=='dd663cf8fcb966ea47124bf9920cf0d79ce2f13d1c6ff761a0f5addb8cd96239'
         if (p.suffix.lower() in BANNED and not original_preview) or p.name in {'library.tsv','settings.ini','imgui.ini'}:
             raise RuntimeError(f'User/game-data file in package: {rel}')
         data = p.read_bytes()

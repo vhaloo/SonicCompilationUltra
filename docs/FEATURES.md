@@ -29,6 +29,8 @@ Pixel 1:1 uses physical framebuffer dimensions, including on Retina displays. Ex
 
 The render-size cap preserves the requested world coverage and aspect ratio. Native-only games also respect Pixel world magnification rather than silently filling a larger screen. A native image that cannot fit a tiny window is reduced to fit.
 
+**Video → Depth and voxels** adds optional thick pixels, observed priority layers or sculpted relief. Use the original flat view for exact physical pixels. Quest has direct depth buttons on the spatial remote. [Illustrated guide](VOXELS.md).
+
 ## Illustrated settings
 
 Every option has an explanation and an original geometric illustration, localized into English, French, Spanish and Japanese. On larger screens, focus or hover an option to update the side panel. Press **Y / Triangle / top face button** or **F1 in the menu** to open a scrollable detail guide at any size. **B / Esc / Select** closes that guide first. The help button is also reachable with directional navigation. The guide’s illustrations are diagrams, not fabricated gameplay captures.

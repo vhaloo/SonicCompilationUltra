@@ -7,7 +7,7 @@ struct GlState {
     GLint program, vao, arrayBuffer, elementBuffer, active, texture0, textureActive, draw, read,
         renderbuffer;
     GLint viewport[4], scissor[4], srcRGB, dstRGB, srcA, dstA, eqRGB, eqA, depthFunc, cullMode,
-        frontFace, pack, unpack;
+        frontFace, pack, unpack, unpackRow;
     GLfloat clear[4];
     GLboolean blend, depth, cull, scissorTest, depthMask, colorMask[4];
     bool pending = true;
@@ -36,6 +36,7 @@ struct GlState {
         glGetIntegerv(GL_FRONT_FACE, &frontFace);
         glGetIntegerv(GL_PACK_ALIGNMENT, &pack);
         glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpack);
+        glGetIntegerv(GL_UNPACK_ROW_LENGTH, &unpackRow);
         glGetFloatv(GL_COLOR_CLEAR_VALUE, clear);
         glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
         glGetBooleanv(GL_COLOR_WRITEMASK, colorMask);
@@ -68,6 +69,7 @@ struct GlState {
         glFrontFace(frontFace);
         glPixelStorei(GL_PACK_ALIGNMENT, pack);
         glPixelStorei(GL_UNPACK_ALIGNMENT, unpack);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, unpackRow);
         glClearColor(clear[0], clear[1], clear[2], clear[3]);
         glColorMask(colorMask[0], colorMask[1], colorMask[2], colorMask[3]);
         for (auto e : {std::pair<GLenum, GLboolean>{GL_BLEND, blend},

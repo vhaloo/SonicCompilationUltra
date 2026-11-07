@@ -2,7 +2,7 @@
 
 **A separate standalone watch APK**, with a round-screen layout, crown/bezel zoom and an optional fisheye. It does not require the phone app. The build targets Android 8.0 / API 26 or newer, OpenGL ES 2.0 and ARM64, ARMv7 or x86-64. Compatible Android rotary input is detected automatically; no model-name whitelist is used.
 
-This is an **experimental development preview**. No watch, emulator or game was started for 0.10. Compilation, lint, APK inspection and generated geometry/input checks do not certify physical compatibility, readability, battery life or sustained frame rate on a Pixel Watch or Galaxy Watch.
+This is an **experimental development preview**. No watch, emulator or game was started for 0.11. Compilation, lint, APK inspection and generated geometry/input checks do not certify physical compatibility, readability, battery life or sustained frame rate on a Pixel Watch or Galaxy Watch.
 
 ## Get ready
 
@@ -28,6 +28,8 @@ These are user instructions; no device connection or installation was performed 
 - On a square watch the game keeps a flat, aspect-correct picture. Scenes without a supported map decoder retain their native view. “Whole stage” means the currently supported map, not undiscovered scripted content.
 
 The new installation targets 60 fps with automatic scene sampling, effects and a 30% work reserve. It uses a small scene ceiling, a retained lens mesh and a 24 MB rewind profile. The system and native simulation still set practical limits. [Performance choices](AUTOMATIC_QUALITY.md) explain the tradeoffs.
+
+**Video → Depth and voxels** adds optional pixel volumes, including with the crown and round lens. Watch geometry and texture limits are smaller. For the lowest drawing cost, keep the default Flat mode. [Depth guide](VOXELS.md).
 
 ![Original illustrative examples, not watch captures](illustrations/settings-preview-gallery.png)
 

@@ -9,6 +9,164 @@ namespace scu {
         }                                                                                          \
     }
 static const SettingHelp entries[] = {
+    H("voxelexport", Depth,
+      "Save the complete current voxel mesh, material and transparent texture into a new local "
+      "exports folder. Open scene.obj in a modelling application with the other files beside it. "
+      "Existing exports stay intact. Cartridge-derived artwork stays private and is never uploaded "
+      "by this button.",
+      "Enregistre le maillage voxel actuel, son matériau et sa texture transparente dans un "
+      "nouveau dossier exports local. Ouvre scene.obj dans un logiciel 3D en gardant les autres "
+      "fichiers à côté. Les exports précédents sont conservés. Les images issues d’une cartouche "
+      "restent privées ; ce bouton ne les envoie jamais.",
+      "Guarda la malla voxel actual, su material y textura transparente en una carpeta exports "
+      "local nueva. Abre scene.obj en una aplicación 3D con los demás archivos al lado. Conserva "
+      "las exportaciones previas. El arte del cartucho queda privado; este botón nunca lo sube.",
+      "現在のボクセル形状、マテリアル、透明なテクスチャを、端末内の新しいexportsフォルダーに保存し"
+      "ます。ほかのファイルを同じ場所に置いてscene."
+      "objを3Dソフトで開けます。以前の書き出しは残し、カートリッジ由来の画像を自動送信しません。"),
+    H("voxelmode", Depth,
+      "Flat keeps the original picture. Thick pixels extrude the visible image as one surface. "
+      "Layered voxels separate observed terrain and actors by drawing priority. Sculpted voxels "
+      "add four small brightness steps. These are procedural pixel volumes, not newly authored "
+      "object models; physics and timing stay original.",
+      "Plat conserve l’image d’origine. Pixels épais donne une épaisseur à l’image visible. Voxels "
+      "par couches sépare le terrain et les objets observés selon leur priorité d’affichage. "
+      "Voxels sculptés ajoute quatre petits paliers de luminosité. Ce sont des volumes "
+      "procéduraux, sans nouveaux modèles d’objets ; physique et cadence restent d’origine.",
+      "Plano conserva la imagen original. Píxeles con grosor da espesor a la imagen visible. "
+      "Vóxeles por capas separa terreno y objetos observados según su prioridad de dibujo. "
+      "Esculpidos añade cuatro pequeños escalones de luminosidad. Son volúmenes procedurales, no "
+      "nuevos modelos de objetos; física y ritmo se mantienen.",
+      "平面は元の絵を保ちます。厚み表示は見えている画像を立体にし、レイヤー別表示は観測した地形と物"
+      "体を描画順に分けます。段差表示は明るさから四段階の小さな凹凸を付けます。物体の新作モデルでは"
+      "なく、ピクセルから作る立体です。物理と速度は変わりません。"),
+    H("voxelpreset", Depth,
+      "Subtle uses thin pixels and close layers. Diorama gives a clearer separation. Bold "
+      "increases thickness and spacing. These presets change appearance only; every value can "
+      "still be adjusted separately.",
+      "Discret choisit des pixels fins et des couches proches. Diorama sépare davantage les plans. "
+      "Prononcé augmente l’épaisseur et l’écartement. Ces styles ne changent que l’apparence ; "
+      "chaque valeur reste réglable séparément.",
+      "Sutil usa píxeles finos y capas cercanas. Diorama separa más los planos. Intenso aumenta "
+      "grosor y distancia. Los estilos solo cambian la apariencia; cada valor sigue siendo "
+      "ajustable por separado.",
+      "控えめは薄いピクセルと近いレイヤー、ジオラマは分かりやすい奥行き、強調は厚いピクセルと広い間"
+      "隔を使います。見た目だけを変え、各数値も個別に調整できます。"),
+    H("voxelthickness", Depth,
+      "Depth of each solid pixel column, in original game-pixel units. Higher values show longer "
+      "edges when viewed from the side. A black pixel stays solid; only transparent pixels leave "
+      "holes. Internal faces are removed to save work.",
+      "Profondeur de chaque colonne, en pixels du jeu d’origine. Une valeur élevée allonge les "
+      "arêtes visibles de côté. Un pixel noir reste solide ; seuls les pixels transparents créent "
+      "des trous. Les faces intérieures sont supprimées pour alléger le rendu.",
+      "Profundidad de cada columna, en píxeles del juego original. Un valor alto alarga los bordes "
+      "vistos de lado. El negro sigue siendo sólido; solo la transparencia crea huecos. Se "
+      "eliminan las caras interiores para ahorrar trabajo.",
+      "元のゲームのピクセルを単位にした柱の厚みです。大きくすると横から見た縁が長くなります。黒も立"
+      "体として残し、透明なピクセルだけを穴にします。内部の面は省いて負荷を抑えます。"),
+    H("voxelspacing", Depth,
+      "Air between priority layers. Terrain, low-priority actors, high-priority foreground and "
+      "high-priority actors keep their order even at zero spacing. Spacing is artistic depth, not "
+      "a new collision dimension. In VR, use the grips to move the complete scene.",
+      "Espace libre entre les plans de priorité. Terrain, objets derrière, premier plan "
+      "prioritaire et objets devant gardent leur ordre, même à zéro. Cet écart est un effet "
+      "visuel, sans nouvelle dimension de collision. En VR, les poignées déplacent la scène "
+      "entière.",
+      "Espacio libre entre planos de prioridad. Terreno, objetos traseros, primer plano "
+      "prioritario y objetos delanteros conservan su orden, incluso con espacio cero. Es "
+      "profundidad visual, sin una nueva dimensión de colisión. En VR, los agarres mueven la "
+      "escena completa.",
+      "描画優先度ごとのレイヤーの隙間です。ゼロでも地形、背面の物体、前景、前面の物体の順序を保ちま"
+      "す。演出用の奥行きで、当たり判定の次元は増えません。VRではグリップで場面全体を動かせます。"),
+    H("voxelrelief", Depth,
+      "Sculpted mode adds four bounded height steps from pixel brightness. It preserves priority "
+      "bands and does not infer a character's hidden body or the true height of an isometric "
+      "building. Zero makes the surface flat while retaining thickness.",
+      "Le mode sculpté ajoute quatre paliers limités à partir de la luminosité. Il respecte les "
+      "couches et ne devine ni le corps caché d’un personnage ni la hauteur réelle d’un bâtiment "
+      "isométrique. Zéro garde une surface plate avec son épaisseur.",
+      "El modo esculpido añade cuatro escalones limitados según el brillo. Respeta las capas y no "
+      "adivina partes ocultas de personajes ni la altura real de edificios isométricos. Cero "
+      "conserva una superficie plana con grosor.",
+      "明るさから四段階の小さな高さを作ります。描画順は保ち、隠れた身体や斜め見下ろしの建物の実際の"
+      "高さは推測しません。ゼロなら厚みを残して表面だけ平らにします。"),
+    H("voxellight", Depth,
+      "A small directional and ambient light makes side faces readable without expensive ray "
+      "tracing. Zero preserves original texture colours. Lighting changes presentation, not enemy "
+      "visibility rules or the game's own palette animation.",
+      "Un éclairage directionnel et ambiant léger rend les côtés lisibles, sans lancer de rayons "
+      "coûteux. Zéro conserve les couleurs des textures. Il ne change ni les règles de visibilité "
+      "des ennemis ni les animations de palette du jeu.",
+      "Una luz direccional y ambiental ligera hace legibles los lados sin trazado de rayos "
+      "costoso. Cero conserva los colores originales. No cambia las reglas de visibilidad de "
+      "enemigos ni la animación de paleta del juego.",
+      "軽い方向光と環境光で側面を見やすくします。重いレイトレーシングは使いません。ゼロは元の色を保"
+      "ち、敵の出現条件やゲームのパレットアニメーションには影響しません。"),
+    H("voxelbackground", Depth,
+      "Extrude the observed background tiles too. Their priority can place parts in front of "
+      "low-priority actors. Other expanded scenes repeat the observed backdrop decoratively. "
+      "Transparent AR always leaves background art out so the room stays visible.",
+      "Donne aussi de l’épaisseur aux tuiles de fond observées. Leur priorité peut placer des "
+      "éléments devant les objets moins prioritaires. Les autres scènes étendues répètent le fond "
+      "comme décor. La transparence AR le masque toujours pour laisser voir la pièce.",
+      "Da grosor también a los mosaicos de fondo observados. Su prioridad puede colocar partes "
+      "delante de objetos menos prioritarios. Otras escenas extendidas repiten el fondo "
+      "decorativo. La transparencia AR siempre lo oculta para dejar visible la habitación.",
+      "観測した背景タイルにも厚みを付けます。優先度が高い部分は背面の物体より手前に配置します。その"
+      "他の拡張場面では背景を装飾として繰り返します。ARを透明にすると背景は常に省略し、部屋を見せま"
+      "す。"),
+    H("voxeldetail", Depth,
+      "Maximum sampling budget for the voxel geometry. Fine settings retain more small pixels but "
+      "cost memory and drawing work. Automatic quality can lower the complete grid under load; it "
+      "never drops the last objects to meet a face limit. Watches use a smaller ceiling. The "
+      "original reference screen and menus remain separate.",
+      "Budget maximal d’échantillonnage de la géométrie. Les niveaux fins conservent plus de "
+      "petits pixels mais coûtent de la mémoire et du rendu. La qualité automatique réduit la "
+      "grille entière si nécessaire, sans supprimer les derniers objets. La montre utilise une "
+      "limite plus basse. Écran de référence et menus restent séparés.",
+      "Presupuesto máximo de muestreo geométrico. Los niveles finos conservan más píxeles "
+      "pequeños, con mayor memoria y trabajo. La calidad automática reduce la rejilla completa si "
+      "hace falta; no descarta los últimos objetos. El reloj tiene un límite menor. Pantalla de "
+      "referencia y menús siguen separados.",
+      "形を作るサンプリング量の上限です。細かいほど小さなピクセルを残せますが、メモリと描画負荷が増"
+      "えます。自動の画質調整は必要に応じて格子全体を粗くし、末尾の物体だけを省きません。時計は小さ"
+      "な上限を使い、基準画面とメニューは別に保ちます。"),
+    H("voxelyaw", Depth,
+      "Orbit the desktop/mobile picture to reveal thickness. Front view restores straight-on "
+      "alignment; Diorama chooses a gentle angle. The camera fits the complete volume without "
+      "cropping it. VR uses your tracked head and scene-placement grips instead.",
+      "Oriente l’image PC ou mobile pour découvrir l’épaisseur. Vue de face retrouve l’alignement "
+      "droit ; Vue diorama choisit un angle doux. Le cadrage contient le volume entier sans le "
+      "couper. En VR, utilise ta tête et les poignées de placement.",
+      "Gira la vista de PC o móvil para ver el grosor. Frontal recupera la alineación recta; "
+      "Diorama elige un ángulo suave. El encuadre contiene el volumen entero sin recortarlo. En VR "
+      "se usan la cabeza y los agarres de colocación.",
+      "PCやモバイルの画像を見る角度を変えて厚みを確認します。正面ボタンは直線的な配置に戻し、ジオラ"
+      "マは緩やかな角度を選びます。全体を切らずに収めます。VRでは頭の動きと配置用グリップを使います"
+      "。"),
+    H("voxelpitch", Depth,
+      "Tilt the desktop/mobile view up or down. Zero looks straight at the game. It changes the "
+      "viewing angle only; crown zoom, touch controls and the original simulation are unchanged.",
+      "Incline la vue PC ou mobile vers le haut ou le bas. Zéro regarde le jeu de face. Seul "
+      "l’angle change ; zoom à la couronne, commandes tactiles et simulation d’origine sont "
+      "conservés.",
+      "Inclina la vista de PC o móvil arriba o abajo. Cero mira de frente. Solo cambia el ángulo; "
+      "el zoom con corona, los controles táctiles y la simulación original se conservan.",
+      "PCやモバイルで上下から見る角度を変えます。ゼロは正面です。クラウンのズーム、タッチ操作、元の"
+      "ゲーム処理は変わりません。"),
+    H("voxelcrt", Depth,
+      "In the VR CRT room, replace the flat CRT image with pixel volumes too. Off keeps the "
+      "precise native picture and CRT shader on the glass while the surrounding level gains depth. "
+      "Enable the surrounding-level option to see the voxel scene.",
+      "Dans la pièce CRT en VR, remplace aussi l’image plate de la TV par des volumes. Désactivé "
+      "conserve l’image native précise et son filtre CRT, tout en donnant du relief au niveau "
+      "autour. Active le niveau environnant pour voir la scène voxel.",
+      "En la sala CRT de VR, sustituye también la imagen plana de la TV por volúmenes. Desactivado "
+      "conserva la imagen nativa precisa y el filtro CRT, con relieve alrededor. Activa el nivel "
+      "circundante para ver la escena voxel.",
+      "VRのブラウン管モードで、テレビの中もピクセルの立体に置き換えます。無効ならガラス上の正確な基"
+      "準画像とCRT効果を保ち、周囲のステージだけを立体にします。周囲のステージ表示を有効にしてくだ"
+      "さい。"),
     H("qualityprofile", Performance,
       "Fluidity keeps 35% of each frame in reserve; Balanced keeps 25%; Detail keeps 15%. "
       "Resolution and effects recover slowly when measurements show enough room. These preferences "
@@ -2015,6 +2173,9 @@ static const SettingHelp entries[] = {
 };
 #undef H
 const SettingHelp *settingHelp(const char *key) {
+    for (auto alias : {"voxelfront", "voxelangle"})
+        if (!std::strcmp(key, alias))
+            return settingHelp("voxelyaw");
     for (auto alias : {"desktopframescale", "desktopcabinetangle", "desktopcrtstrength",
                        "desktopcrtmask", "desktopsurround"})
         if (!std::strcmp(key, alias))

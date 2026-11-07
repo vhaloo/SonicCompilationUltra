@@ -43,6 +43,7 @@ jobs:
           python tools/audit_xr_development.py
           python tools/audit_mobile_development.py
           python tools/audit_wear_development.py
+          python tools/audit_voxel_development.py
       - name: Configure Windows
         if: runner.os == 'Windows'
         run: cmake -S . -B build -A x64 -DBUILD_TESTING=OFF -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON
@@ -74,7 +75,14 @@ jobs:
           cmake -S tests/rewind -B build-rewind-bytes
           cmake --build build-rewind-bytes --config Release --parallel 3
           ctest --test-dir build-rewind-bytes -C Release --output-on-failure
-      - name: Package ROM-free software
+      - name: Pure voxel geometry and curvature checks
+        # Only generated-data helpers execute, never the game or its SDL UI.
+        # The same geometry is compiled for all four desktop targets.
+        run: |
+          cmake -S tests/voxel -B build-voxel
+          cmake --build build-voxel --config Release --parallel 3
+          ctest --test-dir build-voxel -C Release --output-on-failure
+      - name: Package software and matching source
         run: python tools/package.py --build build --platform ${{ matrix.platform }} --arch ${{ matrix.arch }} --out dist --source
       - uses: actions/upload-artifact@v4
         with:

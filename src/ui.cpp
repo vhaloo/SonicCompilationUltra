@@ -1,6 +1,7 @@
 #include "ui.h"
 #include "quest.h"
 #include "mobile.h"
+#include "voxel_export.h"
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_sdlrenderer2.h>
 #include <imgui_internal.h>
@@ -22,7 +23,7 @@ void App::settingGuide(bool compact) {
     if (settingsPreview) {
         if (compact)
             ImGui::TextWrapped("%s", help->text[std::clamp(language, 0, 3)]);
-        int index = std::clamp(int(help->picture), 0, 18);
+        int index = std::clamp(int(help->picture), 0, 19);
         float width = std::max(1.f, ImGui::GetContentRegionAvail().x);
         ImVec2 a{(index % 4) / 4.f, (index / 4) / 5.f},
             b{(index % 4 + 1) / 4.f, (index / 4 + 1) / 5.f};
@@ -85,6 +86,18 @@ void App::settingGuide(bool compact) {
                                      : 0.35f,
                  0.19f, 0.24f, 0.15f, cyan);
             rect(0.73f, 0.65f, 0.18f, 0.19f, cyan, false);
+        }
+        break;
+    }
+    case HelpPicture::Depth: {
+        for (int i = 0; i < 3; ++i) {
+            float x = .16f + i * .08f, y = .66f - i * .17f;
+            ImVec2 a = point(x, y), b = point(x + .47f, y + .08f), c = point(x + .61f, y - .10f),
+                   d = point(x + .15f, y - .18f);
+            draw->AddQuadFilled(a, b, c, d, i == 1 ? muted : cyan);
+            for (auto p : {a, b, c, d})
+                draw->AddLine(p, {p.x, p.y + height * .08f}, gold, 2);
+            draw->AddQuad(a, b, c, d, gold, 2);
         }
         break;
     }
@@ -273,7 +286,17 @@ void App::settingBadge(const char *key) {
                       1.5f);
     };
     int icon = int(help->picture);
-    if (icon == 11) {
+    if (icon == 19) {
+        line(.5f, .13f, .84f, .32f);
+        line(.84f, .32f, .5f, .52f);
+        line(.5f, .52f, .16f, .32f);
+        line(.16f, .32f, .5f, .13f);
+        line(.16f, .32f, .16f, .70f);
+        line(.5f, .52f, .5f, .90f);
+        line(.84f, .32f, .84f, .70f);
+        line(.16f, .70f, .5f, .90f);
+        line(.5f, .90f, .84f, .70f);
+    } else if (icon == 11) {
         for (int i = 0; i < 3; ++i)
             draw->AddRectFilled({p.x + q + i * side * .22f, p.y + side * (.65f - i * .15f)},
                                 {p.x + q + i * side * .22f + side * .13f, p.y + side * .81f}, color,
@@ -386,6 +409,10 @@ void App::initialise(const fs::path &base, bool hidden) {
     basePath = base;
     fs::create_directories(library.dataDir);
     settings.load(library.dataDir);
+#if !defined(SCU_MOBILE) && !defined(SCU_QUEST)
+    if (!settings.renderer)
+        SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
+#endif
 #ifdef SCU_MOBILE
     settings.renderer = 0;
     settings.vsync = false;
@@ -439,6 +466,14 @@ void App::initialise(const fs::path &base, bool hidden) {
                                       ? SDL_RENDERER_SOFTWARE
                                       : SDL_RENDERER_ACCELERATED |
                                             (settings.vsync ? SDL_RENDERER_PRESENTVSYNC : 0));
+#if !defined(SCU_MOBILE) && !defined(SCU_QUEST)
+    if (!renderer && !settings.renderer) {
+        SDL_ResetHint(SDL_HINT_RENDER_DRIVER);
+        renderer = SDL_CreateRenderer(window, -1,
+                                      SDL_RENDERER_ACCELERATED |
+                                          (settings.vsync ? SDL_RENDERER_PRESENTVSYNC : 0));
+    }
+#endif
     if (!renderer)
         renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
     if (!renderer)
@@ -517,6 +552,7 @@ App::~App() {
         flushSettings();
     } catch (...) {
     }
+    volumeGpu.release();
     core.unload();
     for (auto p : pads)
         if (p)
@@ -1419,6 +1455,15 @@ void App::present(bool capture) {
     }
 #endif
     auto &renderSettings = *projectionSettings;
+    if (renderSettings.voxelMode) {
+        renderSettings.smoothMap = false;
+        renderSettings.overviewStyle = 1;
+        renderSettings.performancePixelLock = false;
+    }
+    bool useVolume = renderSettings.voxelMode && core.loaded;
+    if (!useVolume && voxelWasEnabled)
+        volumeGpu.release();
+    voxelWasEnabled = useVolume;
 #ifndef SCU_MOBILE
     renderSettings.compositionPixels = renderSettings.autoPerformance
                                            ? (renderSettings.quality == 0   ? 1000000
@@ -1450,7 +1495,14 @@ void App::present(bool capture) {
     SDL_RenderClear(renderer);
     Scene scene = core.world.inspect(core.snapshot, core.game);
     uint64_t hash = 1469598103934665603ull;
-    for (int v : {drawableW,
+    for (int v : {renderSettings.voxelMode,
+                  renderSettings.voxelDetail,
+                  renderSettings.voxelThickness,
+                  renderSettings.voxelSpacing,
+                  renderSettings.voxelRelief,
+                  int(renderSettings.voxelBackground),
+                  renderSettings.effectsLevel,
+                  drawableW,
                   drawableH,
                   renderSettings.view,
                   renderSettings.zoom,
@@ -1499,10 +1551,15 @@ void App::present(bool capture) {
         cachedExpanded = !renderSettings.projectionUiOnly && core.loaded &&
                          core.world.compose(core.snapshot, core.game, renderSettings, drawableW,
                                             drawableH, &core.native, core.nativeW, core.nativeH);
+        cachedVolume =
+            !renderSettings.projectionUiOnly && core.loaded &&
+            core.world.prepareVolume(core.snapshot, core.game, renderSettings, core.native,
+                                     core.nativeW, core.nativeH, cachedExpanded);
         lastImageVersion = core.imageVersion;
         lastPresentationHash = hash;
     }
     bool expanded = core.loaded && cachedExpanded;
+    SDL_Texture *volumeTexture = nullptr;
     if (core.loaded && !renderSettings.projectionUiOnly) {
         if (!transparentCanvas) {
             bool fixed = renderSettings.background >= 4 || !renderSettings.parallax ||
@@ -1548,29 +1605,38 @@ void App::present(bool capture) {
         }
         if (expanded) {
             auto &c = core.world.canvas;
-            bool createdWorldTexture = false;
-            if (!worldTexture || textureW != c.width || textureH != c.height) {
-                if (worldTexture)
-                    SDL_DestroyTexture(worldTexture);
-                worldTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
-                                                 SDL_TEXTUREACCESS_STREAMING, c.width, c.height);
-                textureW = c.width;
-                textureH = c.height;
-                createdWorldTexture = true;
-                SDL_SetTextureBlendMode(worldTexture, SDL_BLENDMODE_BLEND);
-                SDL_SetTextureScaleMode(worldTexture, SDL_ScaleModeNearest);
-            }
-            if (!worldTexture)
-                throw std::runtime_error(SDL_GetError());
-            SDL_SetTextureScaleMode(worldTexture,
-                                    renderSettings.smoothMap && c.coverageW > c.width * 1.01
-                                        ? SDL_ScaleModeLinear
-                                        : SDL_ScaleModeNearest);
-            if (refresh) {
-                if (createdWorldTexture) {
+#ifndef SCU_QUEST
+            if (cachedVolume)
+                volumeTexture = volumeGpu.render(renderer, core.world.volume, core.world.volumeMesh,
+                                                 renderSettings, drawableW, drawableH);
+#endif
+            if (volumeTexture) {
+                // A voxel picture never samples the flattened scene texture.
+                // Restore it completely if the flat fallback is needed later.
+                worldTextureStale |= refresh;
+            } else {
+                if (!worldTexture || textureW != c.width || textureH != c.height) {
+                    if (worldTexture)
+                        SDL_DestroyTexture(worldTexture);
+                    worldTexture =
+                        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+                                          SDL_TEXTUREACCESS_STREAMING, c.width, c.height);
+                    if (!worldTexture)
+                        throw std::runtime_error(SDL_GetError());
+                    textureW = c.width;
+                    textureH = c.height;
+                    worldTextureStale = true;
+                    SDL_SetTextureBlendMode(worldTexture, SDL_BLENDMODE_BLEND);
+                }
+                SDL_SetTextureScaleMode(worldTexture,
+                                        renderSettings.smoothMap && c.coverageW > c.width * 1.01
+                                            ? SDL_ScaleModeLinear
+                                            : SDL_ScaleModeNearest);
+                if (worldTextureStale) {
                     SDL_UpdateTexture(worldTexture, nullptr, c.pixels.data(), c.width * 4);
                     uploadedBytes += size_t(c.width) * c.height * 4;
-                } else
+                    worldTextureStale = false;
+                } else if (refresh) {
                     for (const auto &r : core.world.uploadRegions) {
                         SDL_Rect rect{r.x, r.y, r.w, r.h};
                         SDL_UpdateTexture(worldTexture, &rect,
@@ -1578,8 +1644,10 @@ void App::present(bool capture) {
                                           c.width * 4);
                         uploadedBytes += size_t(r.w) * r.h * 4;
                     }
+                }
             }
-            SDL_RenderCopy(renderer, worldTexture, nullptr, nullptr);
+            SDL_RenderCopy(renderer, volumeTexture ? volumeTexture : worldTexture, nullptr,
+                           nullptr);
             if (!renderSettings.projectionCleanScene &&
                 ((renderSettings.view == 2 && renderSettings.playerInset) ||
                  (scene.family == 4 && renderSettings.hud != 3)) &&
@@ -1640,7 +1708,12 @@ void App::present(bool capture) {
                        (availableH - (int)(core.nativeH * scale)) / 2, (int)(core.nativeW * scale),
                        (int)(core.nativeH * scale)};
             nativeBounds = {float(d.x), float(d.y), float(d.x + d.w), float(d.y + d.h)};
-            SDL_RenderCopy(renderer, nativeTexture, nullptr, &d);
+#ifndef SCU_QUEST
+            if (cachedVolume)
+                volumeTexture = volumeGpu.render(renderer, core.world.volume, core.world.volumeMesh,
+                                                 renderSettings, d.w, d.h);
+#endif
+            SDL_RenderCopy(renderer, volumeTexture ? volumeTexture : nativeTexture, nullptr, &d);
         }
         if (renderSettings.scanlines) {
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
@@ -1676,9 +1749,12 @@ void App::present(bool capture) {
                                 settings.integerScale ? SDL_ScaleModeNearest : SDL_ScaleModeLinear);
         if (upload)
             SDL_UpdateTexture(nativeTexture, nullptr, core.native.data(), core.nativeW * 4);
-        desktopFrame.draw(renderer, expanded ? worldTexture : nativeTexture, nativeTexture,
-                          core.nativeW, core.nativeH, scene, core.world.canvas, renderSettings,
-                          drawableW, drawableH);
+        desktopFrame.draw(renderer,
+                          volumeTexture ? volumeTexture
+                          : expanded    ? worldTexture
+                                        : nativeTexture,
+                          nativeTexture, core.nativeW, core.nativeH, scene, core.world.canvas,
+                          renderSettings, drawableW, drawableH);
     }
 #endif
     ImGui_ImplSDLRenderer2_NewFrame();
@@ -2374,7 +2450,15 @@ void App::performanceOptions() {
                 std::min(settings.minimumRenderScale, settings.maximumRenderScale);
             changed = true;
         }
-        changed |= tick("performancepixellock", settings.performancePixelLock);
+        ImGui::BeginDisabled(settings.voxelMode != 0);
+        bool pixelLock = settings.voxelMode ? false : settings.performancePixelLock;
+        if (tick("performancepixellock", pixelLock)) {
+            settings.performancePixelLock = pixelLock;
+            changed = true;
+        }
+        ImGui::EndDisabled();
+        if (settings.voxelMode)
+            ImGui::TextWrapped("%s", tr("voxelsamplinghint", language));
         changed |= tick("thermalaware", settings.thermalAware);
     }
     ImGui::TextWrapped("%s", tr("performancehint", language));
@@ -2396,6 +2480,84 @@ void App::performanceOptions() {
         ImGui::TextWrapped("%s", tr("performancesimbound", language));
     dirty |= changed;
 }
+void App::voxelOptions() {
+    bool changed = choice("voxelmode", settings.voxelMode,
+                          {"voxelflat", "voxelthick", "voxellayers", "voxelsculpt"});
+    ImGui::TextWrapped("%s", tr("voxelintro", language));
+    if (settings.voxelMode) {
+        int preset = settings.voxelThickness == 2 && settings.voxelSpacing == 2 &&
+                             settings.voxelRelief == 1 && settings.voxelLight == 45
+                         ? 0
+                     : settings.voxelThickness == 6 && settings.voxelSpacing == 8 &&
+                             settings.voxelRelief == 3 && settings.voxelLight == 70
+                         ? 1
+                     : settings.voxelThickness == 12 && settings.voxelSpacing == 16 &&
+                             settings.voxelRelief == 6 && settings.voxelLight == 85
+                         ? 2
+                         : 3;
+        if (choice("voxelpreset", preset,
+                   {"voxelsubtle", "voxeldiorama", "voxelbold", "customprofile"}) &&
+            preset < 3) {
+            settings.voxelThickness = std::array<int, 3>{2, 6, 12}[preset];
+            settings.voxelSpacing = std::array<int, 3>{2, 8, 16}[preset];
+            settings.voxelRelief = std::array<int, 3>{1, 3, 6}[preset];
+            settings.voxelLight = std::array<int, 3>{45, 70, 85}[preset];
+            changed = true;
+        }
+        changed |= slider("voxelthickness", settings.voxelThickness, 1, 32, "%d px");
+        if (settings.voxelMode > 1)
+            changed |= slider("voxelspacing", settings.voxelSpacing, 0, 64, "%d px");
+        if (settings.voxelMode == 3)
+            changed |= slider("voxelrelief", settings.voxelRelief, 0, 12, "%d px");
+        changed |= slider("voxellight", settings.voxelLight, 0, 100, "%d%%");
+        changed |= tick("voxelbackground", settings.voxelBackground);
+        changed |= choice("voxeldetail", settings.voxelDetail,
+                          {"voxelcompact", "balanced", "voxelfine", "voxelveryfine"});
+#ifdef SCU_QUEST
+        changed |= tick("voxelcrt", settings.voxelCrt);
+        ImGui::TextWrapped("%s", tr("voxelvrhint", language));
+#else
+        changed |= slider("voxelyaw", settings.voxelYaw, -60, 60, "%d°");
+        changed |= slider("voxelpitch", settings.voxelPitch, -60, 60, "%d°");
+        if (button("voxelfront")) {
+            settings.voxelYaw = settings.voxelPitch = 0;
+            changed = true;
+        }
+        if (button("voxelangle")) {
+            settings.voxelYaw = -20;
+            settings.voxelPitch = 16;
+            changed = true;
+        }
+        if (!std::strcmp(volumeGpu.status(), "voxelunsupported"))
+            ImGui::TextWrapped("%s", tr("voxelunsupported", language));
+#endif
+        if (core.loaded && core.world.volume.valid())
+            ImGui::TextWrapped(
+                "%s",
+                tr(core.world.volume.hardwareLayers ? "voxelknown" : "voxelnative", language));
+#if !defined(SCU_MOBILE) && !defined(SCU_QUEST)
+        ImGui::BeginDisabled(!core.loaded || !core.world.volume.valid() ||
+                             !core.world.volumeMesh.valid());
+        if (button("voxelexport")) {
+            try {
+                auto folder =
+                    library.dataDir / "exports" / ("voxels-" + std::to_string(SDL_GetTicks64()));
+                unsigned suffix = 0;
+                while (fs::exists(folder))
+                    folder = library.dataDir / "exports" /
+                             ("voxels-" + std::to_string(SDL_GetTicks64()) + "-" +
+                              std::to_string(++suffix));
+                voxel::exportScene(core.world.volume, core.world.volumeMesh, folder);
+                notify(std::string(tr("voxelexported", language)) + ": " + folder.u8string());
+            } catch (const std::exception &error) {
+                notify(std::string(tr("voxelexportfailed", language)) + ": " + error.what());
+            }
+        }
+        ImGui::EndDisabled();
+#endif
+    }
+    dirty |= changed;
+}
 void App::optionsUi(int section) {
     bool changed = false;
     auto check = [&](const char *key, bool &value) { changed |= tick(key, value); };
@@ -2404,6 +2566,9 @@ void App::optionsUi(int section) {
     };
     switch (section) {
     case 1: {
+        if (ImGui::CollapsingHeader(tr("voxelgroup", language),
+                                    settings.voxelMode ? ImGuiTreeNodeFlags_DefaultOpen : 0))
+            voxelOptions();
         int lang = settings.language + 1;
         if (choice("language", lang, {"auto", "English", "Français", "Español", "日本語"})) {
             settings.language = lang - 1;
@@ -2454,7 +2619,15 @@ void App::optionsUi(int section) {
                 }
             }
             check("mapextension", settings.mapExtension);
-            check("smoothmap", settings.smoothMap);
+            ImGui::BeginDisabled(settings.voxelMode != 0);
+            bool smooth = settings.voxelMode ? false : settings.smoothMap;
+            if (tick("smoothmap", smooth)) {
+                settings.smoothMap = smooth;
+                changed = true;
+            }
+            ImGui::EndDisabled();
+            if (settings.voxelMode)
+                ImGui::TextWrapped("%s", tr("voxelsamplinghint", language));
             if (core.loaded) {
                 auto scene = core.world.inspect(core.snapshot, core.game);
                 ImGui::TextWrapped("%s", tr(scene.ready ? (scene.family >= 4 ? "atlascapability"

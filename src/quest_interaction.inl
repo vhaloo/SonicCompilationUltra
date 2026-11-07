@@ -130,7 +130,7 @@ SpatialHit hitPlane(const SpatialPointer &p, XrPosef pose, float scale, float z 
     return {true, h.x, h.y, h.z, t};
 }
 void changeDeckPage(int page) {
-    deckPage = std::clamp(page, 0, 6);
+    deckPage = std::clamp(page, 0, 7);
     deckButtons = spatialButtons(deckPage);
     capturedButton = {{-1, -1}};
     spatial.hover = spatial.pressed = {{-1, -1}};
@@ -138,8 +138,15 @@ void changeDeckPage(int page) {
 }
 void spatialAction(int action, float dt) {
     auto &s = app.settings;
-    if (action >= PageModes && action <= PageNudge) {
+    if (action >= PageModes && action <= PageDepth) {
         changeDeckPage(action - PageModes);
+        return;
+    }
+    if (action >= VoxelFlat && action <= VoxelSculpt) {
+        s.voxelMode = action - VoxelFlat;
+        if (app.core.loaded && app.menu)
+            app.toggleMenu();
+        app.dirty = true;
         return;
     }
     if (action >= ModeFirst && action < ModeFirst + 7) {
@@ -192,6 +199,24 @@ void spatialAction(int action, float dt) {
         }
     };
     switch (action) {
+    case VoxelThinner:
+        s.voxelThickness = std::max(1, s.voxelThickness - 1);
+        break;
+    case VoxelThicker:
+        s.voxelThickness = std::min(32, s.voxelThickness + 1);
+        break;
+    case VoxelTogether:
+        s.voxelSpacing = std::max(0, s.voxelSpacing - 2);
+        break;
+    case VoxelApart:
+        s.voxelSpacing = std::min(64, s.voxelSpacing + 2);
+        break;
+    case VoxelBackground:
+        s.voxelBackground = !s.voxelBackground;
+        break;
+    case VoxelCrt:
+        s.voxelCrt = !s.voxelCrt;
+        break;
     case MoveGame:
         moveTarget = 0;
         s.questWallLocked = false;
@@ -579,8 +604,10 @@ void menuPointer() {
 }
 bool spatialActive(int action) const {
     auto &s = app.settings;
-    if (action >= PageModes && action <= PageNudge)
+    if (action >= PageModes && action <= PageDepth)
         return action - PageModes == deckPage;
+    if (action >= VoxelFlat && action <= VoxelSculpt)
+        return s.voxelMode == action - VoxelFlat;
     if (action >= ModeFirst && action < ModeFirst + 7)
         return mode() == action - ModeFirst;
     switch (action) {
@@ -616,6 +643,10 @@ bool spatialActive(int action) const {
         return s.questCrtCoplanar;
     case ToggleHints:
         return s.questControlHints;
+    case VoxelBackground:
+        return s.voxelBackground;
+    case VoxelCrt:
+        return s.voxelCrt;
     case ToggleAdaptive:
         return s.autoPerformance && s.questAdaptive;
     case CycleShader:
@@ -643,10 +674,26 @@ void renderDeckLabels() {
         return;
     auto &s = app.settings;
     uint64_t hash = 1469598103934665603ull;
-    for (int n : {deckPage, moveTarget, app.language, mode(), s.questScale, s.questRefresh,
-                  s.questRemoteScale, s.questInsetWidth, int(s.questTransparent),
-                  int(s.questPassthrough), int(s.questWallLocked), int(autoJoystick), int(app.menu),
-                  int(s.autoPerformance), s.questShaderQuality}) {
+    for (int n : {deckPage,
+                  moveTarget,
+                  app.language,
+                  mode(),
+                  s.questScale,
+                  s.questRefresh,
+                  s.questRemoteScale,
+                  s.questInsetWidth,
+                  int(s.questTransparent),
+                  int(s.questPassthrough),
+                  int(s.questWallLocked),
+                  int(autoJoystick),
+                  int(app.menu),
+                  int(s.autoPerformance),
+                  s.questShaderQuality,
+                  s.voxelMode,
+                  s.voxelThickness,
+                  s.voxelSpacing,
+                  int(s.voxelBackground),
+                  int(s.voxelCrt)}) {
         hash ^= uint32_t(n);
         hash *= 1099511628211ull;
     }
@@ -685,12 +732,14 @@ void renderDeckLabels() {
     auto text = [&](const char *label, float x, float y, float w, float h, float size = 24.f) {
         float wrap = w - 12;
         auto bound = font->CalcTextSizeA(size, FLT_MAX, wrap, label);
-        if (bound.y > h - 8) {
-            size = 18;
+        while (bound.y > h - 8 && size > 12) {
+            size -= 1;
             bound = font->CalcTextSizeA(size, FLT_MAX, wrap, label);
         }
+        list.PushClipRect({x + 4, y + 4}, {x + w - 4, y + h - 4}, true);
         list.AddText(font, size, {x + (w - bound.x) / 2, y + (h - bound.y) / 2},
                      IM_COL32(247, 250, 255, 255), label, nullptr, wrap);
+        list.PopClipRect();
     };
     std::string status = std::to_string(s.questRefresh) + " Hz  |  " +
                          std::to_string(s.questScale) + "%  |  " +
@@ -699,6 +748,10 @@ void renderDeckLabels() {
                             : moveTarget == 2 ? "remote_remote"
                                               : "remote_options",
                             app.language);
+    if (deckPage == 7)
+        status = std::string(tr("voxelthickness", app.language)) + ": " +
+                 std::to_string(s.voxelThickness) + " px  |  " + tr("voxelspacing", app.language) +
+                 ": " + std::to_string(s.voxelSpacing) + " px";
     text(status.c_str(), 50, 28, 924, 50, 25);
     for (auto b : deckButtons) {
         float bw = b.width / spatialWidth * 1024, bh = b.height / spatialHeight * 768;

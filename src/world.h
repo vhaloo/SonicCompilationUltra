@@ -4,6 +4,7 @@
 #include "enemies.h"
 #include "terrain_atlas.h"
 #include "performance.h"
+#include "voxel.h"
 #include <array>
 namespace scu {
 inline uint16_t be16(const uint8_t *p, unsigned a) {
@@ -56,6 +57,8 @@ class World {
     void captureActors(const Scene &scene, const Game *game);
 
   public:
+    voxel::Frame volume;
+    voxel::Mesher volumeMesh;
     TerrainAtlas atlas;
     EnemyPreviews enemies;
     int enemySpriteCount = 0, enemyMarkerCount = 0;
@@ -78,6 +81,8 @@ class World {
         actorsDamage.clear();
         textureDamage.clear();
         priority.clear();
+        volume.discard();
+        volumeMesh.discard();
         reset();
     }
     void reset() {
@@ -92,5 +97,7 @@ class World {
                  int nativeH = 224);
     void makeBackdrop(const SCUSnapshot &s, const Scene &scene, const Settings &settings,
                       const std::vector<uint32_t> &native, int nw, int nh);
+    bool prepareVolume(const SCUSnapshot &, const Game *, const Settings &,
+                       const std::vector<uint32_t> &native, int nw, int nh, bool expanded);
 };
 } // namespace scu

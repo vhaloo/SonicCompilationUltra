@@ -1,7 +1,7 @@
 """Original illustrative examples, not cartridge screenshots. No ROM/app inputs.
 
 Run with Pillow to regenerate the indexed BMP used by every native frontend.
-The small palette keeps the entire 19-picture atlas around 1.2 MB on disk.
+The small palette keeps the entire 20-picture atlas around 1.2 MB on disk.
 """
 from pathlib import Path
 import math
@@ -51,7 +51,15 @@ def picture(index):
     d.rounded_rectangle((3,3,316,176),radius=12,fill='#10243c',outline='#25516a',width=1)
     d.rounded_rectangle((14,15,44,35),radius=7,fill='#21546a');d.text((24,17),'A',font=FONT,fill=CYAN)
     d.rounded_rectangle((175,15,205,35),radius=7,fill='#665037');d.text((185,17),'B',font=FONT,fill=GOLD)
-    if index in (12,14):
+    if index==19:
+        # These checked-in pictures are generated only by the standalone,
+        # ROM-free mesh fixture. See voxel-provenance.json and its helper.
+        for name,x in [('flat',17),('layered',176)]:
+            source=Image.open(ROOT/('docs/illustrations/voxel-'+name+'.png')).convert('RGB')
+            assert source.size==(960,540)
+            im.paste(source.resize((126,71),Image.Resampling.NEAREST),(x,70))
+            d.rounded_rectangle((x-1,69,x+126,142),radius=4,outline=MUTED,width=1)
+    elif index in (12,14):
         for half in range(2):
             for n in range(54):
                 x=19+half*159+n*2; y=104; a=abs(math.sin(n*.31))*27
@@ -114,10 +122,10 @@ def picture(index):
 
 def main():
     atlas=Image.new('RGB',(1280,900),'#061222')
-    for index in range(19):atlas.paste(picture(index),((index%4)*320,(index//4)*180))
+    for index in range(20):atlas.paste(picture(index),((index%4)*320,(index//4)*180))
     indexed=atlas.quantize(colors=192,method=Image.Quantize.MEDIANCUT)
     indexed.save(ROOT/'assets/settings-preview.bmp')
     gallery=ROOT/'docs/illustrations/settings-preview-gallery.png'
     gallery.parent.mkdir(parents=True,exist_ok=True);atlas.save(gallery,optimize=True)
-    print('Generated 19 original A/B setting examples, no cartridge or app inputs;', (ROOT/'assets/settings-preview.bmp').stat().st_size,'BMP bytes')
+    print('Generated 20 original A/B setting examples, no cartridge or app inputs;', (ROOT/'assets/settings-preview.bmp').stat().st_size,'BMP bytes')
 if __name__=='__main__': main()

@@ -317,6 +317,7 @@ bool MobilePresentation::event(const SDL_Event &e) {
         displayConfig = -1;
     }
     if (e.type == SDL_RENDER_TARGETS_RESET || e.type == SDL_RENDER_DEVICE_RESET) {
+        app.volumeGpu.invalidate();
         // App-owned streaming textures are recreated on the next upload.
         if (canvas)
             SDL_DestroyTexture(canvas);

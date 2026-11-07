@@ -5,16 +5,16 @@
 namespace scu {
 std::vector<SpatialButton> spatialButtons(int page) {
     std::vector<SpatialButton> out;
-    const char *tabs[]{"remote_modes",       "remote_place",    "remote_play", "remote_picture",
-                       "remote_performance", "remote_sections", "remote_nudge"};
-    for (int i = 0; i < 7; ++i)
-        out.push_back({PageModes + i, tabs[i], -.465f + i * .155f, .27f, .145f, .065f});
+    const char *tabs[]{"remote_modes",       "remote_place",    "remote_play",  "remote_picture",
+                       "remote_performance", "remote_sections", "remote_nudge", "remote_depth"};
+    for (int i = 0; i < 8; ++i)
+        out.push_back({PageModes + i, tabs[i], -.476f + i * .136f, .27f, .126f, .065f});
     auto grid = [&](int action, const char *key, bool hold = false) {
-        int n = int(out.size()) - 7;
+        int n = int(out.size()) - 8;
         out.push_back(
             {action, key, -.35f + (n % 3) * .35f, .135f - (n / 3) * .13f, .32f, .105f, hold});
     };
-    switch (std::clamp(page, 0, 6)) {
+    switch (std::clamp(page, 0, 7)) {
     case 0:
         for (int n = 1; n < 7; ++n) {
             const char *m[]{"questscreenmode", "questwallfit", "questmural", "questflooratlas",
@@ -101,6 +101,20 @@ std::vector<SpatialButton> spatialButtons(int page) {
         grid(PitchUp, "remote_tilt_up", true);
         grid(PitchDown, "remote_tilt_down", true);
         grid(Recover, "remote_recover");
+        grid(Advanced, "remote_advanced");
+        break;
+    case 7:
+        grid(VoxelFlat, "voxelflat");
+        grid(VoxelThick, "voxelthick");
+        grid(VoxelLayers, "voxellayers");
+        grid(VoxelSculpt, "voxelsculpt");
+        grid(VoxelThinner, "voxelthinner");
+        grid(VoxelThicker, "voxelthicker");
+        grid(VoxelTogether, "voxeltogether");
+        grid(VoxelApart, "voxelapart");
+        grid(VoxelBackground, "voxelbackground");
+        grid(VoxelCrt, "voxelcrt");
+        grid(Resume, "remote_resume");
         grid(Advanced, "remote_advanced");
         break;
     }

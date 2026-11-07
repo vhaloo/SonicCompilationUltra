@@ -2,9 +2,9 @@
 
 The source builds without a game ROM. A C99/C++17 compiler and CMake 3.20+ are required. SDL2 2.28+ can be supplied by the system; otherwise CMake obtains a SHA-256-pinned SDL2 2.32.10 source archive. Genesis Plus GX, Dear ImGui and zlib sources are included.
 
-For the **0.10 development preview**, platform CI configures `-DBUILD_TESTING=OFF` and compiles the app without starting it. Only the standalone generated-data projects in `tests/performance`, `tests/rendering`, `tests/wear`, `tests/rewind`, `tests/touch` and `tests/spatial` are executed. General test/run commands below are optional and are outside this release's no-app validation scope.
+For the **0.11 development preview**, platform CI configures `-DBUILD_TESTING=OFF` and compiles the app without starting it. Only the standalone generated-data projects in `tests/performance`, `tests/rendering`, `tests/wear`, `tests/rewind`, `tests/touch`, `tests/spatial` and `tests/voxel` are executed. General test/run commands below are optional and are outside this release's no-app validation scope.
 
-Android has three modules: `:mobile` (phone/tablet), `:wear` (standalone watch) and `:app` (Quest). Use `./gradlew :wear:assembleRelease :wear:lintRelease` for the watch APK; the shared mobile script selects its own package, API floor, label and native version. [Wear setup](WEAR.md) · [Android build](ANDROID.md). Regenerate original setting examples with `python tools/generate_setting_previews.py` (Pillow); regenerate the renamed OFL font subset using `tools/subset_font.py` and its pinned source. Neither Python package is a runtime dependency.
+Android has three modules: `:mobile` (phone/tablet), `:wear` (standalone watch) and `:app` (Quest). Use `./gradlew :wear:assembleRelease :wear:lintRelease` for the watch APK; the shared mobile script selects its own package, API floor, label and native version. [Wear setup](WEAR.md) · [Android build](ANDROID.md). Regenerate the renamed OFL font subset using `tools/subset_font.py` and its pinned source. Neither fontTools nor Pillow is a runtime dependency.
 
 ## Windows
 
@@ -51,6 +51,19 @@ The release packager assembles the `.app`, resources and SDL library. Intel and 
 The downloadable corresponding-source archive includes the complete, unmodified SDL tarball under `vendor/`. CMake verifies and extracts this local archive, so rebuilding requires no SDL download.
 
 ## Development and validation
+
+The volume mesher and desktop OBJ exporter can be checked independently of the app. This builds no SDL window and uses only original generated data:
+
+```sh
+cmake -S tests/voxel -B build-voxel -DCMAKE_BUILD_TYPE=Release
+cmake --build build-voxel --config Release
+ctest --test-dir build-voxel -C Release --output-on-failure
+python tools/generate_voxel_previews.py --helper build-voxel/voxel_preview --temporary build-voxel/fixtures
+python tools/generate_setting_previews.py
+python tools/audit_voxel_development.py
+```
+
+On Windows with a multi-configuration generator, the helper is `build-voxel/Release/voxel_preview.exe`. The fixture generator makes the three original comparison images and their provenance. The setting preview generator uses those images in its depth example. The in-app volume backend requires a working OpenGL 2.x or OpenGL ES 2.x context with framebuffer support; the normal flat backend remains available. See [the voxel guide](VOXELS.md).
 
 `scu_tests` uses synthetic tile/layout data, never copyrighted game fixtures. `scu_runtime_tests` generates an original minimal 68000 program and PSG tone at runtime to verify CPU execution, VDP output, saves, integrity checks, exact-frame rewind, reverse stereo sound, audio queue direction/mute, PAL timing and bounded delta history. It contains no commercial cartridge code, art or audio. `scu_ui_tests` feeds a real SDL virtual gamepad through the importer, path keyboard, every options page, save slots, dialogs, shortcuts and resizing; it also verifies reconnect and L2/LT rewind pacing at 10/30/60/144 Hz display intervals. The software-rendered ultrawide menu cases can take a few minutes. A ROM-free UI smoke test can run with `SDL_VIDEODRIVER=dummy` and `SDL_AUDIODRIVER=dummy` plus `--software --headless --frames 10 --menu`.
 

@@ -369,6 +369,10 @@ void Core::unload() {
     captureAudio = false;
     frameAudio.clear();
     native.clear();
+    if (world.volume.pixels.capacity()) {
+        world.volume.discard();
+        world.volumeMesh.discard();
+    }
     game = nullptr;
     spinCharge = 0;
 }

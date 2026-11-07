@@ -1,4 +1,4 @@
-# Quick XR controls — 0.7
+# Quick XR controls — 0.11
 
 **This release has not been tried on a headset.** The following describes the implemented controls to check later.
 
@@ -9,6 +9,7 @@
 - **Move** chooses stage, native CRT, remote or options. Hold **one middle-finger grip** to move/rotate the target. Aiming at the remote's top handle or native CRT's bottom handle selects that object directly. Choosing the stage unlocks it.
 - **Two grips** resize the stage, including while placement is locked. Release/regrip to keep going; right-stick up/down also scales while both grips are held. Half/double/reset buttons are on Move.
 - **Fine move** provides held left/right/up/down/near/far and yaw/pitch buttons for the selected target.
+- **Depth** provides Flat, Thick pixels, Layered and Sculpted modes plus direct thickness, spacing, background and CRT buttons. [Illustrated depth guide](VOXELS.md).
 - **R3** brings controls and the native CRT near you. The recover button also recentres the stage when it is the selected target.
 
 The native close-up is an independently movable CRT in expanded modes. Its physical width, TV style and shader are configurable. In the main CRT mode, moving the native CRT moves the television and matched stage together. The options panel has its own size setting, independent of its distance. Session poses reset when the app restarts; sizes are saved.

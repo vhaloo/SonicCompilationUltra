@@ -3,6 +3,9 @@
 #include <algorithm>
 namespace scu {
 struct Settings {
+    int voxelMode = 0, voxelDetail = 1, voxelThickness = 6, voxelSpacing = 8;
+    int voxelRelief = 3, voxelLight = 70, voxelYaw = -12, voxelPitch = 12;
+    bool voxelBackground = false, voxelCrt = false;
     bool autoPerformance = true, performancePixelLock = false, thermalAware = true;
     bool adaptiveEffects = true, advancedOptions = false;
     int performanceHeadroom = 25;

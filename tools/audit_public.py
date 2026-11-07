@@ -13,7 +13,7 @@ for name in files:
     path=root/name
     if not path.is_file():continue
     data=path.read_bytes()
-    original_preview=name=='assets/settings-preview.bmp' and hashlib.sha256(data).hexdigest()=='7d776371634242135330ac3e4d51ec1b626a5bbdf2ecc52491ec0ff06fcb092e'
+    original_preview=name=='assets/settings-preview.bmp' and hashlib.sha256(data).hexdigest()=='dd663cf8fcb966ea47124bf9920cf0d79ce2f13d1c6ff761a0f5addb8cd96239'
     if (path.suffix.lower() in banned and not original_preview) or path.name in {'settings.ini','library.tsv','quest-wall-anchor.txt'} or re.search(r'^(generated|private|private_assets|build[^/]*)/', name):bad.append(name)
     if path.suffix.lower() in texttypes and not name.startswith('vendor/'):
         text=data.decode('utf-8',errors='replace')

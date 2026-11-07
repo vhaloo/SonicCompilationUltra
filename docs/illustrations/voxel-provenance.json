@@ -1,0 +1,19 @@
+{
+  "provenance": "Original fixture pixels and actual procedural mesh; CPU reference rasterizer, not an application or device capture.",
+  "rom_or_emulator_input": false,
+  "gpu_or_application_executed": false,
+  "files": [
+    {
+      "file": "voxel-flat.png",
+      "sha256": "f75e38a5c2b7a7ac639e0ab5773661f94a1b0ec790295e7d08319fa3c6ff2487"
+    },
+    {
+      "file": "voxel-layered.png",
+      "sha256": "4a5f3208ad96a4ed284f41d64af0f2f3443d29ccf074af030a0e774a9df42c16"
+    },
+    {
+      "file": "voxel-sculpted.png",
+      "sha256": "ca3e6292e2affa57ef34388b189a942af7740bb7e6107429193efa9bdeb1bb1c"
+    }
+  ]
+}

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.0 Voxel development preview — 2026-11-06
+
+- Optional thick pixels, priority-layered voxels and sculpted surfaces. Known stages use their world coordinates; unsupported scenes use the complete original screen. The native reference, game timing and collisions stay independent.
+- Adjustable thickness, spacing, relief, lighting and detail with illustrated four-language explanations. Desktop, mobile and Wear get front/diorama camera choices; Quest gets tracked stereo depth and direct buttons on its remote.
+- Adaptive whole-grid detail, greedy exposed faces, independent geometry/texture caches and lightweight lighting. The CRT can keep its flat reference while the world around it has depth. Desktop can export the current mesh and texture locally.
+- Original illustrated examples, a comparison with related projects and a guide in English, French, Spanish and Japanese. No new competitor assets or code are bundled.
+- Builds, lint, generated-data checks, offline shader linking and static package audits; no app, game or device session. Wear OS and macOS remain experimental.
+
 ## 0.10.0 Quality / Wear OS development preview — 2026-11-06
 
 - Configurable 15/25/35% performance reserve, bounded tail-cost history, independent CPU/stereo resolution, adaptive effects and gradual quality recovery. Auto overview can use the full selected scene budget. Quest retains 90 Hz by default.

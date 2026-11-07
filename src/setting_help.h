@@ -20,7 +20,8 @@ enum class HelpPicture {
     Save,
     Assist,
     Library,
-    Wear
+    Wear,
+    Depth
 };
 struct SettingHelp {
     const char *key;

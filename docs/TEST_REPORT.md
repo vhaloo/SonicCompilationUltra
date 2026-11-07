@@ -1,5 +1,13 @@
 # Validation report — 6 November 2026
 
+## 0.11 voxel development preview
+
+- A standalone helper checks 180 generated scenes, eight flat/curved panel mappings and 80 camera projections per scene. It checks black and transparent pixels, outward winding, separated priority bands, retained geometry, bounded sampling, whole-grid retries and local OBJ export with generated art.
+- The compositor helper compares 81 additional retained/fresh volume cases. Explicit fixtures check high-priority background, SAT sprite overlap and exact edges, a tiny spawn marker, exact native-screen fallback including in transparent AR, and fresh texture identities after switching from Flat. These helpers link neither SDL nor the console core.
+- The four-language guide and font audit checks translation coverage, illustrated help and original image provenance. The three comparison pictures use the actual mesh rendered by an offline CPU reference helper. They are not application or device captures.
+- Six OpenGL/ES volume shader variants and two Quest material variants compile/link offline. Platform builds, Android lint and archive/signature checks are separate from startup, real GPU output, controls, thermal behavior and sustained FPS.
+- No app, emulator, game, installer or physical device was started for 0.11. macOS and Wear OS remain experimental. Earlier screenshots and headset observations apply to their stated versions only. [Voxel guide](VOXELS.md) · [Research and design](VOXEL_RESEARCH.md).
+
 ## 0.10 quality / Wear OS development preview
 
 - Independent CPU/stereo adaptation, reserved frame time, tail-cost history, adaptive effects, manual/thermal limits and fractional pacing are checked with generated timings. Actual application/device frame rate is not measured.

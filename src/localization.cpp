@@ -13,6 +13,112 @@ struct Text {
         }                                                                                          \
     }
 static const Text texts[] = {
+    T("voxelsamplinghint",
+      "Volumes use crisp sampled pixels. Literal 1:1 alignment and map smoothing are available "
+      "with the original flat picture.",
+      "Les volumes utilisent des pixels nets échantillonnés. L’alignement exact 1:1 et le lissage "
+      "de carte restent disponibles avec l’image plate originale.",
+      "Los volúmenes usan píxeles nítidos muestreados. La alineación exacta 1:1 y el suavizado del "
+      "mapa están disponibles con la imagen plana original.",
+      "立体表示は鮮明にサンプリングしたピクセルを使います。厳密な1:"
+      "1配置と地形の平滑化には元の平面画像を選んでください。"),
+    T("voxelexport", "Export 3D scene locally", "Exporter la scène 3D localement",
+      "Exportar escena 3D localmente", "3Dシーンを端末内に書き出す"),
+    T("voxelexported", "3D scene saved", "Scène 3D enregistrée", "Escena 3D guardada",
+      "3Dシーンを保存しました"),
+    T("voxelexportfailed", "Could not save the 3D scene", "Impossible d’enregistrer la scène 3D",
+      "No se pudo guardar la escena 3D", "3Dシーンを保存できませんでした"),
+    T("voxelgroup", "Depth and voxels", "Profondeur et voxels", "Profundidad y vóxeles",
+      "立体感とボクセル"),
+    T("voxelmode", "Pixel volume", "Volume des pixels", "Volumen de píxeles", "ピクセルの立体表示"),
+    T("voxelflat", "Original flat picture", "Image plate originale", "Imagen plana original",
+      "元の平面画像"),
+    T("voxelthick", "Thick pixels", "Pixels épais", "Píxeles con grosor", "厚みのあるピクセル"),
+    T("voxellayers", "Layered voxels", "Voxels par couches", "Vóxeles por capas",
+      "レイヤー別ボクセル"),
+    T("voxelsculpt", "Sculpted voxels", "Voxels sculptés", "Vóxeles esculpidos",
+      "段差のあるボクセル"),
+    T("voxelpreset", "Depth style", "Style de profondeur", "Estilo de profundidad",
+      "立体感のスタイル"),
+    T("voxelsubtle", "Subtle", "Discret", "Sutil", "控えめ"),
+    T("voxeldiorama", "Diorama", "Diorama", "Diorama", "ジオラマ"),
+    T("voxelbold", "Bold", "Prononcé", "Intenso", "強調"),
+    T("voxelthickness", "Pixel thickness", "Épaisseur des pixels", "Grosor de los píxeles",
+      "ピクセルの厚み"),
+    T("voxelspacing", "Space between layers", "Espace entre les couches", "Espacio entre capas",
+      "レイヤー間の距離"),
+    T("voxelrelief", "Sculpted surface height", "Hauteur du relief sculpté",
+      "Altura del relieve esculpido", "表面の段差の高さ"),
+    T("voxellight", "Soft volume lighting", "Éclairage doux des volumes",
+      "Iluminación suave del volumen", "柔らかな立体照明"),
+    T("voxelbackground", "Give background art depth", "Donner du relief au décor de fond",
+      "Dar relieve al fondo", "背景の絵にも厚みを付ける"),
+    T("voxeldetail", "Voxel detail ceiling", "Limite de détail des voxels",
+      "Límite de detalle de vóxeles", "ボクセルの詳細度の上限"),
+    T("voxelcompact", "Compact", "Compact", "Compacto", "軽量"),
+    T("voxelfine", "Fine", "Fin", "Fino", "精細"),
+    T("voxelveryfine", "Very fine", "Très fin", "Muy fino", "高精細"),
+    T("voxelyaw", "Look from the side", "Regarder de côté", "Mirar desde un lado",
+      "左右から見る角度"),
+    T("voxelpitch", "Look from above", "Regarder d’en haut", "Mirar desde arriba",
+      "上下から見る角度"),
+    T("voxelfront", "Front view", "Vue de face", "Vista frontal", "正面から見る"),
+    T("voxelangle", "Diorama view", "Vue diorama", "Vista de diorama", "斜めから見る"),
+    T("voxelready", "Pixel volumes available", "Volumes de pixels disponibles",
+      "Volúmenes de píxeles disponibles", "ピクセルの立体表示を利用できます"),
+    T("voxelunsupported",
+      "This renderer cannot display volumes. The flat picture stays available; try the hardware "
+      "renderer or a lower voxel detail limit.",
+      "Ce moteur de rendu ne peut pas afficher les volumes. L’image plate reste disponible ; "
+      "essaie le rendu matériel ou une limite de détail plus basse.",
+      "Este renderizador no puede mostrar volúmenes. La imagen plana sigue disponible; prueba el "
+      "renderizado por hardware o un límite de detalle menor.",
+      "この描画方式では立体表示を利用できません。平面表示は使えます。ハードウェア描画や低い詳細度を"
+      "選んでください。"),
+    T("voxelknown", "Terrain and actors use their observed world positions and drawing priority.",
+      "Le terrain et les objets utilisent leurs positions observées dans le niveau et leur "
+      "priorité d’affichage.",
+      "El terreno y los objetos usan sus posiciones observadas en el nivel y su prioridad de "
+      "dibujo.",
+      "地形とオブジェクトを、観測したステージ座標と描画優先度に従って配置します。"),
+    T("voxelnative",
+      "This scene uses the complete native screen, including its background and game UI. Hidden "
+      "scenery and object models are not guessed.",
+      "Cette scène utilise l’écran original complet, avec son fond et son interface. Les décors "
+      "cachés et les modèles d’objets ne sont pas inventés.",
+      "Esta escena usa la pantalla original completa, con su fondo e interfaz. No se inventan "
+      "escenarios ocultos ni modelos de objetos.",
+      "この場面では背景やゲーム内UIを含む元の画面全体に厚みを付けます。隠れた景色や物体の形は推測し"
+      "ません。"),
+    T("voxelintro",
+      "Original pixels become small solid volumes. Choose separated layers for a diorama, or "
+      "subtle thickness for a familiar picture. Game rules and timing stay the same.",
+      "Les pixels originaux deviennent de petits volumes. Sépare les couches pour un diorama, ou "
+      "garde une épaisseur discrète pour retrouver l’image habituelle. Les règles et la cadence du "
+      "jeu restent identiques.",
+      "Los píxeles originales se convierten en pequeños volúmenes. Separa las capas para un "
+      "diorama o elige un grosor sutil para una imagen familiar. Las reglas y el ritmo del juego "
+      "se conservan.",
+      "元のピクセルを小さな立体にします。レイヤーを離してジオラマ風にしたり、薄い厚みで見慣れた絵を"
+      "保ったりできます。ゲームのルールと速度は変わりません。"),
+    T("voxelvrhint",
+      "In VR/AR, move your head to see the depth. Use the middle-finger grips to place the "
+      "complete scene; the Depth remote page has direct buttons.",
+      "En VR/AR, bouge la tête pour voir le relief. Les poignées sous les majeurs déplacent la "
+      "scène entière ; la page Profondeur de la télécommande donne accès aux boutons directs.",
+      "En VR/AR, mueve la cabeza para ver el relieve. Usa los agarres bajo los dedos medios para "
+      "colocar la escena completa; la página Profundidad del mando ofrece botones directos.",
+      "VR/"
+      "ARでは頭を動かすと立体感が分かります。中指のグリップで場面全体を動かせます。リモコンの立体ペ"
+      "ージにも直接操作ボタンがあります。"),
+    T("remote_depth", "Depth", "Relief", "Relieve", "立体"),
+    T("voxelthinner", "Thinner", "Plus fin", "Más fino", "薄く"),
+    T("voxelthicker", "Thicker", "Plus épais", "Más grueso", "厚く"),
+    T("voxeltogether", "Bring layers closer", "Rapprocher les couches", "Acercar capas",
+      "レイヤーを近づける"),
+    T("voxelapart", "Separate layers", "Écarter les couches", "Separar capas", "レイヤーを離す"),
+    T("voxelcrt", "Voxel pixels inside the CRT", "Pixels en volume dans la TV",
+      "Píxeles en volumen dentro del CRT", "ブラウン管の中も立体にする"),
     T("slow", "Slow", "Lent", "Lento", "遅い"),
     T("off", "Off", "Désactivé", "Desactivado", "無効"),
     T("strong", "Strong", "Fort", "Fuerte", "強い"),

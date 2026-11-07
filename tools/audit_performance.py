@@ -18,7 +18,8 @@ world=read('src/world.cpp');ui=read('src/ui.cpp');main=read('src/main.cpp')
 assert 'canvas.pixels = terrainPixels;' not in world
 assert 'actorsDamage.restore' in world and 'textureDamage.merge(actorsDamage)' in world
 assert 'terrainAttributes.sample' in world and 'terrainGeometryRevision(s.ram' in world
-assert 'core.world.uploadRegions' in ui and 'createdWorldTexture' in ui
+assert 'core.world.uploadRegions' in ui and 'worldTextureStale' in ui
+assert 'if (worldTextureStale)' in ui and 'worldTextureStale |= refresh' in ui
 assert 'FrameDeadline pacing' in main and 'observe(sample, rawElapsed)' in main
 assert 'core.executionDisabled = a.menuVerificationOnly' in main
 timer=read('src/xr_gpu_timer.h')

@@ -12,6 +12,7 @@ enum SpatialAction {
     PagePerformance,
     PageSections,
     PageNudge,
+    PageDepth,
     MoveGame = 30,
     MoveNative,
     MoveRemote,
@@ -68,7 +69,17 @@ enum SpatialAction {
     GameStick,
     Resume,
     ModeFirst = 200,
-    SectionFirst = 300
+    SectionFirst = 300,
+    VoxelFlat = 400,
+    VoxelThick,
+    VoxelLayers,
+    VoxelSculpt,
+    VoxelThinner,
+    VoxelThicker,
+    VoxelTogether,
+    VoxelApart,
+    VoxelBackground,
+    VoxelCrt
 };
 struct SpatialButton {
     int action;
