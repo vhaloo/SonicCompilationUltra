@@ -150,15 +150,14 @@ static const SettingHelp entries[] = {
       "他の拡張場面では背景を装飾として繰り返します。ARを透明にすると背景は常に省略し、部屋を見せま"
       "す。"),
     H("voxeldetail", Depth,
-      "Performance uses larger blocks. Sharp keeps finer edges and textures, especially on wide "
-      "screens. Automatic quality can reduce detail during busy scenes. Framing and controls stay the same.",
-      "Fluidité utilise de plus gros blocs. Détaillé conserve des contours et des textures plus fins, "
-      "surtout sur un écran large. La qualité automatique peut réduire le détail quand la scène se charge. "
-      "Le cadrage et les commandes restent identiques.",
-      "Rendimiento usa bloques más grandes. Nítido conserva bordes y texturas más finos, sobre todo "
-      "en pantallas anchas. La calidad automática puede bajar el detalle en escenas exigentes. El encuadre y los controles se mantienen.",
-      "速度優先ではブロックが大きくなります。精細では特にワイド画面で輪郭や模様が細かく見えます。"
-      "負荷が高い場面では自動画質で細かさを調整します。画角と操作は同じです。"),
+      "Pixel precise keeps each game pixel in a close view when it fits the device budget. "
+      "A whole-level view samples the map to fit. Automatic quality adjusts depth geometry and output size independently of the game texture.",
+      "Précision pixel conserve chaque pixel du jeu en vue rapprochée, dans les limites de l’appareil. "
+      "La vue d’ensemble échantillonne la carte pour la faire tenir à l’écran. La qualité automatique ajuste le relief et la taille de rendu séparément de la texture du jeu.",
+      "Precisión de píxel conserva cada píxel del juego en vistas cercanas dentro del límite del dispositivo. "
+      "La vista completa muestrea el mapa para encajarlo. La calidad automática ajusta el relieve y el tamaño de salida por separado.",
+      "ピクセル精度では端末の処理範囲内で近くのゲーム画素を保ちます。全体表示は地図を縮小します。"
+      "自動画質ではゲーム画像とは別に奥行きと描画サイズを調整します。"),
     H("voxelframing", Depth,
       "Follow player shows a closer stretch of the level, with more room across a wide screen. "
       "Use selected view keeps the View setting, including the whole level. Spinball keeps its full table in Overview.",
@@ -1561,14 +1560,14 @@ static const SettingHelp entries[] = {
       "自動では英語・フランス語・スペイン語・日本語のシステム設定に従い、それ以外は英語になります"
       "。"),
     H("preset", Performance,
-      "Lightweight reduces overview sampling and background work. Balanced is recommended; Ultra "
-      "keeps every output pixel. Your camera and view stay selected.",
-      "Léger réduit l’échantillonnage de la vue globale et le travail du fond. Équilibré est "
-      "conseillé ; Ultra calcule chaque pixel de sortie. Le cadrage choisi est conservé.",
-      "Ligero reduce el muestreo de la vista completa y el trabajo del fondo. Equilibrado es "
-      "recomendable; Ultra calcula cada píxel de salida. Conserva la vista elegida.",
-      "軽量は全体図の解像度と背景処理を抑えます。通常はバランスを推奨。ウルトラは出力の全画素を計算"
-      "し、選択した視点は保持します。"),
+      "Choose a rendering budget. Lightweight spends less on the image and Ultra gives the renderer "
+      "more room. The selected look and voxel texture detail apply across budgets.",
+      "Choisis un budget de rendu. Léger réduit le travail graphique et Ultra augmente le budget. "
+      "Le style et la précision des textures voxel s’appliquent à tous les budgets.",
+      "Elige un presupuesto de renderizado. Ligero reduce la carga y Ultra amplía el presupuesto. "
+      "El estilo y el detalle de textura de los vóxeles se aplican a todos los presupuestos.",
+      "描画の負荷を選びます。軽量は負荷を抑え、ウルトラはより多くの処理を許容します。"
+      "見た目とボクセル画像の細かさは共通です。"),
     H("view", View,
       "Pixel world uses physical display pixels. Panorama fits a chosen world height. Overview "
       "fits the entire supported map. Original framing preserves the cartridge screen.",

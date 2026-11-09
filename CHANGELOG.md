@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.12.2 Pixel-precision preview
+
+- Pixel-precise voxel rendering keeps a separate game-color texture when automatic quality simplifies depth geometry. The close 48:9 view keeps all 1536 × 288 source texels. Whole-level views sample their larger map to fit.
+- Appearance presets set the view, depth and scenery while retaining the player's performance budget and controls. The menu names the active look and identifies custom edits.
+- Fixed cameras keep their saved position on the first frame. Switching presets, restoring profiles, resizing or recreating renderer targets rebuilds the active picture from the same running cartridge.
+- Reuse unchanged terrain planes and keep the same depth bounds as actors and previews enter or leave the view.
+
 ## 0.12.1 Display preview
 
 - Whole-level view starts with cartridge art. Terrain silhouette is an optional overview aid.

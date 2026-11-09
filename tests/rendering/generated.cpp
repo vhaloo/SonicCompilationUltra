@@ -81,6 +81,22 @@ int main() {
         world->makeBackdrop(*snapshot, scene, options);
         require(world->backdrop.front() == 0xff233653, "a new cartridge starts with a quiet fallback");
     }
+    {
+        auto snapshot = generated();
+        auto world = std::make_unique<World>();
+        Settings options;
+        options.camera = 2;
+        options.view = 1;
+        options.left = 192;
+        options.top = 48;
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            world->reset();
+            require(world->compose(*snapshot, &fixture, options, 1280, 720) &&
+                        world->canvas.left == 192 && world->canvas.top == 48 &&
+                        options.left == 192 && options.top == 48,
+                    "a saved fixed camera has the same origin on its first rendered frame");
+        }
+    }
     int comparisons = 0;
     int volumeComparisons = 0;
     uint64_t uploaded = 0, full = 0;

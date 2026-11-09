@@ -139,12 +139,39 @@ int main() {
             "schematic overview must retain stage coverage");
     for (int n = 0; n < 3; ++n) {
         settings.view = 2;
+        settings.voxelDetail = 3;
+        settings.background = 4;
         settings.preset(n);
         world->compose(*s, gameById("sonic1"), settings, 1920, 1080);
         require(settings.view == 2 && world->canvas.coverageW >= scene.width &&
                     world->canvas.coverageH >= scene.height,
                 "quality preset must not crop the overview");
+        require(settings.voxelDetail == 3 && settings.background == 4,
+                "performance budget preserves pixel detail and appearance");
     }
+    const Settings defaults;
+    for (int from = 0; from < 6; ++from)
+        for (int to = 0; to < 6; ++to) {
+            Settings picture;
+            picture.quality = 2;
+            picture.voxelDetail = 0;
+            picture.performanceHeadroom = 38;
+            picture.vsync = false;
+            picture.span = true;
+            picture.volume = 43;
+            picture.enemyPreview = false;
+            picture.applyLook(from, defaults);
+            picture.applyLook(to, defaults);
+            require(picture.matchingLook(defaults, true) == to,
+                    "appearance presets apply the same values in any order");
+            require(picture.quality == 2 && picture.voxelDetail == 0 &&
+                        picture.performanceHeadroom == 38 && !picture.vsync && picture.span &&
+                        picture.volume == 43 && !picture.enemyPreview,
+                    "appearance preset preserves explicit device, performance and overlay settings");
+            picture.voxelYaw += 1;
+            require(picture.matchingLook(defaults, true) == -1,
+                    "edited appearance is shown as custom");
+        }
     std::cout << "PASS: cartridge identities, localisation, world addressing, 1:1 / zoom / "
                  "overview / portrait / tiny / classic and read-only guest memory\n";
 }

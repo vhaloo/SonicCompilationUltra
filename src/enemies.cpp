@@ -112,6 +112,20 @@ std::vector<Piece> pieces(const Reader &r, int family, unsigned map, unsigned fr
 }
 } // namespace
 
+std::array<int, 2> EnemyPreviews::fittedExtent(bool bosses, bool scripts, bool objects,
+                                              bool origins) const {
+    std::array<int, 2> extent{};
+    for (const auto &p : placements) {
+        if ((p.originOnly && !origins) ||
+            (p.kind == SpawnKind::Boss && !bosses) ||
+            (p.kind == SpawnKind::Scripted && !scripts) ||
+            (p.kind == SpawnKind::MovingObject && !objects))
+            continue;
+        extent[0] = std::max(extent[0], p.x + 96);
+        extent[1] = std::max(extent[1], p.y + 96);
+    }
+    return extent;
+}
 void EnemyPreviews::reset() {
     placements.clear();
     appearances.clear();

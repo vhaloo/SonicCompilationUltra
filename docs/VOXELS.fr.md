@@ -11,7 +11,7 @@ Ouvre **Vidéo → Profondeur et voxels → Volume des pixels**. Sur Quest, la p
 | Voxels par couches | Terrain et objets observés sont séparés selon leur priorité |
 | Voxels sculptés | Quatre petits paliers de luminosité ajoutent du relief aux surfaces |
 
-Commence avec **Discret**, **Diorama** ou **Prononcé**. **Fluidité**, **Équilibré** et **Détaillé** règlent la finesse du rendu. Ouvre **Affiner le relief et l’angle** pour ajuster le style. L’épaisseur est exprimée en pixels du jeu et suit la taille de la scène.
+Commence avec **Discret**, **Diorama** ou **Prononcé**. **Précision pixel** conserve les pixels du jeu en vue rapprochée dans les limites de l’appareil. La qualité automatique peut simplifier le relief et réduire la taille de l’image séparément. La vue d’ensemble échantillonne la carte pour la faire tenir à l’écran. Ouvre **Affiner le relief et l’angle** pour ajuster le style.
 
 ![Même décor original de démonstration, rendu en volumes](illustrations/voxel-layered.png)
 

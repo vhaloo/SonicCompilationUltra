@@ -29,7 +29,8 @@ unsigned reliefStep(uint32_t c, const Options &o) {
 }
 } // namespace
 void Frame::configure(int w, int h, double x, double y, double cw, double ch) {
-    if (w <= 0 || h <= 0 || w > 1024 || h > 512 || !std::isfinite(cw) || !std::isfinite(ch) ||
+    if (w <= 0 || h <= 0 || w > maxWidth || h > maxHeight ||
+        !std::isfinite(cw) || !std::isfinite(ch) ||
         !std::isfinite(x) || !std::isfinite(y) || cw <= 0 || ch <= 0) {
         clear();
         return;
@@ -44,18 +45,26 @@ void Frame::configure(int w, int h, double x, double y, double cw, double ch) {
     std::fill(pixels.begin(), pixels.end(), 0);
     hardwareLayers = false;
     nativeOnly = false;
+    planes = allPlanes;
+    planeRevisions.fill(0);
     ++revision;
 }
 uint32_t &Frame::at(Plane p, int x, int y) {
-    return pixels[(size_t(p) / 2 * height + y) * textureWidth() + (size_t(p) % 2 * width + x)];
+    return row(p, y)[x];
 }
 uint32_t Frame::at(Plane p, int x, int y) const {
     return x >= 0 && x < width && y >= 0 && y < height
-               ? pixels[(size_t(p) / 2 * height + y) * textureWidth() + (size_t(p) % 2 * width + x)]
+               ? row(p, y)[x]
                : 0;
 }
+const uint32_t *Frame::row(Plane p, int y) const {
+    return pixels.data() + (size_t(p) / 2 * height + y) * textureWidth() + size_t(p) % 2 * width;
+}
+uint32_t *Frame::row(Plane p, int y) {
+    return pixels.data() + (size_t(p) / 2 * height + y) * textureWidth() + size_t(p) % 2 * width;
+}
 bool Frame::valid() const {
-    return width > 0 && height > 0 && width <= 1024 && height <= 512 && coverageWidth > 0 &&
+    return width > 0 && height > 0 && width <= maxWidth && height <= maxHeight && coverageWidth > 0 &&
            coverageHeight > 0 && std::isfinite(coverageWidth) && std::isfinite(coverageHeight) &&
            std::isfinite(left) && std::isfinite(top) &&
            pixels.size() == size_t(textureWidth()) * textureHeight();
@@ -81,36 +90,87 @@ std::array<float, 2> column(Plane p, uint32_t c, const Options &o) {
     const float back = rank * band;
     return {back, back + thickness + relief};
 }
-uint64_t shapeSignature(const Frame &f, Plane p, const Options &o, uint64_t *pixelSignature) {
+static uint64_t geometryConfiguration(const Frame &f, const Options &o) {
     uint64_t h = basis;
-    for (int value : {f.width, f.height, o.mode, int(p)})
+    for (int value : {f.width, f.height, o.mode, std::clamp(o.geometryStep, 1, 64)})
         h = mix(h, uint32_t(value));
     for (float value : {float(f.left), float(f.top), float(f.coverageWidth),
                         float(f.coverageHeight), o.thickness, o.spacing, o.relief})
         h = mix(h, floatBits(value));
+    return h;
+}
+static uint64_t prepareLayer(const Frame &f, Plane p, const Options &o, uint64_t configuration,
+                             uint64_t *pixelSignature, std::vector<uint32_t> &shape,
+                             std::vector<uint32_t> &samples) {
+    const int step = std::clamp(o.geometryStep, 1, 64);
+    uint64_t h = mix(configuration, unsigned(p));
     uint64_t pixels = mix(mix(basis, f.width), f.height);
-    if (!f.valid()) {
+    if (!f.valid() || !(f.planes & (1u << unsigned(p)))) {
         if (pixelSignature)
             *pixelSignature = pixels;
         return h;
     }
-    for (int y = 0; y < f.height; ++y)
-        for (int x = 0; x < f.width; ++x) {
-            auto color = f.at(p, x, y);
-            h = mix(h, alphaClass(color) | (reliefStep(color, o) << 2));
-            pixels = mix(pixels, color);
+    if (step == 1) {
+        for (int y = 0; y < f.height; ++y) {
+            const auto *row = f.row(p, y);
+            for (int x = 0; x < f.width; ++x) {
+                const auto color = row[x];
+                h = mix(h, alphaClass(color) | (reliefStep(color, o) << 2));
+                pixels = mix(pixels, color);
+            }
         }
+    } else {
+        const int columns = (f.width + step - 1) / step, rows = (f.height + step - 1) / step;
+        shape.resize(size_t(columns) * rows);
+        samples.resize(shape.size());
+        for (int y = 0; y < rows; ++y)
+            for (int x = 0; x < columns; ++x) {
+                const int left = x * step, top = y * step;
+                const int right = std::min(left + step, f.width);
+                const int bottom = std::min(top + step, f.height);
+                uint32_t representative = 0, sample = 0;
+                bool translucent = false;
+                for (int yy = top; yy < bottom; ++yy) {
+                    const auto *row = f.row(p, yy);
+                    for (int xx = left; xx < right; ++xx) {
+                        const auto color = row[xx];
+                        pixels = mix(pixels, color);
+                        if (occupied(color)) {
+                            if (!representative) {
+                                representative = color;
+                                sample = yy * f.width + xx;
+                            }
+                            translucent |= color >> 24 != 255;
+                        }
+                    }
+                }
+                if (translucent)
+                    representative = (representative & 0x00FFFFFFu) | 0x80000000u;
+                const size_t index = size_t(y) * columns + x;
+                shape[index] = representative;
+                samples[index] = sample;
+                h = mix(h, alphaClass(representative) | (reliefStep(representative, o) << 2));
+                h = mix(h, sample);
+            }
+    }
     if (pixelSignature)
         *pixelSignature = pixels;
     return h;
+}
+uint64_t shapeSignature(const Frame &f, Plane p, const Options &o, uint64_t *pixelSignature) {
+    std::vector<uint32_t> shape, samples;
+    return prepareLayer(f, p, o, geometryConfiguration(f, o), pixelSignature, shape, samples);
 }
 bool Mesher::buildLayer(const Frame &f, size_t plane, const Options &o, LayerMesh &out,
                         size_t limit) {
     out.opaque.clear();
     out.translucent.clear();
-    const int w = f.width, h = f.height;
+    if (!(f.planes & (1u << plane)))
+        return true;
+    const int step = std::clamp(o.geometryStep, 1, 64);
+    const int w = (f.width + step - 1) / step, h = (f.height + step - 1) / step;
     const auto p = Plane(plane);
-    const float dx = float(f.coverageWidth / w), dy = float(f.coverageHeight / h),
+    const float dx = float(f.coverageWidth / f.width), dy = float(f.coverageHeight / f.height),
                 left = float(f.left), top = float(f.top), tw = float(f.textureWidth()),
                 th = float(f.textureHeight());
     size_t faces = 0;
@@ -128,8 +188,23 @@ bool Mesher::buildLayer(const Frame &f, size_t plane, const Options &o, LayerMes
             target.push_back(v[n]);
         return true;
     };
+    auto colorAt = [&](int x, int y) -> uint32_t {
+        if (x < 0 || y < 0 || x >= w || y >= h)
+            return 0;
+        return step == 1 ? f.row(p, y)[x] : shapePixels[size_t(y) * w + x];
+    };
+    auto texel = [&](float x, float y) {
+        return std::array<float, 2>{((plane % 2) * f.width + x) / tw,
+                                    ((plane / 2) * f.height + y) / th};
+    };
+    auto sourceX = [&](float x) { return std::min(x * step, float(f.width)); };
+    auto sourceY = [&](float y) { return std::min(y * step, float(f.height)); };
     auto tex = [&](float x, float y) {
-        return std::array<float, 2>{((plane % 2) * w + x) / tw, ((plane / 2) * h + y) / th};
+        return texel(sourceX(x), sourceY(y));
+    };
+    auto sideTexel = [&](int x, int y) {
+        const auto sample = shapeTexels[size_t(y) * w + x];
+        return texel(sample % f.width + .5f, sample / f.width + .5f);
     };
     // Rectangles merge only identical height/alpha classes. The texture retains
     // every colour and texel boundary, so palette cycling never rebuilds faces.
@@ -137,13 +212,13 @@ bool Mesher::buildLayer(const Frame &f, size_t plane, const Options &o, LayerMes
     for (int y = 0; y < h; ++y)
         for (int x = 0; x < w; ++x) {
             size_t at = size_t(y) * w + x;
-            uint32_t color = f.at(p, x, y);
+            uint32_t color = colorAt(x, y);
             if (visited[at] || !occupied(color))
                 continue;
             auto extent = column(p, color, o);
             unsigned key = alphaClass(color) | (reliefStep(color, o) << 2);
             auto same = [&](int xx, int yy) {
-                auto c = f.at(p, xx, yy);
+                auto c = colorAt(xx, yy);
                 return !visited[size_t(yy) * w + xx] && occupied(c) &&
                        (alphaClass(c) | (reliefStep(c, o) << 2)) == key;
             };
@@ -163,8 +238,8 @@ bool Mesher::buildLayer(const Frame &f, size_t plane, const Options &o, LayerMes
             }
             for (int yy = 0; yy < rh; ++yy)
                 std::fill_n(visited.data() + size_t(y + yy) * w + x, rw, uint8_t(1));
-            float x0 = left + x * dx, x1 = left + (x + rw) * dx, y0 = top + y * dy,
-                  y1 = top + (y + rh) * dy;
+            float x0 = left + sourceX(float(x)) * dx, x1 = left + sourceX(float(x + rw)) * dx,
+                  y0 = top + sourceY(float(y)) * dy, y1 = top + sourceY(float(y + rh)) * dy;
             auto a = tex(float(x), float(y)), b = tex(float(x + rw), float(y)),
                  c = tex(float(x + rw), float(y + rh)), d = tex(float(x), float(y + rh));
             bool alpha = key % 4 == 1;
@@ -182,7 +257,7 @@ bool Mesher::buildLayer(const Frame &f, size_t plane, const Options &o, LayerMes
         for (int i = 0; i < outer; ++i)
             for (int j = 0; j < inner;) {
                 int x = vertical ? i : j, y = vertical ? j : i;
-                uint32_t color = f.at(p, x, y);
+                uint32_t color = colorAt(x, y);
                 if (!occupied(color)) {
                     ++j;
                     continue;
@@ -194,7 +269,7 @@ bool Mesher::buildLayer(const Frame &f, size_t plane, const Options &o, LayerMes
                           ny = y + (direction == 2   ? -1
                                     : direction == 3 ? 1
                                                      : 0);
-                auto neighbor = f.at(p, nx, ny);
+                auto neighbor = colorAt(nx, ny);
                 float lower = occupied(neighbor) ? column(p, neighbor, o)[1] : extent[0];
                 lower = std::max(lower, extent[0]);
                 if (lower >= extent[1] - .0001f) {
@@ -203,10 +278,10 @@ bool Mesher::buildLayer(const Frame &f, size_t plane, const Options &o, LayerMes
                 }
                 const unsigned key = alphaClass(color) | (reliefStep(color, o) << 2);
                 int run = 1;
-                while (j + run < inner) {
+                while (step == 1 && j + run < inner) {
                     int xx = vertical ? i : j + run, yy = vertical ? j + run : i;
-                    uint32_t c = f.at(p, xx, yy);
-                    auto n = f.at(p,
+                    uint32_t c = colorAt(xx, yy);
+                    auto n = colorAt(
                                   xx + (direction == 0   ? -1
                                         : direction == 1 ? 1
                                                          : 0),
@@ -220,13 +295,17 @@ bool Mesher::buildLayer(const Frame &f, size_t plane, const Options &o, LayerMes
                         break;
                     ++run;
                 }
-                float x0 = left + x * dx, x1 = x0 + (vertical ? 1 : run) * dx, y0 = top + y * dy,
-                      y1 = y0 + (vertical ? run : 1) * dy;
+                float x0 = left + sourceX(float(x)) * dx,
+                      x1 = left + sourceX(float(x + (vertical ? 1 : run))) * dx,
+                      y0 = top + sourceY(float(y)) * dy,
+                      y1 = top + sourceY(float(y + (vertical ? run : 1))) * dy;
                 const float z0 = lower, z1 = extent[1];
                 bool alpha = alphaClass(color) == 1;
                 if (vertical) {
                     float u = x + .5f, xx = direction == 0 ? x0 : x1;
                     auto a = tex(u, float(y)), b = tex(u, float(y + run));
+                    if (step > 1)
+                        a = b = sideTexel(x, y);
                     if (direction == 0) {
                         if (!emit({xx, y0, z0}, {xx, y0, z1}, {xx, y1, z1}, {xx, y1, z0},
                                   {-1, 0, 0}, a, a, b, b, alpha))
@@ -237,6 +316,8 @@ bool Mesher::buildLayer(const Frame &f, size_t plane, const Options &o, LayerMes
                 } else {
                     float v = y + .5f, yy = direction == 2 ? y0 : y1;
                     auto a = tex(float(x), v), b = tex(float(x + run), v);
+                    if (step > 1)
+                        a = b = sideTexel(x, y);
                     if (direction == 2) {
                         if (!emit({x1, yy, z0}, {x1, yy, z1}, {x0, yy, z1}, {x0, yy, z0},
                                   {0, -1, 0}, b, b, a, a, alpha))
@@ -258,19 +339,29 @@ bool Mesher::update(const Frame &f, const Options &o) {
     const size_t limit = std::min<size_t>(o.faceLimit, 200000);
     bool changed = !valid_;
     size_t faces = 0;
+    const uint64_t configuration = geometryConfiguration(f, o);
     for (size_t p = 0; p < planeCount; ++p) {
         auto &layer = layers_[p];
-        uint64_t signature = shapeSignature(f, Plane(p), o, &layer.pixelSignature);
-        if (!valid_ || signature != layer.signature) {
-            if (!buildLayer(f, p, o, layer, limit)) {
-                valid_ = false;
-                return false;
-            }
-            layer.signature = signature;
-            ++rebuiltLayers;
-            changed = true;
-        } else
+        if (valid_ && f.planeRevisions[p] && layer.sourceRevision == f.planeRevisions[p] &&
+            layer.configuration == configuration) {
             ++cacheHits;
+        } else {
+            const uint64_t signature = prepareLayer(f, Plane(p), o, configuration,
+                                                    &layer.pixelSignature, shapePixels, shapeTexels);
+            if (!valid_ || signature != layer.signature) {
+                if (!buildLayer(f, p, o, layer, limit)) {
+                    valid_ = false;
+                    return false;
+                }
+                layer.signature = signature;
+                ++rebuiltLayers;
+                changed = true;
+            } else {
+                ++cacheHits;
+            }
+            layer.sourceRevision = f.planeRevisions[p];
+            layer.configuration = configuration;
+        }
         faces += (layer.opaque.size() + layer.translucent.size()) / 6;
         if (faces > limit) {
             valid_ = false;
@@ -278,24 +369,17 @@ bool Mesher::update(const Frame &f, const Options &o) {
         }
     }
     faces_ = faces;
-    float z0 = 0, z1 = 0;
-    bool first = true;
-    for (size_t p = 0; p < planeCount; ++p) {
-        if (layers_[p].opaque.empty() && layers_[p].translucent.empty())
-            continue;
-        auto e = column(Plane(p), 0xFFFFFFFF, o);
-        if (first) {
-            z0 = e[0];
-            z1 = e[1];
-            first = false;
-        } else {
-            z0 = std::min(z0, e[0]);
-            z1 = std::max(z1, e[1]);
-        }
-    }
+    // Reserve the same depth as sprites and previews enter or leave the frame.
+    const auto firstPlane = !f.nativeOnly && o.mode > 1 &&
+                                    (f.planes & (1u << unsigned(Plane::Background)))
+                                ? Plane::Background : Plane::TerrainLow;
+    const auto lastPlane = f.nativeOnly ? Plane::TerrainLow : Plane::Preview;
+    const float z0 = column(firstPlane, 0xFFFFFFFF, o)[0];
+    const float z1 = column(lastPlane, 0xFFFFFFFF, o)[1];
     bounds_ = {{float(f.left), float(f.top), z0},
                {float(f.left + f.coverageWidth), float(f.top + f.coverageHeight), z1}};
     valid_ = true;
+    geometryStep = std::clamp(o.geometryStep, 1, 64);
     if (changed)
         ++revision;
     return true;
@@ -305,6 +389,7 @@ void Mesher::clear() {
         l.opaque.clear();
         l.translucent.clear();
         l.signature = l.pixelSignature = 0;
+        l.sourceRevision = l.configuration = 0;
     }
     valid_ = false;
     faces_ = 0;
@@ -316,25 +401,28 @@ void Mesher::discard() {
     revision = next;
 }
 size_t Mesher::bytes() const {
-    size_t bytes = visited.capacity();
+    size_t bytes = visited.capacity() +
+                   (shapePixels.capacity() + shapeTexels.capacity()) * sizeof(uint32_t);
     for (auto &l : layers_)
         bytes += (l.opaque.capacity() + l.translucent.capacity()) * sizeof(Vertex);
     return bytes;
 }
 size_t cellBudget(int detail, bool watch, bool mobile, int effects, bool adaptive) {
-    size_t value = std::array<size_t, 3>{8192, 32768, 196608}[std::clamp(detail, 0, 2)];
+    size_t value = std::array<size_t, 3>{16384, 65536, 1048576}[std::clamp(detail, 0, 2)];
     if (watch)
         value = std::min<size_t>(value, 8192);
     else if (mobile)
-        value = std::min<size_t>(value, 65536);
-    if (adaptive)
-        value >>= unsigned(3 - std::clamp(effects, 0, 3));
+        value = std::min<size_t>(value, 163840);
+    if (adaptive && detail < 2)
+        value >>= unsigned((3 - std::clamp(effects, 0, 3)) / 2);
     return std::max<size_t>(1024, value);
 }
-std::array<int, 2> grid(double cw, double ch, int sw, int sh, size_t budget) {
+std::array<int, 2> grid(double cw, double ch, int sw, int sh, size_t budget, int textureLimit) {
     if (!std::isfinite(cw) || !std::isfinite(ch) || cw <= 0 || ch <= 0 || sw <= 0 || sh <= 0)
         return {0, 0};
-    const double scale = std::min({1., 1024. / sw, 512. / sh,
+    const int capW = std::clamp(textureLimit / 2, 1, Frame::maxWidth);
+    const int capH = std::clamp(textureLimit / 4, 1, Frame::maxHeight);
+    const double scale = std::min({1., double(capW) / sw, double(capH) / sh,
                                   std::sqrt(double(std::max<size_t>(1, budget)) / sw / sh)});
     if (scale == 1.)
         return {sw, sh};
@@ -353,15 +441,24 @@ std::array<int, 2> grid(double cw, double ch, int sw, int sh, size_t budget) {
     return {width, height};
 }
 std::array<int, 2> pictureSize(int width, int height, int quality, int detail, int scale,
-                               int maximum, bool mobile, bool watch) {
-    const double pixels = std::array<double, 3>{360000, 960000, 2400000}[std::clamp(quality, 0, 2)] *
-                          std::array<double, 3>{.60, 1., 1.5}[std::clamp(detail, 0, 2)] *
-                          (watch ? .09 : mobile ? .55 : 1.);
-    const int cap = std::clamp(maximum, 8, watch ? 512 : mobile ? 2560 : 4096);
+                               int maximum, bool mobile, bool watch, int sourceWidth,
+                               int sourceHeight) {
+    const bool precise = detail >= 2 && !watch;
+    const auto budgets = precise ? std::array<double, 3>{900000, 4000000, 12000000}
+                                 : std::array<double, 3>{360000, 960000, 2400000};
+    const double pixels = budgets[std::clamp(quality, 0, 2)] * (detail == 0 ? .60 : 1.) *
+                          (watch ? .09 : mobile ? .50 : 1.);
+    const int cap = std::clamp(maximum, 8, watch ? 512 : mobile ? 2560 : precise ? 8192 : 4096);
     const double headroom = scale > 85 ? 1. : scale > 65 ? .75 : scale > 42 ? .5 : .35;
     const double w = std::max(1, width), h = std::max(1, height);
-    const double fit = std::min({1., double(cap) / w, double(cap) / h,
-                                 std::sqrt(pixels / (w * h))}) * headroom;
+    const double limit = std::min({1., double(cap) / w, double(cap) / h});
+    const double floor = precise ? (mobile ? 1. : 2.) *
+                                      std::max(sourceWidth / w, sourceHeight / h)
+                                 : 0.;
+    const double fit = std::min(limit, std::max(floor, std::min(limit, std::sqrt(pixels / (w * h))) *
+                                                          headroom));
+    if (fit >= 1.)
+        return {width, height};
     return {std::min(width, std::max(8, int(w * fit) / 8 * 8)),
             std::min(height, std::max(8, int(h * fit) / 8 * 8))};
 }

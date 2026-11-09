@@ -34,6 +34,7 @@ class App {
     VoxelGpu volumeGpu;
     bool cachedVolume = false, voxelWasEnabled = false, worldTextureStale = false;
     bool volumeOnScreen = false, voxelRenderer = false, voxelFineTuning = false;
+    int voxelTextureLimit = 2048;
     float voxelPanX = 0, voxelPanY = 0;
     bool voxelFollows(const Scene &) const;
     ImGuiContext *uiContext = nullptr;
@@ -42,7 +43,12 @@ class App {
     std::vector<SDL_Rect> scanlineRects;
     int scanlineWidth = 0, scanlineHeight = 0;
     uint64_t lastImageVersion = ~uint64_t(0), lastPresentationHash = 0;
-    uint64_t uploadedBackdrop = ~uint64_t(0);
+    uint64_t uploadedBackdrop = ~uint64_t(0), uploadedNative = ~uint64_t(0);
+#ifdef SCU_PRIVATE_QA
+    bool checksumRequested = false;
+    uint32_t sampledChecksum = 0;
+    std::vector<uint8_t> checksumPixels;
+#endif
     bool cachedExpanded = false;
     bool browserOpen = false, folderMode = false;
     bool pathEditor = false, focusMenu = true, focusPage = false, focusBrowser = false;
@@ -102,7 +108,11 @@ class App {
     void commitAction();
     void restoreSettings(int section);
     Settings defaultSettings() const;
-    void settingsApplied(bool updateDisplay, bool recenter);
+    void settingsApplied(const Settings &previous, bool recenter);
+    void invalidatePresentation();
+    void selectView(int view);
+    void freezeView();
+    bool updateNativeTexture();
     fs::path optionsProfile(int slot) const;
     void changeSection(int direction);
     bool visibleSection(int n) const;
@@ -166,6 +176,9 @@ class App {
     void refreshControllers();
     void toggleMenu();
     void applyDisplay();
+    void applyLook(int look);
+    void saveOptionsProfile(int slot);
+    void loadOptionsProfile(int slot);
     void beginBrowser(bool folder);
     void import(const fs::path &path, bool folder = false);
     bool play(const std::string &id);
@@ -175,6 +188,9 @@ class App {
     void pan(double elapsed);
     void resetVoxelOrbit();
     void present(bool capture = false);
+#ifdef SCU_PRIVATE_QA
+    uint32_t presentationChecksum();
+#endif
     void screenshot(const fs::path &path);
     void flushSettings();
     void performanceOptions();

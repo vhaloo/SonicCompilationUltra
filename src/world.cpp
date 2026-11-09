@@ -382,9 +382,8 @@ void World::freeze(const Scene &, Settings &s) {
     s.left = canvas.left;
     s.top = canvas.top;
     s.camera = 2;
-    cameraValid = true;
 }
-bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, int dh,
+bool World::compose(const SCUSnapshot &s, const Game *g, const Settings &cfg, int dw, int dh,
                     const std::vector<uint32_t> *native, int nw, int nh,
                     std::array<int, 2> viewOffset) {
     enemySpriteCount = enemyMarkerCount = 0;
@@ -398,11 +397,7 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
     snap = &s;
     if (v.family >= 4 && !atlas.prepare(rom, s, v.family, v.stage))
         return false;
-    if (lastStage != v.stage || lastFamily != v.family) {
-        lastStage = v.stage;
-        lastFamily = v.family;
-        cameraValid = false;
-    }
+    lastFamily = v.family;
     int w, h;
     double coverW = 0, coverH = 0;
     wear::View watchView;
@@ -414,11 +409,12 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
     if (cfg.enemyPreview && g->family && v.family <= 3) {
         enemies.update(s, g, rom, v.stage, v.cameraX, v.cameraY, cfg.bossPreview, cfg.scriptPreview,
                        cfg.objectPreview, cfg.frozenPreviews, cfg.objectOrigins);
-        if (overview && cfg.fitSpawns)
-            for (const auto &p : enemies.visible) {
-                v.width = std::min(32768, std::max(v.width, p.x + 96));
-                v.height = std::min(4096, std::max(v.height, p.y + 96));
-            }
+        if (overview && cfg.fitSpawns) {
+            const auto extent = enemies.fittedExtent(cfg.bossPreview, cfg.scriptPreview,
+                                                      cfg.objectPreview, cfg.objectOrigins);
+            v.width = std::min(32768, std::max(v.width, extent[0]));
+            v.height = std::min(4096, std::max(v.height, extent[1]));
+        }
     } else
         enemies.visible.clear();
     if (cfg.wearActive) {
@@ -460,18 +456,26 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
     // Memory/texture bounds are limits on output dimensions, not aspect ratio.
     double cap = std::min({1.0, 16384.0 / w, 8192.0 / h, std::sqrt(33554432.0 / (double(w) * h)),
                            adaptiveScale, pixelBudget});
-    w = std::max(1, int(w * cap));
-    h = std::max(1, int(h * cap));
+    if (cfg.voxelMode && !cfg.wearActive) {
+#ifdef __ANDROID__
+        constexpr bool mobile = true;
+#else
+        constexpr bool mobile = false;
+#endif
+        const auto budget = voxel::cellBudget(cfg.voxelDetail, false, mobile, cfg.effectsLevel,
+                                              cfg.autoPerformance);
+        const auto size = voxel::grid(coverW, coverH, w, h, budget, cfg.voxelTextureLimit);
+        w = size[0];
+        h = size[1];
+    } else {
+        w = std::max(1, int(w * cap));
+        h = std::max(1, int(h * cap));
+    }
     canvas.coverageW = coverW;
     canvas.coverageH = coverH;
     canvas.width = w;
     canvas.height = h;
     canvas.scale = std::min(float(dw) / w, float(dh) / h);
-    if (!cameraValid) {
-        cfg.left = int(v.playerX - coverW / 2);
-        cfg.top = int(v.playerY - coverH / 2);
-        cameraValid = true;
-    }
     if (cfg.wearActive) {
         canvas.left = int(std::floor(watchView.left));
         canvas.top = int(std::floor(watchView.top));
@@ -937,6 +941,9 @@ void World::makeBackdrop(const SCUSnapshot &s, const Scene &v, const Settings &c
     const std::array<int, 3> style{{mode, mode == 0 ? cfg.blur : 0, cfg.brightness}};
     const bool fixed = !cfg.parallax || cfg.reduceMotion || cfg.camera == 2 || cfg.camera == 4 ||
                        cfg.view == 2;
+    if (fixed && !backdropFixed)
+        invalidateBackdrop();
+    backdropFixed = fixed;
     bool sourceChanged = false;
     if (mode < 4 && v.ready &&
         (!fixed || backdropFamily != v.family || backdropStage != v.stage)) {

@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <memory>
 #include <map>
+#include <unordered_map>
 #include <chrono>
 #include <cmath>
 #include <thread>
@@ -118,6 +119,8 @@ static void execute(App &a, const Action &cmd, uint16_t &mask, bool &rewindMask)
         a.showSection(std::stoi(cmd.args));
     else if (cmd.verb == "guide")
         a.showGuide(cmd.args);
+    else if (cmd.verb == "look")
+        a.applyLook(std::stoi(cmd.args));
     else if (cmd.verb == "option") {
         std::string key, val;
         in >> key >> val;
@@ -166,6 +169,43 @@ static void execute(App &a, const Action &cmd, uint16_t &mask, bool &rewindMask)
         if (a.core.snapshot.ram[p] != v)
             throw std::runtime_error("RAM assertion failed at " + addr);
 #ifdef SCU_PRIVATE_QA
+    } else if (cmd.verb == "frame_probe") {
+        if (!a.headless || !a.core.loaded)
+            throw std::runtime_error("Presentation probes require an isolated loaded session");
+        static std::unordered_map<std::string, std::array<uint32_t, 2>> reference;
+        std::string operation, name;
+        if (!(in >> operation >> name))
+            throw std::runtime_error("Invalid presentation probe");
+        a.notice.clear();
+        const std::array<uint32_t, 2> sample{
+            a.presentationChecksum(),
+            checksum(std::vector<uint8_t>(a.core.snapshot.ram,
+                                         a.core.snapshot.ram + sizeof a.core.snapshot.ram))};
+        if (operation == "record")
+            reference[name] = sample;
+        else if (operation == "compare") {
+            auto found = reference.find(name);
+            if (found == reference.end() || found->second != sample)
+                throw std::runtime_error("Presentation changed after switching or restoring " +
+                                         name + " at step " + std::to_string(cmd.step));
+        } else
+            throw std::runtime_error("Invalid presentation probe operation");
+    } else if (cmd.verb == "profile_save") {
+        a.saveOptionsProfile(std::stoi(cmd.args));
+    } else if (cmd.verb == "profile_load") {
+        a.loadOptionsProfile(std::stoi(cmd.args));
+    } else if (cmd.verb == "resize") {
+        int width, height;
+        if (!a.headless || !(in >> width >> height) || width < 320 || height < 240 ||
+            width > 16384 || height > 8192)
+            throw std::runtime_error("Invalid isolated resize");
+        SDL_SetWindowSize(a.window, width, height);
+    } else if (cmd.verb == "renderer_reset") {
+        if (!a.headless)
+            throw std::runtime_error("Renderer probes require an isolated session");
+        SDL_Event reset{};
+        reset.type = SDL_RENDER_TARGETS_RESET;
+        a.event(reset);
     } else if (cmd.verb == "vpad") {
         if (!a.headless)
             throw std::runtime_error("Virtual controller probes require an isolated session");
@@ -661,7 +701,11 @@ int main(int argc, char **argv) {
             sample.renderMs = drewFrame ? a.lastRenderMs : 0;
             // Options are also an active XR scene. Measure their actual work;
             // the frame/swap waits remain outside the measured intervals.
+#ifdef SCU_QUEST
             sample.active = a.focused;
+#else
+            sample.active = a.focused && a.core.loaded && !a.menu;
+#endif
             sample.thermal = a.thermalStatus;
 #ifdef SCU_QUEST
             sample.presentationMs = headset->submissionMilliseconds();
@@ -743,8 +787,11 @@ int main(int argc, char **argv) {
                 << ",\n  \"game_mode\":" << (int)a.core.snapshot.ram[0xF600]
                 << ",\n  \"stage\":" << v.stage
                 << ",\n  \"voxel_mode\":" << a.settings.voxelMode
+                << ",\n  \"voxel_detail\":" << a.settings.voxelDetail
+                << ",\n  \"quality\":" << a.settings.quality
                 << ",\n  \"voxel_rendered\":" << (a.voxelPresented() ? "true" : "false")
                 << ",\n  \"voxel_faces\":" << a.core.world.volumeMesh.faces()
+                << ",\n  \"voxel_geometry_step\":" << a.core.world.volumeMesh.geometryStep
                 << ",\n  \"voxel_grid\":[" << a.core.world.volume.width << ","
                 << a.core.world.volume.height << "]"
                 << ",\n  \"voxel_picture\":[" << voxelPicture[0] << "," << voxelPicture[1] << "]"

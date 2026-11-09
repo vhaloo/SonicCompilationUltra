@@ -317,6 +317,12 @@ void testBossScriptPreviews() {
     check(world->compose(*f.s, f.game, cfg, 640, 360) && world->enemyMarkerCount == 5 &&
               world->canvas.coverageW >= 2528,
           "overview includes an arena beyond the loaded terrain");
+    const double fittedWidth = world->canvas.coverageW;
+    f.s->ram[0xF7A7] = 1;
+    check(world->compose(*f.s, f.game, cfg, 640, 360) && world->canvas.coverageW == fittedWidth &&
+              world->enemyMarkerCount == 3,
+          "defeating a boss does not resize the overview camera");
+    *f.s = *guest;
     cfg.bossPreview = cfg.scriptPreview = false;
     world->compose(*f.s, f.game, cfg, 320, 240);
     check(world->enemyMarkerCount == 3, "actual compositor respects boss/script controls");

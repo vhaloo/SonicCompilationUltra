@@ -2,6 +2,7 @@
 #include "observer.h"
 #include "rom.h"
 #include "spawn_catalogue.h"
+#include <array>
 #include <unordered_map>
 
 namespace scu {
@@ -39,6 +40,7 @@ class EnemyPreviews {
     size_t bossCount = 0, scriptCount = 0;
     std::vector<EnemyPreview> visible;
     void reset();
+    std::array<int, 2> fittedExtent(bool bosses, bool scripts, bool objects, bool origins) const;
     void update(const SCUSnapshot &s, const Game *game, const std::vector<uint8_t> &rom, int stage,
                 int cameraX, int cameraY, bool bosses = true, bool scripts = true,
                 bool objects = true, bool freezeImages = true, bool otherOrigins = true);

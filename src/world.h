@@ -43,14 +43,16 @@ class World {
     TileAttributeCache terrainAttributes;
 
     uint64_t shapeSignature = 0, terrainSignature = 0;
+    uint64_t volumeTerrainSignature = 0, volumeSourceRevision = 0;
+    int volumePreviousMode = 0;
     std::vector<uint32_t> backdropSource;
     std::array<int, 3> backdropStyle{{-1, -1, -1}};
     int backdropFamily = -1, backdropStage = -1;
+    bool backdropFixed = false;
     std::vector<uint8_t> priority;
     std::vector<Sprite> sprites, satSprites;
     std::vector<uint8_t> rom;
-    int lastStage = -1, lastFamily = -1;
-    bool cameraValid = false;
+    int lastFamily = -1;
     uint8_t read(unsigned address) const;
     uint16_t word(unsigned address) const;
     uint32_t longword(unsigned address) const;
@@ -92,14 +94,15 @@ class World {
         reset();
     }
     void reset() {
-        lastStage = -1;
-        backdropStage = -1;
-        cameraValid = false;
+        invalidateBackdrop();
         enemies.reset();
+    }
+    void invalidateBackdrop() {
+        backdropStage = -1;
     }
     void freeze(const Scene &scene, Settings &settings);
     uint16_t attribute(const SCUSnapshot &s, int family, int x, int y, bool bg = false) const;
-    bool compose(const SCUSnapshot &s, const Game *game, Settings &settings, int drawableW,
+    bool compose(const SCUSnapshot &s, const Game *game, const Settings &settings, int drawableW,
                  int drawableH, const std::vector<uint32_t> *native = nullptr, int nativeW = 320,
                  int nativeH = 224, std::array<int, 2> viewOffset = {});
     void makeBackdrop(const SCUSnapshot &s, const Scene &scene, const Settings &settings);

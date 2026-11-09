@@ -11,7 +11,7 @@ Open **Video → Depth and voxels → Pixel volume**. On Quest, the **Depth** pa
 | Layered voxels | Observed terrain and actors occupy separate priority planes |
 | Sculpted voxels | The same planes gain four small, brightness-based surface steps |
 
-Choose **Subtle**, **Diorama** or **Bold** as a starting point. **Performance**, **Balanced** and **Sharp** change how finely the volume is sampled. Open **Fine-tune depth and angle** to adjust the style. Thickness uses original game-pixel units and scales with the scene.
+Choose **Subtle**, **Diorama** or **Bold** as a starting point. **Pixel precise** retains each source texel in close views within the device's budget. Automatic quality can simplify the depth geometry and lower the size of the rendered image independently. Whole-level framing samples the larger map to fit. Open **Fine-tune depth and angle** to adjust the style.
 
 ![Original generated fixture, flat](illustrations/voxel-flat.png)
 ![The same original fixture, layered volumes](illustrations/voxel-layered.png)

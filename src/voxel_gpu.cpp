@@ -302,7 +302,7 @@ struct VoxelGpu::Impl {
     int width = 0, height = 0, atlasW = 0, atlasH = 0, pictureLimit = 2048;
     uint64_t lastMesh = ~uint64_t(0);
     std::array<uint64_t, voxel::planeCount> atlasPixels{};
-    std::array<int, 6> lastView{};
+    std::array<int, 7> lastView{};
     voxel::Matrix projection = voxel::Matrix::identity();
     struct Buffer {
         U id = 0;
@@ -520,16 +520,18 @@ struct VoxelGpu::Impl {
 #endif
         const auto size = voxel::pictureSize(w, h, s.quality, s.voxelDetail,
                                              s.autoPerformance ? s.compositionScale : 100,
-                                             pictureLimit, mobile, s.wearActive);
+                                             pictureLimit, mobile, s.wearActive, f.width, f.height);
         w = size[0];
         h = size[1];
         const int aspect = int(10000. * drawableW / std::max(1, drawableH));
-        std::array<int, 6> view{{s.voxelYaw, s.voxelPitch, s.voxelLight, w, h, aspect}};
+        const bool precise = s.voxelDetail >= 2 && !s.wearActive;
+        std::array<int, 7> view{{s.voxelYaw, s.voxelPitch, s.voxelLight, w, h, aspect, int(precise)}};
         bool texelsChanged = atlasDirty(f, mesh);
         if (picture && !texelsChanged && lastMesh == mesh.revision && lastView == view)
             return picture;
         SDL_RenderFlush(renderer);
         resize(w, h);
+        SDL_SetTextureScaleMode(picture, precise ? SDL_ScaleModeNearest : SDL_ScaleModeLinear);
         State state(g);
         upload(f, mesh, texelsChanged);
         g.BindFramebuffer(framebuffer, fbo);

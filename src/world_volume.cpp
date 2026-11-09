@@ -64,18 +64,51 @@ bool World::prepareVolume(const SCUSnapshot &s, const Game *game, const Settings
     options.thickness = float(cfg.voxelThickness);
     options.spacing = float(cfg.voxelSpacing);
     options.relief = float(cfg.voxelRelief);
-    options.faceLimit = std::min<size_t>(100000, std::max<size_t>(2048, budget * 2));
+    options.faceLimit = std::min<size_t>(mobile ? 65000 : 140000,
+                                        std::max<size_t>(2048, budget * 2));
     const bool backdrop = cfg.voxelBackground && cfg.background != 6 && !cfg.projectionTransparent;
-    // Reduce the complete grid for a complex silhouette. Never drop trailing
-    // objects or publish a partially generated scene when the budget is reached.
-    for (int attempt = 0; attempt < 7; ++attempt, budget = std::max<size_t>(16, budget / 4)) {
-        auto dims = voxel::grid(cw, ch, sourceW, sourceH, budget);
-        if (!dims[0] || !dims[1])
-            break;
-        volume.configure(dims[0], dims[1], left, top, cw, ch);
+    const auto dims = voxel::grid(cw, ch, sourceW, sourceH, budget, cfg.voxelTextureLimit);
+    if (dims[0] && dims[1]) {
+        const bool sameLayout = volume.valid() && volume.width == dims[0] &&
+                                volume.height == dims[1] && volume.left == left &&
+                                volume.top == top && volume.coverageWidth == cw &&
+                                volume.coverageHeight == ch && volume.hardwareLayers == expanded;
+        const unsigned oldPlanes = sameLayout ? volume.planes : 0;
+        const bool retainTerrain = sameLayout && expanded && cfg.voxelMode > 1 &&
+                                   volumePreviousMode > 1 &&
+                                   volumeTerrainSignature == terrainSignature;
+        if (!sameLayout)
+            volume.configure(dims[0], dims[1], left, top, cw, ch);
+        else
+            ++volume.revision;
         const int w = volume.width, h = volume.height;
+        const bool exact = w == sourceW && h == sourceH;
         volume.hardwareLayers = expanded;
         volume.nativeOnly = !expanded;
+        auto planeBit = [](voxel::Plane plane) { return 1u << unsigned(plane); };
+        using voxel::Plane;
+        volume.planes = planeBit(Plane::TerrainLow);
+        if (expanded) {
+            volume.planes |= planeBit(Plane::TerrainHigh);
+            if (backdrop)
+                volume.planes |= planeBit(Plane::Background) | planeBit(Plane::BackgroundHigh);
+            if (!sprites.empty())
+                volume.planes |= planeBit(Plane::ActorsLow) | planeBit(Plane::ActorsHigh);
+            if (cfg.enemyPreview && !enemies.visible.empty())
+                volume.planes |= planeBit(Plane::Preview);
+        }
+        const auto revision = ++volumeSourceRevision;
+        for (unsigned p = 0; p < voxel::planeCount; ++p) {
+            const auto plane = Plane(p);
+            if (retainTerrain && (plane == Plane::TerrainLow || plane == Plane::TerrainHigh))
+                continue;
+            if (oldPlanes & planeBit(plane))
+                for (int y = 0; y < h; ++y)
+                    std::fill_n(volume.row(plane, y), w, 0u);
+            volume.planeRevisions[p] = revision;
+        }
+        volumePreviousMode = cfg.voxelMode;
+        volumeTerrainSignature = terrainSignature;
         const double dx = cw / w, dy = ch / h;
         auto toPixel = [&](double x, double y, bool end = false) {
             const double px = (x - left) * w / cw, py = (y - top) * h / ch;
@@ -85,30 +118,33 @@ bool World::prepareVolume(const SCUSnapshot &s, const Game *game, const Settings
         if (expanded) {
             // Retain terrain underneath actors. Hardware priority selects the
             // depth plane; black or dark art never guesses a hole or distance.
-            for (int y = 0; y < h; ++y)
+            for (int y = 0; (!retainTerrain || backdrop) && y < h; ++y) {
+                const int sy = exact ? y : bound(int((y + .5) * sourceH / h), sourceH);
+                auto *terrainLow = volume.row(Plane::TerrainLow, y);
+                auto *terrainHigh = volume.row(Plane::TerrainHigh, y);
                 for (int x = 0; x < w; ++x) {
-                    int sx = bound(int((x + .5) * sourceW / w), sourceW),
-                        sy = bound(int((y + .5) * sourceH / h), sourceH);
+                    const int sx = exact ? x : bound(int((x + .5) * sourceW / w), sourceW);
                     size_t at = size_t(sy) * sourceW + sx;
-                    uint32_t color = terrainPixels[at];
-                    bool high = priority[at] != 0;
-                    if (!(color >> 24)) {
-                        for (auto offset : {std::array<double, 2>{.12, .12},
-                                            {.88, .12},
-                                            {.12, .88},
-                                            {.88, .88}}) {
-                            int xx = bound(int((x + offset[0]) * sourceW / w), sourceW),
-                                yy = bound(int((y + offset[1]) * sourceH / h), sourceH);
-                            size_t sample = size_t(yy) * sourceW + xx;
-                            if (terrainPixels[sample] >> 24) {
-                                color = terrainPixels[sample];
-                                high = priority[sample] != 0;
-                                break;
+                    if (!retainTerrain) {
+                        uint32_t color = terrainPixels[at];
+                        bool high = priority[at] != 0;
+                        if (!exact && !(color >> 24)) {
+                            for (auto offset : {std::array<double, 2>{.12, .12},
+                                                {.88, .12},
+                                                {.12, .88},
+                                                {.88, .88}}) {
+                                int xx = bound(int((x + offset[0]) * sourceW / w), sourceW),
+                                    yy = bound(int((y + offset[1]) * sourceH / h), sourceH);
+                                size_t sample = size_t(yy) * sourceW + xx;
+                                if (terrainPixels[sample] >> 24) {
+                                    color = terrainPixels[sample];
+                                    high = priority[sample] != 0;
+                                    break;
+                                }
                             }
                         }
+                        (high ? terrainHigh : terrainLow)[x] = color;
                     }
-                    volume.at(high ? voxel::Plane::TerrainHigh : voxel::Plane::TerrainLow, x, y) =
-                        color;
                     if (backdrop) {
                         int wx = int(left + (x + .5) * dx), wy = int(top + (y + .5) * dy);
                         uint32_t bg = 0;
@@ -132,6 +168,7 @@ bool World::prepareVolume(const SCUSnapshot &s, const Game *game, const Settings
                                   x, y) = bg;
                     }
                 }
+            }
             // Reuse the panorama's read-only SAT/mapping pieces. Low-priority
             // actors stay behind high terrain even when head movement reveals
             // their formerly occluded pixels. World positions are unchanged.
@@ -237,15 +274,18 @@ bool World::prepareVolume(const SCUSnapshot &s, const Game *game, const Settings
         } else {
             // Unprofiled scenes still support exact screen-pixel relief. Do not
             // invent missing object coordinates or advertise artist-made models.
-            for (int y = 0; y < h; ++y)
-                for (int x = 0; x < w; ++x) {
-                    int sx = bound(int((x + .5) * nw / w), nw),
-                        sy = bound(int((y + .5) * nh / h), nh);
-                    uint32_t color = native[size_t(sy) * nw + sx];
-                    volume.at(voxel::Plane::TerrainLow, x, y) = color;
-                }
+            for (int y = 0; y < h; ++y) {
+                auto *row = volume.row(Plane::TerrainLow, y);
+                const int sy = exact ? y : bound(int((y + .5) * nh / h), nh);
+                const auto *source = native.data() + size_t(sy) * nw;
+                if (exact)
+                    std::copy_n(source, w, row);
+                else
+                    for (int x = 0; x < w; ++x)
+                        row[x] = source[bound(int((x + .5) * nw / w), nw)];
+            }
         }
-        if (cfg.voxelMode == 1) {
+        if (cfg.voxelMode == 1 && expanded) {
             for (int y = 0; y < h; ++y)
                 for (int x = 0; x < w; ++x) {
                     uint32_t color = 0;
@@ -255,9 +295,20 @@ bool World::prepareVolume(const SCUSnapshot &s, const Game *game, const Settings
                     }
                     volume.at(voxel::Plane::TerrainLow, x, y) = color;
                 }
+            volume.planes &= planeBit(Plane::TerrainLow) | planeBit(Plane::Preview);
         }
-        if (volumeMesh.update(volume, options))
-            return true;
+        // The color atlas stays unchanged when the solid relief needs a simpler
+        // mesh. The front faces still sample each texel, including alpha holes.
+        const size_t cells = size_t(w) * h;
+        const bool reduceRelief = cfg.autoPerformance && cfg.effectsLevel <= 1;
+        int step = cells > 600000 || (cells > 180000 && reduceRelief && cfg.voxelMode == 3)
+                       ? 4
+                       : cells > 180000 && (cfg.voxelMode == 3 || reduceRelief) ? 2 : 1;
+        for (; step <= 64; step *= 2) {
+            options.geometryStep = step;
+            if (volumeMesh.update(volume, options))
+                return true;
+        }
     }
     volume.clear();
     volumeMesh.clear();

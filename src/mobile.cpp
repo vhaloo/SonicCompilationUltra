@@ -327,23 +327,9 @@ bool MobilePresentation::event(const SDL_Event &e) {
         displayConfig = -1;
     }
     if (e.type == SDL_RENDER_TARGETS_RESET || e.type == SDL_RENDER_DEVICE_RESET) {
-        app.volumeGpu.invalidate();
-        // App-owned streaming textures are recreated on the next upload.
         if (canvas)
             SDL_DestroyTexture(canvas);
         canvas = nullptr;
-        if (app.worldTexture)
-            SDL_DestroyTexture(app.worldTexture);
-        app.worldTexture = nullptr;
-        if (app.nativeTexture)
-            SDL_DestroyTexture(app.nativeTexture);
-        app.nativeTexture = nullptr;
-        if (app.bgTexture)
-            SDL_DestroyTexture(app.bgTexture);
-        app.bgTexture = nullptr;
-        app.lastImageVersion = ~uint64_t(0);
-        app.loadSettingsPreview();
-        ImGui_ImplSDLRenderer2_DestroyDeviceObjects();
         clearInput();
     }
     if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_AC_BACK) {

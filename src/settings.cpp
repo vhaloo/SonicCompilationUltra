@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <tuple>
 namespace scu {
 #define INT_FIELDS(X)                                                                                            \
     X(voxelMode, 0, 3) X(voxelDetail, 0, 3) X(voxelFraming, 0, 1) X(voxelThickness, 1, 32) X(voxelSpacing, 0, 64) \
@@ -203,81 +204,80 @@ void Settings::save(const fs::path &dir) const {
     writeBytesAtomic(dir / "settings.ini", std::vector<uint8_t>(text.begin(), text.end()));
 }
 void Settings::preset(int n) {
-    quality = n;
-    voxelDetail = n == 2 ? 3 : std::clamp(n, 0, 1);
-    // Performance changes should not move the camera or replace a chosen view.
-    background = n == 0 ? 3 : 0;
-    blur = n == 0 ? 0 : n == 1 ? 5 : 9;
-    brightness = 60;
-    parallax = n > 0;
-    locator = true;
-    minimap = false;
-    noSpriteLimit = n > 0;
-    scanlines = 0;
-    workers = 0;
-    smoothMap = n > 0;
+    quality = std::clamp(n, 0, 2);
 }
-void Settings::applyLook(int n, const Settings &defaults) {
+namespace {
+template <class T> auto appearance(T &s) {
+    return std::tie(s.view, s.camera, s.left, s.top, s.zoom, s.zoomOut, s.panoramaHeight,
+                    s.nativeScale, s.integerScale, s.overviewStyle, s.mapExtension, s.smoothMap,
+                    s.background, s.blur, s.brightness, s.parallax, s.scanlines, s.voxelMode,
+                    s.voxelFraming, s.voxelThickness, s.voxelSpacing, s.voxelRelief, s.voxelLight,
+                    s.voxelYaw, s.voxelPitch, s.voxelBackground, s.voxelCrt, s.desktopPresentation,
+                    s.desktopFrameScale, s.desktopCrtStrength, s.desktopCabinetAngle,
+                    s.desktopSurround, s.desktopCrtMask, s.wearZoom, s.wearFisheye);
+}
+template <class T> auto spatialAppearance(T &s) {
+    return std::tie(s.questMode, s.questPassthrough, s.questTransparent, s.questCrt,
+                    s.questSurroundBrightness, s.questSpinballAuto);
+}
+Settings pictureForLook(int n, const Settings &defaults) {
     Settings picture = defaults;
-    picture.language = language;
-    picture.fullscreen = fullscreen;
-    picture.span = span;
-    picture.display = display;
-    picture.menuLayout = menuLayout;
-    picture.uiScale = uiScale;
-    picture.highContrast = highContrast;
-    picture.vsync = vsync;
-    picture.renderer = renderer;
-    picture.advancedOptions = advancedOptions;
-    picture.reduceMotion = reduceMotion;
-    restoreDefaults(picture, 1);
-    restoreDefaults(picture, 2);
-    restoreDefaults(picture, 3);
-    questMode = defaults.questMode;
-    questPassthrough = defaults.questPassthrough;
-    questTransparent = defaults.questTransparent;
-    questCrt = defaults.questCrt;
-    questSurroundBrightness = defaults.questSurroundBrightness;
-    questSpinballAuto = defaults.questSpinballAuto;
     if (n >= 1 && n <= 4) {
-        questMode = 0;
-        questPassthrough = false;
+        picture.questMode = 0;
+        picture.questPassthrough = false;
     }
     switch (n) {
     case 1: // Original cartridge framing
-        view = 4;
-        wearZoom = 1000;
-        wearFisheye = false;
-        background = 5;
-        questSpinballAuto = false;
+        picture.view = 4;
+        picture.wearZoom = 1000;
+        picture.wearFisheye = false;
+        picture.background = 5;
+        picture.questSpinballAuto = false;
         break;
     case 2: // Panorama
-        view = 1;
-        panoramaHeight = 384;
-        wearZoom = 500;
+        picture.view = 1;
+        picture.panoramaHeight = 384;
+        picture.wearZoom = 500;
         break;
     case 3: // Voxel diorama
-        view = 1;
-        panoramaHeight = 320;
-        voxelMode = 2;
-        wearZoom = 650;
+        picture.view = 1;
+        picture.panoramaHeight = 320;
+        picture.voxelMode = 2;
+        picture.wearZoom = 650;
         break;
     case 4: // CRT
-        view = 4;
-        wearZoom = 1000;
-        wearFisheye = false;
-        desktopPresentation = 2;
-        questMode = 5;
-        questSpinballAuto = false;
+        picture.view = 4;
+        picture.wearZoom = 1000;
+        picture.wearFisheye = false;
+        picture.desktopPresentation = 2;
+        picture.questMode = 5;
+        picture.questSpinballAuto = false;
         break;
     case 5: // Full level on an AR wall
-        questMode = 1;
-        questPassthrough = true;
-        questTransparent = true;
-        questWallLocked = true;
-        questSpinballAuto = false;
+        picture.questMode = 1;
+        picture.questPassthrough = true;
+        picture.questTransparent = true;
+        picture.questSpinballAuto = false;
         break;
     }
+    return picture;
+}
+} // namespace
+void Settings::applyLook(int n, const Settings &defaults) {
+    auto picture = pictureForLook(n, defaults);
+    appearance(*this) = appearance(picture);
+    spatialAppearance(*this) = spatialAppearance(picture);
+    if (n == 5)
+        questWallLocked = true;
+}
+int Settings::matchingLook(const Settings &defaults, bool spatial) const {
+    for (int n = 0; n <= (spatial ? 5 : 4); ++n) {
+        const auto picture = pictureForLook(n, defaults);
+        if (appearance(*this) == appearance(picture) &&
+            (!spatial || spatialAppearance(*this) == spatialAppearance(picture)))
+            return n;
+    }
+    return -1;
 }
 void Settings::restoreDefaults(const Settings &defaults, int section) {
     auto reset = [&](auto... fields) { ((this->*fields = defaults.*fields), ...); };

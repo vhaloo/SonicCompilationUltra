@@ -634,6 +634,8 @@ void App::initialise(const fs::path &base, bool hidden) {
     voxelRenderer = rendererInfo.name &&
                     (!std::strcmp(rendererInfo.name, "opengl") ||
                      !std::strcmp(rendererInfo.name, "opengles2"));
+    if (rendererInfo.max_texture_width && rendererInfo.max_texture_height)
+        voxelTextureLimit = std::min(rendererInfo.max_texture_width, rendererInfo.max_texture_height);
     SDL_Log("SCU renderer: %s; max texture %d x %d", rendererInfo.name,
             rendererInfo.max_texture_width, rendererInfo.max_texture_height);
     IMGUI_CHECKVERSION();
@@ -978,6 +980,21 @@ void App::flushSettings() {
     }
 }
 void App::event(const SDL_Event &e) {
+    if (e.type == SDL_RENDER_TARGETS_RESET || e.type == SDL_RENDER_DEVICE_RESET) {
+        if (e.type == SDL_RENDER_TARGETS_RESET)
+            volumeGpu.release();
+        else
+            volumeGpu.invalidate();
+        for (auto **texture : {&worldTexture, &nativeTexture, &bgTexture}) {
+            if (*texture)
+                SDL_DestroyTexture(*texture);
+            *texture = nullptr;
+        }
+        loadSettingsPreview();
+        ImGui_ImplSDLRenderer2_DestroyDeviceObjects();
+        lastImageVersion = uploadedNative = uploadedBackdrop = ~uint64_t(0);
+        worldTextureStale = true;
+    }
 #ifdef SCU_MOBILE
     if (mobile && mobile->event(e))
         return;
@@ -1066,29 +1083,25 @@ void App::event(const SDL_Event &e) {
         }
         if (!menu && core.loaded && settings.quickControls && pads[activePad] &&
             SDL_GameControllerGetButton(pads[activePad], SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) {
-            auto scene = core.world.inspect(core.snapshot, core.game);
             if (b == SDL_CONTROLLER_BUTTON_Y) {
                 if (settings.wearActive)
                     settings.wearZoom = settings.wearZoom ? 0 : 1000;
-                else
-                    settings.view = settings.view == 2 ? 0 : 2;
+                else {
+                    const bool overview = settings.view == 2 &&
+                                          (!settings.voxelMode || settings.voxelFraming == 1);
+                    selectView(overview ? 0 : 2);
+                }
             } else if (b == SDL_CONTROLLER_BUTTON_DPAD_UP || b == SDL_CONTROLLER_BUTTON_DPAD_DOWN) {
-                settings.view = 0;
+                selectView(0);
                 settings.stepZoom(b == SDL_CONTROLLER_BUTTON_DPAD_UP ? 1 : -1);
             } else if (b == SDL_CONTROLLER_BUTTON_X) {
                 if (settings.camera == 2)
                     settings.camera = 0;
-                else {
-                    if (settings.view == 2) {
-                        settings.view = 0;
-                        settings.left = int(scene.playerX - drawableW / settings.pixelScale() / 2);
-                        settings.top = int(scene.playerY - drawableH / settings.pixelScale() / 2);
-                        settings.camera = 2;
-                    } else
-                        core.world.freeze(scene, settings);
-                }
+                else
+                    freezeView();
             } else if (b == SDL_CONTROLLER_BUTTON_B) {
-                settings.view = 0;
+                selectView(0);
+                settings.voxelFraming = 0;
                 settings.camera = 1;
             } else if (b == SDL_CONTROLLER_BUTTON_START)
                 screenshotRequested = true;
@@ -1184,17 +1197,17 @@ void App::event(const SDL_Event &e) {
                 return;
             }
             if (k == SDLK_EQUALS || k == SDLK_PLUS || k == SDLK_KP_PLUS) {
-                settings.view = 0;
+                selectView(0);
                 settings.stepZoom(1);
                 dirty = true;
             }
             if (k == SDLK_MINUS || k == SDLK_KP_MINUS) {
-                settings.view = 0;
+                selectView(0);
                 settings.stepZoom(-1);
                 dirty = true;
             }
             if (k == SDLK_f) {
-                core.world.freeze(core.world.inspect(core.snapshot, core.game), settings);
+                freezeView();
                 dirty = true;
             }
             if (k == SDLK_r) {
@@ -1392,6 +1405,31 @@ bool App::voxelFollows(const Scene &scene) const {
            settings.voxelMode && settings.voxelFraming == 0 && !settings.wearActive &&
            !settings.desktopPresentation && settings.view != 4 && scene.ready && scene.family != 4;
 #endif
+}
+void App::selectView(int view) {
+    settings.view = view;
+    if (settings.voxelMode)
+        settings.voxelFraming = 1;
+}
+void App::freezeView() {
+    const auto scene = core.world.inspect(core.snapshot, core.game);
+    if (voxelFollows(scene)) {
+        settings.panoramaHeight = voxelFollowHeight;
+        selectView(1);
+    } else if (settings.view == 2) {
+        selectView(0);
+        settings.left = int(scene.playerX - drawableW / settings.pixelScale() / 2);
+        settings.top = int(scene.playerY - drawableH / settings.pixelScale() / 2);
+        settings.camera = 2;
+        return;
+    }
+    if (cachedExpanded)
+        core.world.freeze(scene, settings);
+    else {
+        settings.left = scene.cameraX;
+        settings.top = scene.cameraY;
+        settings.camera = 2;
+    }
 }
 void App::pan(double elapsed) {
     if (menu)
@@ -1679,6 +1717,27 @@ void App::gameOverlays() {
     }
     ImGui::PopStyleVar(4);
 }
+bool App::updateNativeTexture() {
+    if (core.native.empty())
+        return false;
+    if (!nativeTexture || nativeTW != core.nativeW || nativeTH != core.nativeH) {
+        if (nativeTexture)
+            SDL_DestroyTexture(nativeTexture);
+        nativeTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+                                          SDL_TEXTUREACCESS_STREAMING, core.nativeW, core.nativeH);
+        nativeTW = core.nativeW;
+        nativeTH = core.nativeH;
+        uploadedNative = ~uint64_t(0);
+    }
+    if (!nativeTexture)
+        return false;
+    if (uploadedNative != core.imageVersion) {
+        if (SDL_UpdateTexture(nativeTexture, nullptr, core.native.data(), core.nativeW * 4) != 0)
+            return false;
+        uploadedNative = core.imageVersion;
+    }
+    return true;
+}
 void App::present(bool capture) {
     const auto workStarted = SDL_GetPerformanceCounter();
     settings.compositionScale = settings.autoPerformance ? performanceGovernor.scale() : 100;
@@ -1721,6 +1780,7 @@ void App::present(bool capture) {
 #ifndef SCU_QUEST
     if (!voxelRenderer)
         renderSettings.voxelMode = 0;
+    renderSettings.voxelTextureLimit = voxelTextureLimit;
 #endif
     if (renderSettings.voxelMode) {
         renderSettings.smoothMap = false;
@@ -1748,21 +1808,6 @@ void App::present(bool capture) {
         renderSettings.view = settings.wearZoomValue >= 999.5 ? 4 : 0;
         renderSettings.desktopPresentation = 0;
         renderSettings.compositionPixels = std::min(renderSettings.compositionPixels, 300000);
-    }
-#endif
-#ifndef SCU_QUEST
-    if (useVolume && voxelRenderer && std::strcmp(volumeGpu.status(), "voxelunsupported")) {
-#ifdef SCU_MOBILE
-        constexpr bool mobileDevice = true;
-#else
-        constexpr bool mobileDevice = false;
-#endif
-        const int budget = int(voxel::cellBudget(renderSettings.voxelDetail, settings.wearActive,
-                                               mobileDevice, renderSettings.effectsLevel,
-                                               renderSettings.autoPerformance)) * 4;
-        renderSettings.compositionPixels = renderSettings.compositionPixels
-                                               ? std::min(renderSettings.compositionPixels, budget)
-                                               : budget;
     }
 #endif
     SDL_GetRendererOutputSize(renderer, &drawableW, &drawableH);
@@ -1934,19 +1979,8 @@ void App::present(bool capture) {
             if (!renderSettings.projectionCleanScene &&
                 ((renderSettings.view == 2 && renderSettings.playerInset) ||
                  (scene.family == 4 && renderSettings.hud != 3)) &&
-                !core.native.empty()) {
-                if (!nativeTexture || nativeTW != core.nativeW || nativeTH != core.nativeH) {
-                    if (nativeTexture)
-                        SDL_DestroyTexture(nativeTexture);
-                    nativeTexture =
-                        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
-                                          SDL_TEXTUREACCESS_STREAMING, core.nativeW, core.nativeH);
-                    nativeTW = core.nativeW;
-                    nativeTH = core.nativeH;
-                }
+                updateNativeTexture()) {
                 SDL_SetTextureScaleMode(nativeTexture, SDL_ScaleModeNearest);
-                if (refresh)
-                    SDL_UpdateTexture(nativeTexture, nullptr, core.native.data(), core.nativeW * 4);
                 int safeW = std::min(drawableW, int(drawableH * 16.0 / 9)),
                     w = int(std::min(safeW * 0.28, drawableH * 0.26 * core.nativeW / core.nativeH)),
                     h = w * core.nativeH / core.nativeW, x = (drawableW + safeW) / 2 - w - 16,
@@ -1960,21 +1994,10 @@ void App::present(bool capture) {
                     SDL_RenderCopy(renderer, nativeTexture, nullptr, &d);
                 }
             }
-        } else if (!core.native.empty()) {
-            if (!nativeTexture || nativeTW != core.nativeW || nativeTH != core.nativeH) {
-                if (nativeTexture)
-                    SDL_DestroyTexture(nativeTexture);
-                nativeTexture =
-                    SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
-                                      SDL_TEXTUREACCESS_STREAMING, core.nativeW, core.nativeH);
-                nativeTW = core.nativeW;
-                nativeTH = core.nativeH;
-            }
+        } else if (updateNativeTexture()) {
             SDL_SetTextureScaleMode(nativeTexture, renderSettings.integerScale
                                                        ? SDL_ScaleModeNearest
                                                        : SDL_ScaleModeLinear);
-            if (refresh)
-                SDL_UpdateTexture(nativeTexture, nullptr, core.native.data(), core.nativeW * 4);
             int availableH = drawableH, safeW = std::min(drawableW, (int)(drawableH * 16.0 / 9));
             float scale =
                 renderSettings.wearActive
@@ -2014,24 +2037,9 @@ void App::present(bool capture) {
     }
 #ifndef SCU_QUEST
     if (settings.desktopPresentation && !settings.wearActive && core.loaded &&
-        !core.native.empty()) {
-        bool upload = refresh;
-        if (!nativeTexture || nativeTW != core.nativeW || nativeTH != core.nativeH) {
-            if (nativeTexture)
-                SDL_DestroyTexture(nativeTexture);
-            nativeTexture =
-                SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
-                                  core.nativeW, core.nativeH);
-            nativeTW = core.nativeW;
-            nativeTH = core.nativeH;
-            upload = true;
-        }
-        if (!nativeTexture)
-            throw std::runtime_error(SDL_GetError());
+        updateNativeTexture()) {
         SDL_SetTextureScaleMode(nativeTexture,
                                 settings.integerScale ? SDL_ScaleModeNearest : SDL_ScaleModeLinear);
-        if (upload)
-            SDL_UpdateTexture(nativeTexture, nullptr, core.native.data(), core.nativeW * 4);
         desktopFrame.draw(renderer,
                           volumeTexture ? volumeTexture
                           : expanded    ? worldTexture
@@ -2104,6 +2112,16 @@ void App::present(bool capture) {
 #endif
     ImGui::Render();
     renderImGui(ImGui::GetDrawData());
+#ifdef SCU_PRIVATE_QA
+    if (checksumRequested) {
+        checksumRequested = false;
+        checksumPixels.resize(size_t(drawableW) * drawableH * 4);
+        if (SDL_RenderReadPixels(renderer, nullptr, SDL_PIXELFORMAT_ARGB8888,
+                                 checksumPixels.data(), drawableW * 4) != 0)
+            throw std::runtime_error(SDL_GetError());
+        sampledChecksum = checksum(checksumPixels);
+    }
+#endif
     if (capture || screenshotRequested) {
         fs::path p = capturePath.empty()
                          ? library.dataDir / "screenshots" /
@@ -2136,6 +2154,13 @@ void App::present(bool capture) {
         presentationClock = now;
     }
 }
+#ifdef SCU_PRIVATE_QA
+uint32_t App::presentationChecksum() {
+    checksumRequested = true;
+    present();
+    return sampledChecksum;
+}
+#endif
 void App::screenshot(const fs::path &path) {
     fs::create_directories(path.parent_path());
     auto surf =
@@ -2267,7 +2292,7 @@ void App::hud(bool volume) {
                                        : std::clamp(io.DisplaySize.y / 720.0f, 0.85f, 3.0f);
         ImGui::SetWindowFontScale(std::min(3.0f, size) / uiFactor);
         auto &r = core.snapshot.ram;
-        if (v.family == 4 && nativeTexture) {
+        if (v.family == 4 && nativeTexture && uploadedNative == core.imageVersion) {
             float w = std::min(320.0f * size, io.DisplaySize.x - 60);
             ImGui::Image((ImTextureID)(intptr_t)nativeTexture, {w, w * 16 / 320}, {0, 0},
                          {1, 16.0f / 224});
@@ -2414,6 +2439,7 @@ Settings App::defaultSettings() const {
     defaults.fullscreen = false;
     defaults.vsync = false;
     defaults.quality = 0;
+    defaults.voxelDetail = 1;
     defaults.blur = 3;
     defaults.rewindMemory = 0;
 #endif
@@ -2431,16 +2457,25 @@ Settings App::defaultSettings() const {
     }
     return defaults;
 }
-void App::settingsApplied(bool updateDisplay, bool recenter) {
+void App::invalidatePresentation() {
+    lastImageVersion = ~uint64_t(0);
+    worldTextureStale = true;
+    core.world.invalidateBackdrop();
+    voxelPanX = voxelPanY = 0;
+    orbitYawRemainder = orbitPitchRemainder = 0;
+    performanceGovernor.reset();
+}
+void App::settingsApplied(const Settings &previous, bool recenter) {
     language = detectLanguage(settings.language);
     core.updateOptions();
     core.clearAudio();
-    voxelPanX = voxelPanY = 0;
+    invalidatePresentation();
     releaseInput = true;
-    if (updateDisplay) {
+    if (settings.fullscreen != previous.fullscreen || settings.span != previous.span ||
+        settings.display != previous.display)
         applyDisplay();
+    if (settings.vsync != previous.vsync)
         SDL_RenderSetVSync(renderer, settings.vsync ? 1 : 0);
-    }
 #ifdef SCU_QUEST
     if (quest && recenter)
         quest->recenter();
@@ -2455,12 +2490,32 @@ void App::restoreSettings(int section) {
     if (section == 9)
         section = 10;
 #endif
+    const Settings previous = settings;
     settings.restoreDefaults(defaultSettings(), section);
-    settingsApplied(section == 0 || section == 1, section == 0 || section == 10);
+    settingsApplied(previous, section == 0 || section == 10);
     notify(tr(section ? "sectiondefaultsdone" : "defaultsdone", language));
 }
 fs::path App::optionsProfile(int slot) const {
     return library.dataDir / "option-profiles" / std::to_string(slot);
+}
+void App::saveOptionsProfile(int slot) {
+    Settings profile = settings;
+    profile.lastGame.clear();
+    profile.lastDirectory.clear();
+    profile.save(optionsProfile(slot));
+    notify(tr("optionprofilesaved", language));
+}
+void App::loadOptionsProfile(int slot) {
+    const auto directory = optionsProfile(slot);
+    if (!fs::is_regular_file(directory / "settings.ini"))
+        throw std::runtime_error(tr("optionprofileempty", language));
+    const Settings previous = settings;
+    Settings profile = defaultSettings();
+    profile.load(directory);
+    profile.advancedOptions = settings.advancedOptions;
+    settings.restoreDefaults(profile, 0);
+    settingsApplied(previous, true);
+    notify(tr("optionprofileloaded", language));
 }
 void App::commitAction() {
     int action = actionPopup;
@@ -2495,20 +2550,10 @@ void App::commitAction() {
             const auto count = library.archiveSaves();
             showSection(0);
             notify(std::string(tr("progressresetdone", language)) + " " + std::to_string(count));
-        } else if (action == 9) {
-            Settings profile = settings;
-            profile.lastGame.clear();
-            profile.lastDirectory.clear();
-            profile.save(optionsProfile(actionSlot));
-            notify(tr("optionprofilesaved", language));
-        } else if (action == 10) {
-            Settings profile = defaultSettings();
-            profile.load(optionsProfile(actionSlot));
-            profile.advancedOptions = settings.advancedOptions;
-            settings.restoreDefaults(profile, 0);
-            settingsApplied(true, true);
-            notify(tr("optionprofileloaded", language));
-        }
+        } else if (action == 9)
+            saveOptionsProfile(actionSlot);
+        else if (action == 10)
+            loadOptionsProfile(actionSlot);
     } catch (const std::exception &e) {
         error(e);
     }
@@ -2848,10 +2893,31 @@ void App::libraryUi() {
             ImGui::PopID();
         }
 }
+static constexpr const char *looks[] = {"lookstage", "lookoriginal", "lookpanorama",
+                                        "lookvoxel", "lookcrt", "lookarwall"};
+void App::applyLook(int look) {
+    if (look < 0 || look >= int(std::size(looks)))
+        return;
+    settings.applyLook(look, defaultSettings());
+    invalidatePresentation();
+#ifdef SCU_QUEST
+    if (quest)
+        quest->recenter();
+#endif
+    releaseInput = true;
+    dirty = true;
+    flushSettings();
+    notify(tr(looks[look], language));
+}
 void App::presetUi() {
     ImGui::TextWrapped("%s", tr("lookpresetintro", language));
-    constexpr const char *looks[] = {"lookstage", "lookoriginal", "lookpanorama",
-                                     "lookvoxel", "lookcrt", "lookarwall"};
+#ifndef SCU_QUEST
+    const int active = settings.matchingLook(defaultSettings(), false);
+#else
+    const int active = settings.matchingLook(defaultSettings(), true);
+#endif
+    ImGui::TextWrapped("%s · %s", tr("activelook", language),
+                       tr(active < 0 ? "customprofile" : looks[active], language));
     for (int n = 0; n < int(std::size(looks)); ++n) {
 #ifndef SCU_QUEST
         if (n == 5)
@@ -2861,11 +2927,8 @@ void App::presetUi() {
             continue;
         settingBadge(looks[n]);
         ImGui::SameLine();
-        if (button(looks[n], {-1, ImGui::GetFrameHeight() * 1.15f})) {
-            settings.applyLook(n, defaultSettings());
-            settingsApplied(false, true);
-            notify(tr(looks[n], language));
-        }
+        if (button(looks[n], {-1, ImGui::GetFrameHeight() * 1.15f}))
+            applyLook(n);
     }
 }
 void App::profilesUi() {
@@ -3033,10 +3096,16 @@ void App::voxelOptions() {
         if (!voxelRenderer || !std::strcmp(volumeGpu.status(), "voxelunsupported"))
             ImGui::TextWrapped("%s", tr("voxelunsupported", language));
 #endif
-        if (core.loaded && core.world.volume.valid())
+        if (core.loaded && core.world.volume.valid()) {
             ImGui::TextWrapped(
                 "%s",
                 tr(core.world.volume.hardwareLayers ? "voxelknown" : "voxelnative", language));
+            const auto output = voxelPictureSize();
+            if (output[0])
+                ImGui::TextWrapped("%s %d × %d · %s %d × %d", tr("voxeltexturesize", language),
+                                   core.world.volume.width, core.world.volume.height,
+                                   tr("voxeloutputsizing", language), output[0], output[1]);
+        }
 #if !defined(SCU_MOBILE) && !defined(SCU_QUEST)
         ImGui::BeginDisabled(!core.loaded || !core.world.volume.valid() ||
                              !core.world.volumeMesh.valid());
@@ -3082,6 +3151,7 @@ void App::optionsUi(int section) {
             int preset = settings.quality;
             if (choice("preset", preset, {"low", "balanced", "ultra"})) {
                 settings.preset(preset);
+                performanceGovernor.reset();
                 changed = true;
             }
             if (settings.wearActive) {
@@ -3090,27 +3160,27 @@ void App::optionsUi(int section) {
             } else {
                 int view = settings.view == 4 ? 3 : settings.view;
                 if (choice("view", view, {"pixel", "panorama", "overview", "classic"})) {
-                    settings.view = view == 3 ? 4 : view;
+                    selectView(view == 3 ? 4 : view);
                     changed = true;
                 }
                 ImGui::TextWrapped("%s", tr("overviewhelp", language));
                 if (slider("zoom", settings.zoom, 1, 8, "%d×")) {
-                    settings.view = 0;
+                    selectView(0);
                     changed = true;
                 }
                 if (choice("zoomout", settings.zoomOut, {"1×", "2×", "4×", "8×"})) {
-                    settings.view = 0;
+                    selectView(0);
                     changed = true;
                 }
                 ImGui::Text("%s: %.3g×", tr("effectivescale", language), settings.pixelScale());
                 if (button("pixelreset")) {
-                    settings.view = 0;
+                    selectView(0);
                     settings.zoom = 1;
                     settings.zoomOut = 0;
                     changed = true;
                 }
                 if (slider("panoramaheight", settings.panoramaHeight, 224, 4096, "%d px")) {
-                    settings.view = 1;
+                    selectView(1);
                     changed = true;
                 }
             }
@@ -3218,14 +3288,15 @@ void App::optionsUi(int section) {
         if (button("showstage")) {
             if (settings.wearActive)
                 settings.wearZoom = 0;
-            settings.view = 2;
+            selectView(2);
             settings.locator = true;
             changed = true;
         }
         if (button("focusplayer")) {
             if (settings.wearActive)
                 settings.wearZoom = 1000;
-            settings.view = 0;
+            selectView(0);
+            settings.voxelFraming = 0;
             settings.camera = 1;
             changed = true;
         }
@@ -3248,19 +3319,24 @@ void App::optionsUi(int section) {
         if (!settings.wearActive) {
             if (choice("cameramode", settings.camera,
                        {"bounded", "centred", "fixed", "free", "level"})) {
-                settings.view = settings.camera == 4 ? 2 : 0;
+                if (settings.camera == 2 || settings.camera == 3) {
+                    const auto scene = core.world.inspect(core.snapshot, core.game);
+                    settings.left = cachedExpanded ? core.world.canvas.left : scene.cameraX;
+                    settings.top = cachedExpanded ? core.world.canvas.top : scene.cameraY;
+                }
+                selectView(settings.camera == 4 ? 2 : 0);
                 changed = true;
             }
             ImGui::TextWrapped("%s", tr("overviewcamera", language));
             ImGui::BeginDisabled(settings.view == 2);
             if (button("freeze")) {
-                core.world.freeze(core.world.inspect(core.snapshot, core.game), settings);
+                freezeView();
                 changed = true;
             }
             ImGui::EndDisabled();
             if (button("follow")) {
                 settings.camera = 0;
-                settings.view = 0;
+                selectView(0);
                 changed = true;
             }
             slide("panspeed", settings.panSpeed, 1, 32);

@@ -11,7 +11,7 @@ Abre **Vídeo → Profundidad y vóxeles → Volumen de píxeles**. En Quest, la
 | Vóxeles por capas | Terreno y objetos observados se separan según su prioridad |
 | Vóxeles esculpidos | Cuatro pequeños escalones de brillo añaden relieve |
 
-Empieza con **Sutil**, **Diorama** o **Intenso**. **Rendimiento**, **Equilibrado** y **Nítido** cambian el nivel de detalle. Abre **Afinar el relieve y el ángulo** para personalizar el estilo. El grosor se mide en píxeles del juego y cambia con el tamaño de la escena.
+Empieza con **Sutil**, **Diorama** o **Intenso**. **Precisión de píxel** conserva los píxeles del juego en vistas cercanas dentro del límite del dispositivo. La calidad automática ajusta el relieve y el tamaño de la imagen por separado. La vista completa muestrea el mapa para encajarlo. Abre **Afinar el relieve y el ángulo** para personalizar el estilo.
 
 ![Escenario original de demostración convertido en volúmenes](illustrations/voxel-layered.png)
 

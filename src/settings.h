@@ -3,7 +3,7 @@
 #include <algorithm>
 namespace scu {
 struct Settings {
-    int voxelMode = 0, voxelDetail = 1, voxelFraming = 0, voxelThickness = 6, voxelSpacing = 8;
+    int voxelMode = 0, voxelDetail = 3, voxelFraming = 0, voxelThickness = 6, voxelSpacing = 8;
     int voxelRelief = 3, voxelLight = 70, voxelYaw = -12, voxelPitch = 12;
     bool voxelBackground = false, voxelCrt = false;
     bool autoPerformance = true, performancePixelLock = false, thermalAware = true;
@@ -14,6 +14,7 @@ struct Settings {
     int questFoveation = 0;
     // Per-frame composition budgets. Display coordinates/native pixels/UI stay independent.
     int compositionScale = 100, compositionPixels = 0;
+    int voxelTextureLimit = 2048;
     int stereoScale = 100, effectsLevel = 3;
     // Device facts and smoothed crown value are transient, never saved as user choices.
     bool wearActive = false, wearRound = false;
@@ -107,6 +108,7 @@ struct Settings {
     void save(const fs::path &dir) const;
     void preset(int n);
     void applyLook(int n, const Settings &defaults);
+    int matchingLook(const Settings &defaults, bool spatial) const;
     void restoreDefaults(const Settings &defaults, int section);
 };
 } // namespace scu
