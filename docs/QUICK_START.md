@@ -7,7 +7,7 @@ Download the package for your computer from [Releases](https://github.com/vhaloo
 | Windows x64 | Windows 10/11 on a 64-bit Intel or AMD PC |
 | macOS x64 — **experimental** | Intel Macs; deployment target 10.15; no physical Mac testing |
 | macOS arm64 — **experimental** | Apple Silicon Macs; deployment target 11.0; no physical Mac testing |
-| Linux x64 | Ubuntu 22.04 or a compatible newer 64-bit desktop; run `SonicCompilationUltra.sh` |
+| Linux x64 | Ubuntu 22.04 or a compatible newer 64-bit desktop. Run `SonicCompilationUltra.sh`. On minimal Ubuntu or Debian, install the distribution's `libgomp1` package first. |
 
 The macOS app has an ad-hoc signature, not Apple notarization. If Gatekeeper asks, follow Apple's [instructions for opening an app from an identified download](https://support.apple.com/en-us/102445) after checking you downloaded the package from this repository. The Windows app is unsigned; its publisher cannot be verified by a commercial signing certificate. These packages do not change your computer's security settings.
 

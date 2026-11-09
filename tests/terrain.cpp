@@ -56,6 +56,19 @@ struct Bits {
 };
 } // namespace
 void testTerrain() {
+    {
+        auto snapshot = std::make_unique<SCUSnapshot>();
+        snapshot->ram[0xF600] = 12;
+        snapshot->ram[0xB000] = 1;
+        snapshot->ram[0x8002] = 1;
+        snapshot->ram[0xFFD8] = 0x80;
+        World world;
+        const auto *classics = gameById("compilation");
+        auto stage = world.inspect(*snapshot, classics);
+        check(stage.ready && stage.family == 2, "Sonic Classics S2 cartridge flag is not multiplayer");
+        snapshot->ram[0xFFD9] = 1;
+        check(!world.inspect(*snapshot, classics).ready, "Competition keeps its native view");
+    }
     std::vector<uint8_t> result, expected(768);
     Bits literal;
     literal.bit(0);

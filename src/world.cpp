@@ -118,9 +118,10 @@ Scene World::inspect(const SCUSnapshot &s, const Game *g) const {
         v.width = cols * 256;
         v.height = rows * 256;
     } else if (v.family == 2) {
-        // The Knuckles patch uses bit 15 here as its lock-on flag.
+        // Knuckles and the Sonic Classics bank use bit 15 as a cartridge flag.
+        // The lower bits still mark the native two-player competition.
         unsigned competition = be16(r, 0xFFD8);
-        if (g->crc == 0x2AC1E7C6)
+        if (g->crc == 0x2AC1E7C6 || g->crc == 0x95B5E8D7)
             competition &= 0x7FFF;
         if ((r[0xB000] != 1 && r[0xB000] != 2) || competition)
             return v;

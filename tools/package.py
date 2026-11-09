@@ -87,6 +87,10 @@ def main():
             script='#!/bin/sh\nscu_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexport LD_LIBRARY_PATH="$scu_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"\nexec "$scu_dir/SonicCompilationUltra" "$@"\n'
             (stage/'SonicCompilationUltra.sh').write_text(script)
             (stage/'SonicCompilationUltra.sh').chmod(0o755)
+            (stage/'LINUX_REQUIREMENTS.txt').write_text(
+                'Run SonicCompilationUltra.sh on Ubuntu 22.04 or a compatible desktop.\n'
+                'Minimal installations need their distribution OpenMP runtime (libgomp1 on Ubuntu/Debian)\n'
+                'and the usual graphics and audio libraries for SDL2.\n', encoding='utf-8')
     for name in ['README.md','LICENSE','THIRD_PARTY_NOTICES.md','CHANGELOG.md']:
         copy_file(ROOT/name,stage/name)
     shutil.copytree(ROOT/'licenses',stage/'licenses')
