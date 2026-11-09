@@ -25,9 +25,15 @@ class App {
 #endif
     SDL_Texture *worldTexture = nullptr, *nativeTexture = nullptr, *bgTexture = nullptr;
     SDL_Texture *settingsPreview = nullptr;
+    SDL_Texture *guideCapture = nullptr, *guideNative = nullptr;
+    std::vector<SDL_Texture *> retiredGuideTextures;
+    fs::path guideCapturePath;
+    int guideNativeW = 0, guideNativeH = 0;
+    uint64_t guideNativeVersion = ~uint64_t(0);
     DesktopFrame desktopFrame;
     VoxelGpu volumeGpu;
     bool cachedVolume = false, voxelWasEnabled = false, worldTextureStale = false;
+    bool volumeOnScreen = false;
     ImGuiContext *uiContext = nullptr;
     bool uiPlatformReady = false, uiRendererReady = false;
     int textureW = 0, textureH = 0, nativeTW = 0, nativeTH = 0;
@@ -65,6 +71,7 @@ class App {
     unsigned presentationFrames = 0;
     double presentationFps = 0;
     double gameAccumulator = 0;
+    float orbitYawRemainder = 0, orbitPitchRemainder = 0;
     bool releaseNavigation = true;
     int actionPopup = 0, actionSlot = 1, activePad = 0;
     std::string actionGame;
@@ -76,10 +83,12 @@ class App {
     int tab = 0;
     void ui();
     void libraryUi();
+    void presetUi();
+    void profilesUi();
     void optionsUi(int section);
     void voxelOptions();
     void browserUi();
-    void hud();
+    void hud(bool volume);
     void logicalWindowSize(int &width, int &height) const;
     void error(const std::exception &e);
     void menuInput(bool editing);
@@ -90,6 +99,12 @@ class App {
     void changeDirectory(const fs::path &path);
     void requestAction(int action, int slot = 1, const std::string &game = {});
     void commitAction();
+    void restoreSettings(int section);
+    Settings defaultSettings() const;
+    void settingsApplied(bool updateDisplay, bool recenter);
+    fs::path optionsProfile(int slot) const;
+    void changeSection(int direction);
+    bool visibleSection(int n) const;
     bool button(const char *key, const ImVec2 &size = {0, 0});
     bool tick(const char *key, bool &value);
     void nextButton(const char *key);
@@ -99,7 +114,9 @@ class App {
     void settingBadge(const char *key);
     void settingTitle(const char *key);
     void loadSettingsPreview();
+    bool drawGameExample(HelpPicture picture);
     void settingGuide(bool compact = false);
+    void renderImGui(ImDrawData *data);
     std::string navigationHint() const;
     int controllerLabels() const;
 
@@ -116,11 +133,12 @@ class App {
 #endif
     static constexpr int sectionCount() {
 #if defined(SCU_QUEST) || defined(SCU_MOBILE)
-        return 10;
+        return 11;
 #else
-        return 9;
+        return 10;
 #endif
     }
+    static constexpr int profilesSection() { return sectionCount() - 1; }
     PerformanceGovernor performanceGovernor;
     double lastRenderMs = 0, lastPresentMs = 0;
     uint64_t uploadedBytes = 0;
@@ -153,7 +171,8 @@ class App {
     void event(const SDL_Event &e);
     void pollInput();
     unsigned advanceGame(double elapsed, bool unpaced = false);
-    void pan();
+    void pan(double elapsed);
+    void resetVoxelOrbit();
     void present(bool capture = false);
     void screenshot(const fs::path &path);
     void flushSettings();
@@ -162,8 +181,15 @@ class App {
     int menuTab() const {
         return tab;
     }
+    bool voxelPresented() const {
+        return volumeOnScreen;
+    }
     void showSection(int n) {
         tab = n >= 0 && n < sectionCount() ? n : 0;
+        if (!visibleSection(tab)) {
+            settings.advancedOptions = true;
+            dirty |= !menuVerificationOnly;
+        }
         menu = true;
         focusPage = true;
     }

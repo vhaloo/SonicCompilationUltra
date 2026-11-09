@@ -72,6 +72,16 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(mapExtension)
     SET(smoothMap)
     SET(camera)
+    SET(voxelMode)
+    SET(voxelDetail)
+    SET(voxelYaw)
+    SET(voxelPitch)
+    SET(voxelThickness)
+    SET(voxelSpacing)
+    SET(voxelRelief)
+    SET(voxelLight)
+    SET(voxelBackground)
+    SET(desktopPresentation)
     SET(hud)
     SET(hudScale)
     SET(background)
@@ -125,11 +135,26 @@ static void execute(App &a, const Action &cmd, uint16_t &mask, bool &rewindMask)
     else if (cmd.verb == "rewind") {
         if (!a.core.rewind())
             throw std::runtime_error("No rewind checkpoint available");
-    } else if (cmd.verb == "game")
-        a.play(cmd.args);
-    else if (cmd.verb == "reset")
+    } else if (cmd.verb == "game") {
+        if (!a.play(cmd.args))
+            throw std::runtime_error(a.notice);
+    } else if (cmd.verb == "reset")
         a.core.reset();
-    else if (cmd.verb == "capture") {
+    else if (cmd.verb == "present") {
+        const auto &frame = a.core.native;
+        if (frame.empty() || std::all_of(frame.begin(), frame.end(),
+                                         [&](auto pixel) { return pixel == frame.front(); }))
+            throw std::runtime_error("Blank cartridge frame at timeline step " +
+                                     std::to_string(cmd.step));
+        a.present();
+    } else if (cmd.verb == "assert_scene") {
+        unsigned family = 0, stage = 0;
+        auto scene = a.core.world.inspect(a.core.snapshot, a.core.game);
+        if (!(in >> family >> std::hex >> stage) || !scene.ready || scene.family != int(family) ||
+            scene.stage != int(stage))
+            throw std::runtime_error("Unexpected cartridge scene at timeline step " +
+                                     std::to_string(cmd.step));
+    } else if (cmd.verb == "capture") {
         a.capturePath = cmd.args;
         a.present(true);
         a.capturePath.clear();
@@ -139,6 +164,20 @@ static void execute(App &a, const Action &cmd, uint16_t &mask, bool &rewindMask)
         auto p = std::stoul(addr, nullptr, 16) & 65535, v = std::stoul(value, nullptr, 16);
         if (a.core.snapshot.ram[p] != v)
             throw std::runtime_error("RAM assertion failed at " + addr);
+#ifdef SCU_PRIVATE_QA
+    } else if (cmd.verb == "ram8" || cmd.verb == "ram16") {
+        if (!a.headless || !a.core.loaded)
+            throw std::runtime_error("Cartridge-state probes require an isolated loaded session");
+        unsigned address = 0, value = 0;
+        bool word = cmd.verb == "ram16";
+        if (!(in >> std::hex >> address >> value) || address > (word ? 65534u : 65535u) ||
+            (word && (address & 1)) || value > (word ? 65535u : 255u))
+            throw std::runtime_error("Invalid cartridge-state probe");
+        if (word)
+            scu_ram_write16(address, uint16_t(value));
+        else
+            scu_ram_write8(address, uint8_t(value));
+#endif
     } else if (cmd.verb == "trace") {
         auto &r = a.core.snapshot.ram;
         fprintf(stderr,
@@ -300,11 +339,7 @@ int main(int argc, char **argv) {
             baseDir = (baseDir / "../Resources").lexically_normal();
 #endif
         if (args.count("--software"))
-            SDL_SetHint(SDL_HINT_RENDER_DRIVER, "software");
-#ifdef _WIN32
-        else
-            SDL_SetHint(SDL_HINT_RENDER_DRIVER, "direct3d11");
-#endif
+            SDL_SetHintWithPriority(SDL_HINT_RENDER_DRIVER, "software", SDL_HINT_OVERRIDE);
         try {
             a.initialise(baseDir, a.headless);
         } catch (const std::exception &error) {
@@ -646,6 +681,10 @@ int main(int argc, char **argv) {
                 << v.height << "],\n  \"player\":[" << v.playerX << "," << v.playerY
                 << "],\n  \"world_ready\":" << (v.ready ? "true" : "false")
                 << ",\n  \"game_mode\":" << (int)a.core.snapshot.ram[0xF600]
+                << ",\n  \"stage\":" << v.stage
+                << ",\n  \"voxel_mode\":" << a.settings.voxelMode
+                << ",\n  \"voxel_rendered\":" << (a.voxelPresented() ? "true" : "false")
+                << ",\n  \"voxel_faces\":" << a.core.world.volumeMesh.faces()
                 << ",\n  \"language\":" << a.language << ",\n  \"view\":" << a.settings.view
                 << ",\n  \"stage_coverage\":[" << a.core.world.canvas.coverageW << ","
                 << a.core.world.canvas.coverageH << "]"

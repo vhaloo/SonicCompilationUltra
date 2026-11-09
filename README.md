@@ -1,7 +1,7 @@
 <p align="center"><img src="assets/brand.svg" width="760" alt="Sonic Compilation Ultra — your cartridges, a much bigger view"></p>
 
 <p align="center">
-  <a href="https://github.com/vhaloo/SonicCompilationUltra/releases/tag/voxel-preview-0.11.0">Download preview</a> ·
+  <a href="https://github.com/vhaloo/SonicCompilationUltra/releases/tag/runtime-preview-0.12.0">Download preview</a> ·
   <a href="docs/QUICK_START.md">First steps</a> ·
   <a href="docs/ROMS.md">ROM guide</a> ·
   <a href="docs/FEATURES.md">All options</a>
@@ -11,19 +11,19 @@
 
 Windows and Linux · Android phones/tablets · **Meta Quest 3 VR/AR** · **Wear OS and macOS: experimental** · English, French, Spanish and Japanese · Keyboard, touch and gamepads
 
-**[Voxel preview 0.11](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/voxel-preview-0.11.0):** give the original pixel art real thickness. Choose a single thick surface, separate terrain and actors into layers, or add sculpted relief. Open **Video → Depth and voxels** on a flat screen or **Depth** on the Quest remote. Flat remains the default. Quest retains its 90 Hz preference and the watch retains crown/bezel zoom and fisheye.
+**[Runtime preview 0.12](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/runtime-preview-0.12.0)** opens in Simple mode. Pick Whole level, Original screen, Panorama, Voxel diorama or Retro TV. Quest also offers a transparent AR wall. Switch to **Advanced** for precise settings and three local profiles you can save and apply.
 
-**Downloads:** [Meta Quest 3 standalone APK](https://github.com/vhaloo/SonicCompilationUltra/releases/download/voxel-preview-0.11.0/SonicCompilationUltra-0.11.0-Quest-ROM-free.apk) · [Android phone/tablet APK](https://github.com/vhaloo/SonicCompilationUltra/releases/download/voxel-preview-0.11.0/SonicCompilationUltra-0.11.0-Android-Mobile-ROM-free.apk) · [Wear OS APK — experimental](https://github.com/vhaloo/SonicCompilationUltra/releases/download/voxel-preview-0.11.0/SonicCompilationUltra-0.11.0-Android-Wear-ROM-free.apk). [Automatic quality](docs/AUTOMATIC_QUALITY.md) · [Watch guide](docs/WEAR.md) · [Android guide](docs/ANDROID.md) · [Quest guide](docs/QUEST.md).
+**Downloads** [Meta Quest 3 standalone APK](https://github.com/vhaloo/SonicCompilationUltra/releases/download/runtime-preview-0.12.0/SonicCompilationUltra-0.12.0-Quest-ROM-free.apk) · [Android phone/tablet APK](https://github.com/vhaloo/SonicCompilationUltra/releases/download/runtime-preview-0.12.0/SonicCompilationUltra-0.12.0-Android-Mobile-ROM-free.apk) · [Wear OS APK — experimental](https://github.com/vhaloo/SonicCompilationUltra/releases/download/runtime-preview-0.12.0/SonicCompilationUltra-0.12.0-Android-Wear-ROM-free.apk). [Automatic quality](docs/AUTOMATIC_QUALITY.md) · [Watch guide](docs/WEAR.md) · [Android guide](docs/ANDROID.md) · [Quest guide](docs/QUEST.md).
 
 ![Original demonstration stage made of layered pixels](docs/illustrations/voxel-layered.png)
 
 *Original fixture, rendered from the procedural mesh outside the app.* Voxel guide: [English](docs/VOXELS.md) · [Français](docs/VOXELS.fr.md) · [Español](docs/VOXELS.es.md) · [日本語](docs/VOXELS.ja.md). [Comparison and rendering design](docs/VOXEL_RESEARCH.md).
 
-**0.11 is a development preview.** Generated-data checks cover geometry, composition, quality, round layouts and rewind without starting a game, app, emulator or device session. Compiles, lint, package checks and offline GLSL compilation do not certify startup, GPU output or sustained FPS. **macOS and Wear OS remain experimental.**
+**0.12 is a development preview.** The release notes distinguish actual game sessions from scripted checks, emulated devices and build-only coverage. **Meta Quest 3, macOS and Wear OS remain experimental.**
 
 ## Start playing
 
-1. **[Download your platform’s package](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/voxel-preview-0.11.0)** and extract it completely. On Windows, open `SonicCompilationUltra.exe`; on macOS, open the app; on Linux, run the included launcher. For phone, tablet or watch, install the matching APK.
+1. **[Download your platform’s package](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/runtime-preview-0.12.0)** and extract it completely. On Windows, open `SonicCompilationUltra.exe`; on macOS, open the app; on Linux, run the included launcher. For phone, tablet or watch, install the matching APK.
 2. Choose **Choose ROM…** using a mouse or gamepad or drop your own `.bin`, `.md`, `.gen`, `.smd` or `.zip` into the window. The app checks the file’s contents. [Which edition do I need?](docs/ROMS.md)
 3. Choose **Play**. Use **Enter / gamepad Start** on the original title screen. Move with the arrows or left stick; jump with **Z, X, C / gamepad A, X, B**.
 4. Open the fullscreen options whenever you like: **Esc, F10 or gamepad Select / View**. Use **A / bottom face button** to confirm, **B / right face button** to go back, **LB/RB** to switch sections and **LT/RT** to scroll. Gameplay pauses in the menu.
@@ -38,36 +38,11 @@ No installer, administrator access or game-data upload is required. English is t
 
 Choose a familiar **Panorama**, a very wide **Pixel world**, a **Whole-level overview**, or the **Original game framing**. Follow the player, freeze the view or explore with a free camera. Keep the HUD on the centre monitor, attach it to the player, move it to an edge or hide it.
 
-<img src="docs/screenshots/ultrawide-48x9.png" alt="Real 7680 × 1440 gameplay capture, 48:9 pixel view">
-
-*48:9 · 7680 × 1440 · actual game rendering at pixel 1:1. Open the image to inspect the full resolution.*
-
-<table><tr>
-<td width="66%"><img src="docs/screenshots/normal-16x9.png" alt="Real 16:9 gameplay capture"><br><em>16:9 · 1920 × 1080 · stage overview</em></td>
-<td width="34%"><img src="docs/screenshots/tiny-640x360.png" alt="Real small-window gameplay capture"><br><em>Small window · 640 × 360</em></td>
-</tr></table>
-
-<details><summary>48:9 whole-stage view</summary>
-<img src="docs/screenshots/overview-48x9.png" alt="Real 7680 × 1440 whole-stage view with centred HUD and native player inset">
-</details>
-
-<img src="docs/screenshots/fullscreen-options.png" alt="Fullscreen options with controller hints and clear stage-view choices">
-
 **Every setting has an illustrated explanation in English, French, Spanish and Japanese.** Focus an option with the gamepad or mouse: the guide appears beside it on larger screens. **Y / Triangle (top face button), or F1**, opens the scrollable explanation on any screen; **B / Esc** closes it.
 
-Each option's icon opens its illustrated explanation. Mouse hover offers a nearby preview; touch and VR users can press the icon. Picture, screen and quality controls are grouped, with detailed limits tucked into expandable sections. The examples below are original demo art, **not gameplay/device captures**. Earlier gameplay captures on this page show earlier desktop editions.
+Each option's icon opens its explanation. When a cartridge is running, the guide can show the current game image for picture, camera, depth and background options. The illustrations below use an original demonstration scene. [Capture details](docs/screenshots/README.md).
 
 ![Original A/B setting examples used by the desktop, Android, watch and XR menus](docs/illustrations/settings-preview-gallery.png)
-
-<table><tr>
-<td width="50%"><img src="docs/screenshots/spinball-overview.png" alt="Spinball full-board terrain in the running application"><br><em>Spinball · full board with authentic live close-up</em></td>
-<td width="50%"><img src="docs/screenshots/3d-blast-overview.png" alt="Sonic 3D Blast full isometric terrain in the running application"><br><em>3D Blast · full isometric terrain</em></td>
-</tr></table>
-
-<details><summary>3D Blast in 48:9 and the setting guide on a tiny screen</summary>
-<img src="docs/screenshots/3d-blast-pixel-48x9.png" alt="Sonic 3D Blast at 7680 × 1440 with physical pixel 1:1">
-<img src="docs/screenshots/tiny-guide.png" width="320" alt="Scrollable illustrated setting guide at 320 × 240">
-</details>
 
 ## The collection
 

@@ -5,6 +5,7 @@ def sdl = file(providers.gradleProperty('scuSdlDir').getOrElse('../.deps/SDL2-2.
 def generatedAssets = layout.buildDirectory.dir('generated/scu-assets')
 def generatedJava = layout.buildDirectory.dir('generated/mobile-java')
 def privateAssets = providers.gradleProperty(wearable ? 'scuWearPrivateAssets' : 'scuMobilePrivateAssets').orNull
+def runtimeQa = providers.gradleProperty('scuRuntimeQa').orNull == 'true'
 def keyFile = providers.gradleProperty('scuKeyStore').orElse(providers.environmentVariable('SCU_QUEST_KEYSTORE')).orNull
 android {
     namespace wearable ? 'com.vhaloo.soniccompilationultra.wear' : 'com.vhaloo.soniccompilationultra.mobile'
@@ -14,8 +15,8 @@ android {
         applicationId wearable ? 'com.vhaloo.soniccompilationultra.wear' : 'com.vhaloo.soniccompilationultra.mobile'
         minSdk wearable ? 26 : 24
         targetSdk 36
-        versionCode 1100
-        versionName wearable ? '0.11.0-wear-preview' : '0.11.0-mobile-preview'
+        versionCode 1200
+        versionName wearable ? '0.12.0-wear-preview' : '0.12.0-mobile-preview'
         ndk { abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64' }
         externalNativeBuild {
             cmake {
@@ -38,6 +39,9 @@ android {
         }
     }
     buildTypes {
+        debug {
+            if (runtimeQa) applicationIdSuffix '.qa'
+        }
         release {
             minifyEnabled false
             signingConfig keyFile ? signingConfigs.portable : signingConfigs.debug

@@ -13,6 +13,111 @@
 #include <ctime>
 #include <cfloat>
 namespace scu {
+void App::renderImGui(ImDrawData *data) {
+    const auto scale = data->FramebufferScale;
+    if (scale.x == 1.f && scale.y == 1.f) {
+        ImGui_ImplSDLRenderer2_RenderDrawData(data, renderer);
+        return;
+    }
+    // The SDL2 ImGui backend scales scissors only. SDL must scale vertices and
+    // scissors together so touch positions and rendered controls agree.
+    float previousX, previousY;
+    SDL_RenderGetScale(renderer, &previousX, &previousY);
+    SDL_Rect viewport{}, clip{};
+    SDL_RenderGetViewport(renderer, &viewport);
+    const bool clipped = SDL_RenderIsClipEnabled(renderer);
+    SDL_RenderGetClipRect(renderer, &clip);
+    SDL_RenderSetScale(renderer, scale.x, scale.y);
+    ImGui_ImplSDLRenderer2_RenderDrawData(data, renderer);
+    SDL_RenderSetScale(renderer, previousX, previousY);
+    SDL_RenderSetViewport(renderer, &viewport);
+    SDL_RenderSetClipRect(renderer, clipped ? &clip : nullptr);
+}
+bool App::drawGameExample(HelpPicture picture) {
+    const char *file = nullptr;
+    int variant = 0;
+    if (picture == HelpPicture::View || picture == HelpPicture::Camera || picture == HelpPicture::Zoom) {
+        file = "views.bmp";
+        if (guideKey == "lookpanorama" || guideKey == "panoramaheight")
+            variant = 2;
+    } else if (picture == HelpPicture::Crt) {
+        file = "views.bmp";
+        variant = 3;
+    } else if (picture == HelpPicture::Depth) {
+        file = "depth.bmp";
+    } else if (picture == HelpPicture::Background) {
+        file = "background.bmp";
+    }
+    if (!file)
+        return false;
+    const Game *game = gameById(core.loaded ? core.currentId : settings.lastGame);
+    fs::path path;
+    if (game)
+        path = library.dataDir / "guide-captures" / game->id / file;
+    if (path != guideCapturePath) {
+        guideCapturePath = path;
+        if (guideCapture)
+            retiredGuideTextures.push_back(guideCapture);
+        guideCapture = nullptr;
+        std::error_code ec;
+        if (!path.empty() && fs::is_regular_file(path, ec) && fs::file_size(path, ec) < 4 * 1024 * 1024) {
+            if (auto surface = SDL_LoadBMP(path.u8string().c_str())) {
+                if (surface->w > 0 && surface->h > 0 && surface->w <= 1024 && surface->h <= 1024)
+                    guideCapture = SDL_CreateTextureFromSurface(renderer, surface);
+                SDL_FreeSurface(surface);
+                if (guideCapture)
+                    SDL_SetTextureScaleMode(guideCapture, SDL_ScaleModeLinear);
+            }
+        }
+    }
+    if (guideCapture) {
+        const char *views[] = {"guideoriginal", "guideoverview", "lookpanorama", "guideexamplecrt"};
+        const char *depth[] = {"voxelflat", "voxelthick", "voxellayers", "voxelsculpt"};
+        const char *background[] = {"guideoriginal", "guidebackgroundoff"};
+        const bool relief = picture == HelpPicture::Depth;
+        const bool backdrop = picture == HelpPicture::Background;
+        const bool grid = !backdrop;
+        const char *const *names = relief ? depth : backdrop ? background : views;
+        const int count = relief ? 4 : 2;
+        ImGui::TextWrapped("%s · %s", tr("gamecaptureexample", language), game->name);
+        const bool pair = ImGui::GetContentRegionAvail().x >= 270;
+        if (ImGui::BeginTable("##capture-pairs", pair ? 2 : 1, ImGuiTableFlags_SizingStretchSame)) {
+            for (int i = 0; i < count; ++i) {
+                ImGui::TableNextColumn();
+                int cell = i == 1 && variant ? variant : i;
+                ImGui::TextWrapped("%s", tr(names[cell], language));
+                const float width = std::max(1.f, ImGui::GetContentRegionAvail().x);
+                float x = (cell % 2) * .5f, y = grid ? (cell / 2) * .5f : 0;
+                ImGui::Image(reinterpret_cast<ImTextureID>(guideCapture), {width, width * 9 / 16},
+                             {x, y}, {x + .5f, y + (grid ? .5f : 1.f)});
+            }
+            ImGui::EndTable();
+        }
+        return true;
+    }
+    if (!core.loaded || core.native.empty())
+        return false;
+    if (!guideNative || guideNativeW != core.nativeW || guideNativeH != core.nativeH) {
+        if (guideNative)
+            retiredGuideTextures.push_back(guideNative);
+        guideNativeW = core.nativeW;
+        guideNativeH = core.nativeH;
+        guideNative = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
+                                        guideNativeW, guideNativeH);
+        guideNativeVersion = ~uint64_t(0);
+    }
+    if (!guideNative)
+        return false;
+    if (guideNativeVersion != core.imageVersion) {
+        if (SDL_UpdateTexture(guideNative, nullptr, core.native.data(), core.nativeW * 4))
+            return false;
+        guideNativeVersion = core.imageVersion;
+    }
+    ImGui::TextWrapped("%s", tr("currentgamecapture", language));
+    const float width = std::max(1.f, ImGui::GetContentRegionAvail().x);
+    ImGui::Image(reinterpret_cast<ImTextureID>(guideNative), {width, width * guideNativeH / guideNativeW});
+    return true;
+}
 void App::settingGuide(bool compact) {
     const auto *help = settingHelp(guideKey.c_str());
     if (!help)
@@ -20,6 +125,10 @@ void App::settingGuide(bool compact) {
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.35f, 0.9f, 0.94f, 1));
     ImGui::TextWrapped("%s", tr(help->key, language));
     ImGui::PopStyleColor();
+    if (drawGameExample(help->picture)) {
+        ImGui::TextWrapped("%s", help->text[std::clamp(language, 0, 3)]);
+        return;
+    }
     if (settingsPreview) {
         if (compact)
             ImGui::TextWrapped("%s", help->text[std::clamp(language, 0, 3)]);
@@ -573,6 +682,12 @@ App::~App() {
         SDL_DestroyTexture(bgTexture);
     if (settingsPreview)
         SDL_DestroyTexture(settingsPreview);
+    if (guideCapture)
+        SDL_DestroyTexture(guideCapture);
+    if (guideNative)
+        SDL_DestroyTexture(guideNative);
+    for (auto *texture : retiredGuideTextures)
+        SDL_DestroyTexture(texture);
     if (renderer)
         SDL_DestroyRenderer(renderer);
     if (window)
@@ -582,6 +697,12 @@ void App::loadSettingsPreview() {
     if (settingsPreview)
         SDL_DestroyTexture(settingsPreview);
     settingsPreview = nullptr;
+    if (guideCapture)
+        SDL_DestroyTexture(guideCapture);
+    if (guideNative)
+        SDL_DestroyTexture(guideNative);
+    guideCapture = guideNative = nullptr;
+    guideCapturePath.clear();
     if (auto surface = SDL_LoadBMP((basePath / "assets/settings-preview.bmp").u8string().c_str())) {
         settingsPreview = SDL_CreateTextureFromSurface(renderer, surface);
         SDL_FreeSurface(surface);
@@ -894,6 +1015,10 @@ void App::event(const SDL_Event &e) {
             backRequested = true;
         if (menu && b == SDL_CONTROLLER_BUTTON_Y && !browserOpen && !pathEditor && !actionPopup)
             guideRequested = true;
+        if (!menu && core.loaded && settings.voxelMode && b == SDL_CONTROLLER_BUTTON_RIGHTSTICK) {
+            resetVoxelOrbit();
+            return;
+        }
         if (!menu && core.loaded && settings.quickControls && pads[activePad] &&
             SDL_GameControllerGetButton(pads[activePad], SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) {
             auto scene = core.world.inspect(core.snapshot, core.game);
@@ -1202,24 +1327,77 @@ unsigned App::advanceGame(double elapsed, bool unpaced) {
     if (unpaced || ticks == maxCatchup)
         gameAccumulator = 0;
     if (!backward)
-        pan();
+        pan(unpaced ? period : elapsed);
     return executed;
 }
-void App::pan() {
-    if (menu || settings.camera != 3)
+void App::resetVoxelOrbit() {
+    const Settings defaults;
+    settings.voxelYaw = defaults.voxelYaw;
+    settings.voxelPitch = defaults.voxelPitch;
+    orbitYawRemainder = orbitPitchRemainder = 0;
+    dirty = true;
+}
+void App::pan(double elapsed) {
+    if (menu)
+        return;
+    float dx = 0, dy = 0;
+    if (pads[0]) {
+        auto axis = [&](SDL_GameControllerAxis which) {
+            int value = SDL_GameControllerGetAxis(pads[0], which);
+            float intensity = float(std::max(0, std::abs(value) - settings.deadzone)) /
+                              std::max(1, 32767 - settings.deadzone);
+            return std::copysign(std::min(1.f, intensity), float(value));
+        };
+        dx = axis(SDL_CONTROLLER_AXIS_RIGHTX);
+        dy = axis(SDL_CONTROLLER_AXIS_RIGHTY);
+    }
+    bool orbit = settings.voxelMode && (dx != 0 || dy != 0);
+    if (orbit) {
+#ifndef SCU_QUEST
+        if (pads[0] && !settings.wearActive && settings.view != 4 &&
+            SDL_GameControllerGetButton(pads[0], SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) &&
+            core.world.inspect(core.snapshot, core.game).ready) {
+            if (settings.camera != 3 || settings.view == 2) {
+                auto scene = core.world.inspect(core.snapshot, core.game);
+                settings.left = scene.cameraX;
+                settings.top = scene.cameraY;
+                settings.view = 0;
+                settings.camera = 3;
+                dirty = true;
+            }
+            orbit = false;
+        }
+#endif
+        if (orbit) {
+            const float dt = float(std::clamp(elapsed, 0., .05));
+            auto turn = [&](int &angle, float &remainder, float movement, int low, int high) {
+                remainder += movement;
+                int step = int(remainder);
+                remainder -= step;
+                int next = std::clamp(angle + step, low, high);
+                if (next != angle) {
+                    angle = next;
+                    dirty = true;
+                }
+            };
+#ifdef SCU_QUEST
+            turn(settings.voxelYaw, orbitYawRemainder, dx * 65.f * dt, -57, 33);
+            turn(settings.voxelPitch, orbitPitchRemainder, dy * 48.f * dt, -13, 37);
+#else
+            turn(settings.voxelYaw, orbitYawRemainder, dx * 90.f * dt, -60, 60);
+            turn(settings.voxelPitch, orbitPitchRemainder, dy * 72.f * dt, -60, 60);
+#endif
+            dx = dy = 0;
+        }
+    }
+    if (settings.camera != 3)
         return;
     auto k = SDL_GetKeyboardState(nullptr);
     int speed = settings.panSpeed * ((k[SDL_SCANCODE_LSHIFT] || k[SDL_SCANCODE_RSHIFT]) ? 3 : 1);
     settings.left += (k[SDL_SCANCODE_D] - k[SDL_SCANCODE_A]) * speed;
     settings.top += (k[SDL_SCANCODE_S] - k[SDL_SCANCODE_W]) * speed;
-    if (pads[0]) {
-        int dx = SDL_GameControllerGetAxis(pads[0], SDL_CONTROLLER_AXIS_RIGHTX),
-            dy = SDL_GameControllerGetAxis(pads[0], SDL_CONTROLLER_AXIS_RIGHTY);
-        if (std::abs(dx) > settings.deadzone)
-            settings.left += dx * speed / 32767;
-        if (std::abs(dy) > settings.deadzone)
-            settings.top += dy * speed / 32767;
-    }
+    settings.left += int(std::lround(dx * speed));
+    settings.top += int(std::lround(dy * speed));
     settings.left = std::clamp(settings.left, -32768, 32768);
     settings.top = std::clamp(settings.top, -16384, 16384);
 }
@@ -1457,7 +1635,6 @@ void App::present(bool capture) {
     auto &renderSettings = *projectionSettings;
     if (renderSettings.voxelMode) {
         renderSettings.smoothMap = false;
-        renderSettings.overviewStyle = 1;
         renderSettings.performancePixelLock = false;
     }
     bool useVolume = renderSettings.voxelMode && core.loaded;
@@ -1804,8 +1981,9 @@ void App::present(bool capture) {
     controls.clear();
     controlRects.clear();
 #endif
+    volumeOnScreen = volumeTexture != nullptr;
     if (expanded && !renderSettings.projectionCleanScene)
-        hud();
+        hud(volumeOnScreen);
     if (!menu && (!renderSettings.projectionCleanScene
 #ifndef SCU_QUEST
                   || settings.desktopPresentation
@@ -1819,7 +1997,7 @@ void App::present(bool capture) {
         quest->drawReticle();
 #endif
     ImGui::Render();
-    ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
+    renderImGui(ImGui::GetDrawData());
     if (capture || screenshotRequested) {
         fs::path p = capturePath.empty()
                          ? library.dataDir / "screenshots" /
@@ -1830,6 +2008,9 @@ void App::present(bool capture) {
     }
     // Flush drawing separately from display waiting: vsync wait is not GPU/CPU work.
     SDL_RenderFlush(renderer);
+    for (auto *texture : retiredGuideTextures)
+        SDL_DestroyTexture(texture);
+    retiredGuideTextures.clear();
     lastRenderMs =
         double(SDL_GetPerformanceCounter() - workStarted) * 1000 / SDL_GetPerformanceFrequency();
     lastPresentMs = 0;
@@ -1868,13 +2049,32 @@ void App::screenshot(const fs::path &path) {
         throw std::runtime_error(SDL_GetError());
     fprintf(stderr, "SCU capture: %d x %d\n", drawableW, drawableH);
 }
-void App::hud() {
+void App::hud(bool volume) {
     auto &io = ImGui::GetIO();
     auto v = core.world.inspect(core.snapshot, core.game);
     auto &c = core.world.canvas;
-    float sx = (float)(io.DisplaySize.x / c.coverageW),
-          sy = (float)(io.DisplaySize.y / c.coverageH), px = (v.playerX - c.left) * sx,
-          py = (v.playerY - c.top) * sy;
+    const float sx = float(io.DisplaySize.x / c.coverageW), sy = float(io.DisplaySize.y / c.coverageH);
+    voxel::Options depth{settings.voxelMode, float(settings.voxelThickness), float(settings.voxelSpacing),
+                         float(settings.voxelRelief)};
+    const auto &frame = core.world.volume;
+    auto worldPoint = [&](int x, int y, voxel::Plane plane) {
+        if (!volume)
+            return ImVec2{(x - c.left) * sx, (y - c.top) * sy};
+        const int tx = int(std::floor((x - frame.left) * frame.width / frame.coverageWidth));
+        const int ty = int(std::floor((y - frame.top) * frame.height / frame.coverageHeight));
+        auto color = frame.at(plane, tx, ty);
+        if (plane == voxel::Plane::ActorsHigh && !color) {
+            plane = voxel::Plane::ActorsLow;
+            color = frame.at(plane, tx, ty);
+        }
+        if (settings.voxelMode == 1 && plane != voxel::Plane::Preview)
+            plane = voxel::Plane::TerrainLow;
+        const float z = voxel::column(plane, color, depth)[1];
+        const auto clip = volumeGpu.project({float(x), float(y), z});
+        return ImVec2{(clip.x + 1.f) * .5f * io.DisplaySize.x, (1.f - clip.y) * .5f * io.DisplaySize.y};
+    };
+    const auto player = worldPoint(v.playerX, v.playerY, voxel::Plane::ActorsHigh);
+    const float px = player.x, py = player.y;
     auto draw = ImGui::GetBackgroundDrawList();
     if (settings.enemyPreview && settings.spawnLabels) {
         std::vector<ImVec4> labels;
@@ -1885,7 +2085,8 @@ void App::hud() {
                 if (p.kind != kind || labels.size() >= maxLabels ||
                     (kind == SpawnKind::Scripted && !p.variable))
                     continue;
-                float x = (p.x - c.left) * sx, y = (p.y - c.top) * sy;
+                auto marker = worldPoint(p.x, p.y, voxel::Plane::Preview);
+                float x = marker.x, y = marker.y;
                 if (x < 0 || y < 0 || x >= io.DisplaySize.x || y >= io.DisplaySize.y)
                     continue;
                 const char *text = tr(p.variable                ? "spawnorigin"
@@ -1930,14 +2131,19 @@ void App::hud() {
                                 IM_COL32(255, 222, 76, 255));
         }
     }
-    if (settings.view == 2 &&
+    if (!volume && settings.view == 2 &&
         (settings.overviewStyle == 2 || (settings.overviewStyle == 0 && v.family == 3)))
         draw->AddText(
             {io.DisplaySize.x / 2 - ImGui::CalcTextSize(tr("terrainmap", language)).x / 2, 12},
             IM_COL32(220, 248, 250, 255), tr("terrainmap", language));
     if (settings.ghost) {
-        float x = (v.cameraX - c.left) * sx, y = (v.cameraY - c.top) * sy;
-        draw->AddRect({x, y}, {x + 320 * sx, y + 224 * sy}, IM_COL32(255, 255, 255, 110), 0, 0, 1);
+        const auto plane = voxel::Plane::TerrainLow;
+        const ImVec2 corners[] = {
+            worldPoint(v.cameraX, v.cameraY, plane),
+            worldPoint(v.cameraX + core.nativeW, v.cameraY, plane),
+            worldPoint(v.cameraX + core.nativeW, v.cameraY + core.nativeH, plane),
+            worldPoint(v.cameraX, v.cameraY + core.nativeH, plane)};
+        draw->AddPolyline(corners, 4, IM_COL32(255, 255, 255, 110), ImDrawFlags_Closed, 1);
     }
     if (settings.hud != 3) {
         float safe = std::min(io.DisplaySize.x, io.DisplaySize.y * 16 / 9),
@@ -2058,12 +2264,20 @@ void App::menuInput(bool editing) {
     if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Tab, false))
         direction = ImGui::GetIO().KeyShift ? -1 : 1;
     if (direction) {
-        tab = (tab + direction + sectionCount()) % sectionCount();
-        focusPage = true;
+        changeSection(direction);
         ImGui::SetNavCursorVisible(true);
     }
     if (core.loaded && ImGui::IsKeyPressed(ImGuiKey_GamepadStart, false))
         toggleMenu();
+}
+bool App::visibleSection(int n) const {
+    return settings.advancedOptions || n == 0 || n == 1 || n == 5 || n == 7 || n == 8;
+}
+void App::changeSection(int direction) {
+    do {
+        tab = (tab + direction + sectionCount()) % sectionCount();
+    } while (!visibleSection(tab));
+    focusPage = true;
 }
 void App::scrollPage() {
 #ifdef SCU_MOBILE
@@ -2085,8 +2299,62 @@ void App::requestAction(int action, int slot, const std::string &game) {
     core.clearAudio();
     pendingButtons[0] = pendingButtons[1] = 0;
     if ((action == 1 && (!settings.confirmQuit || !core.loaded)) ||
-        (action != 1 && !settings.confirmActions))
+        (action != 1 && action != 8 && action != 9 && !settings.confirmActions))
         commitAction();
+}
+Settings App::defaultSettings() const {
+    Settings defaults;
+#if defined(SCU_MOBILE) || defined(SCU_QUEST)
+    defaults.fullscreen = false;
+    defaults.vsync = false;
+    defaults.quality = 0;
+    defaults.blur = 3;
+    defaults.rewindMemory = 0;
+#endif
+#ifdef SCU_QUEST
+    defaults.questMode = 2;
+    defaults.questPassthrough = true;
+#endif
+    defaults.wearActive = settings.wearActive;
+    defaults.wearRound = settings.wearRound;
+    if (defaults.wearActive) {
+        defaults.performanceHeadroom = 30;
+        defaults.help = false;
+        defaults.mobileHints = false;
+        defaults.playerInset = false;
+    }
+    return defaults;
+}
+void App::settingsApplied(bool updateDisplay, bool recenter) {
+    language = detectLanguage(settings.language);
+    core.updateOptions();
+    core.clearAudio();
+    backgroundStage = -1;
+    releaseInput = true;
+    if (updateDisplay) {
+        applyDisplay();
+        SDL_RenderSetVSync(renderer, settings.vsync ? 1 : 0);
+    }
+#ifdef SCU_QUEST
+    if (quest && recenter)
+        quest->recenter();
+#else
+    (void)recenter;
+#endif
+    dirty = true;
+    flushSettings();
+}
+void App::restoreSettings(int section) {
+#ifdef SCU_QUEST
+    if (section == 9)
+        section = 10;
+#endif
+    settings.restoreDefaults(defaultSettings(), section);
+    settingsApplied(section == 0 || section == 1, section == 0 || section == 10);
+    notify(tr(section ? "sectiondefaultsdone" : "defaultsdone", language));
+}
+fs::path App::optionsProfile(int slot) const {
+    return library.dataDir / "option-profiles" / std::to_string(slot);
 }
 void App::commitAction() {
     int action = actionPopup;
@@ -2106,27 +2374,35 @@ void App::commitAction() {
             } else
                 core.reset();
             notify(tr("resetdone", language));
-        } else if (action == 3) {
-            auto previous = settings;
-            settings = Settings{};
-            settings.language = previous.language;
-            settings.lastDirectory = previous.lastDirectory;
-            settings.lastGame = previous.lastGame;
-            settings.mute = previous.mute;
-            language = detectLanguage(settings.language);
-            core.updateOptions();
-            backgroundStage = -1;
-            applyDisplay();
-            dirty = true;
-            notify(tr("defaultsdone", language));
+        } else if (action == 3 || action == 7) {
+            restoreSettings(action == 7 ? actionSlot : 0);
         } else if (action == 4) {
             core.loadState(actionSlot);
             notify(tr("loaded", language));
         } else if (action == 5) {
             core.save(actionSlot);
             notify(tr("saved", language));
-        } else if (action == 6)
+        } else if (action == 6) {
             play(actionGame);
+        } else if (action == 8) {
+            core.unload(false);
+            const auto count = library.archiveSaves();
+            showSection(0);
+            notify(std::string(tr("progressresetdone", language)) + " " + std::to_string(count));
+        } else if (action == 9) {
+            Settings profile = settings;
+            profile.lastGame.clear();
+            profile.lastDirectory.clear();
+            profile.save(optionsProfile(actionSlot));
+            notify(tr("optionprofilesaved", language));
+        } else if (action == 10) {
+            Settings profile = defaultSettings();
+            profile.load(optionsProfile(actionSlot));
+            profile.advancedOptions = settings.advancedOptions;
+            settings.restoreDefaults(profile, 0);
+            settingsApplied(true, true);
+            notify(tr("optionprofileloaded", language));
+        }
     } catch (const std::exception &e) {
         error(e);
     }
@@ -2177,10 +2453,20 @@ void App::ui() {
         if (button("quit"))
             requestAction(1);
     }
+    if (!watch)
+        nextButton(settings.advancedOptions ? "simplemode" : "advancedmode");
+    if (button(settings.advancedOptions ? "simplemode" : "advancedmode")) {
+        settings.advancedOptions = !settings.advancedOptions;
+        if (tab != 0)
+            tab = 1;
+        focusPage = true;
+        dirty = true;
+        flushSettings();
+    }
     focusMenu = false;
     ImGui::Separator();
     const char *tabs[] = {"library",
-                          "video",
+                          settings.advancedOptions ? "video" : "lookpresets",
                           "camera",
                           "atmosphere",
                           "sound",
@@ -2195,30 +2481,39 @@ void App::ui() {
                           ,
                           "mobiletab"
 #endif
+                          , "optionprofiles"
     };
+#ifdef SCU_MOBILE
     if (watch && sectionCount() > 9)
         tabs[9] = "weartab";
+#endif
+    if (!visibleSection(tab))
+        tab = 1;
     if (small) {
         if (!watch) {
-            if (button("prevsection")) {
-                tab = (tab + sectionCount() - 1) % sectionCount();
-                focusPage = true;
-            }
+            if (button("prevsection"))
+                changeSection(-1);
             ImGui::SameLine();
         }
         ImGui::SetNextItemWidth(watch ? -1 : std::max(80.0f, safe - 100 * uiFactor));
-        std::vector<const char *> labels;
-        for (auto key : tabs)
-            labels.push_back(tr(key, language));
-        if (ImGui::Combo("##section", &tab, labels.data(), sectionCount()))
-            focusPage = true;
+        if (ImGui::BeginCombo("##section", tr(tabs[tab], language))) {
+            for (int n = 0; n < sectionCount(); ++n) {
+                if (!visibleSection(n))
+                    continue;
+                if (ImGui::Selectable(tr(tabs[n], language), tab == n)) {
+                    tab = n;
+                    focusPage = true;
+                }
+                if (tab == n)
+                    ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
         control("section");
         if (!watch) {
             ImGui::SameLine();
-            if (button("nextsection")) {
-                tab = (tab + 1) % sectionCount();
-                focusPage = true;
-            }
+            if (button("nextsection"))
+                changeSection(1);
         }
     }
     float footer =
@@ -2235,6 +2530,8 @@ void App::ui() {
     if (!small) {
         ImGui::BeginChild("##sections", {230 * uiFactor, contentH}, ImGuiChildFlags_NavFlattened);
         for (int n = 0; n < sectionCount(); ++n) {
+            if (!visibleSection(n))
+                continue;
             if (ImGui::Selectable((std::string(tr(tabs[n], language)) + "###" + tabs[n]).c_str(),
                                   tab == n)) {
                 tab = n;
@@ -2245,7 +2542,8 @@ void App::ui() {
         ImGui::EndChild();
         ImGui::SameLine();
     }
-    bool sideGuide = tab > 0 && (tab < 8 || tab == 9) && safe >= 1000 * uiFactor && !tiny;
+    bool sideGuide = tab > 0 && tab != 8 && tab != profilesSection() &&
+                     safe >= 1000 * uiFactor && !tiny;
     float guideW = sideGuide ? 310 * uiFactor : 0;
     float pageW =
         sideGuide ? ImGui::GetContentRegionAvail().x - guideW - ImGui::GetStyle().ItemSpacing.x : 0;
@@ -2261,8 +2559,21 @@ void App::ui() {
             notice.clear();
         ImGui::Separator();
     }
+    if (tab == 0 || tab == 1) {
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(.09f, .34f, .42f, 1));
+        if (button("defaults", {-1, ImGui::GetFrameHeight() * 1.18f}))
+            requestAction(3);
+        ImGui::PopStyleColor();
+    }
+    if (tab > 0 && tab != 8 && tab != profilesSection() &&
+        (tab != 1 || settings.advancedOptions) && button("sectiondefaults", {-1, 0}))
+        requestAction(7, tab);
     if (tab == 0)
         libraryUi();
+    else if (tab == 1 && !settings.advancedOptions)
+        presetUi();
+    else if (tab == profilesSection())
+        profilesUi();
     else
         optionsUi(tab);
     focusPage = false;
@@ -2321,16 +2632,23 @@ void App::ui() {
     ImGui::SetNextWindowPos({io.DisplaySize.x / 2, io.DisplaySize.y / 2}, {}, {0.5f, 0.5f});
     if (ImGui::BeginPopupModal("##confirm", nullptr,
                                ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar)) {
-        if (!actionPopup)
+        if (!actionPopup) {
             ImGui::CloseCurrentPopup();
+            ImGui::EndPopup();
+            return;
+        }
         const char *messages[] = {"",
                                   "quitconfirm",
                                   "resetconfirm",
                                   "defaultsconfirm",
                                   "loadconfirm",
                                   "overwriteconfirm",
-                                  "switchconfirm"};
-        ImGui::TextWrapped("%s", tr(messages[std::clamp(actionPopup, 0, 6)], language));
+                                  "switchconfirm",
+                                  "sectiondefaultsconfirm",
+                                  "progressresetconfirm",
+                                  "optionprofileoverwrite",
+                                  "optionprofileapply"};
+        ImGui::TextWrapped("%s", tr(messages[std::clamp(actionPopup, 0, 10)], language));
         if (button("cancel")) {
             actionPopup = 0;
             ImGui::CloseCurrentPopup();
@@ -2346,6 +2664,8 @@ void App::ui() {
     }
 }
 void App::libraryUi() {
+    if (!settings.advancedOptions && button("lookpresets", {-1, 0}))
+        showSection(1);
     if (button("folder"))
         beginBrowser(true);
     if (ImGui::GetContentRegionAvail().x > 580 * uiFactor)
@@ -2360,9 +2680,10 @@ void App::libraryUi() {
         if (button("continue"))
             play(settings.lastGame);
     }
-    if (library.entries.empty())
+    if (library.entries.empty()) {
         ImGui::TextWrapped("%s", tr("empty", language));
-    ImGui::TextWrapped("%s", tr("legalshort", language));
+        ImGui::TextWrapped("%s", tr("legalshort", language));
+    }
     float available = ImGui::GetContentRegionAvail().x;
     int cols = available > 750 * uiFactor ? 3 : available > 470 * uiFactor ? 2 : 1;
     if (ImGui::BeginTable("##games", cols, ImGuiTableFlags_SizingStretchSame)) {
@@ -2375,15 +2696,16 @@ void App::libraryUi() {
                 continue;
             ImGui::TableNextColumn();
             ImGui::PushID(g.id);
-            ImGui::BeginChild("##card", {0, 186 * uiFactor},
-                              ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened);
+            ImGui::BeginChild("##card", {0, 0},
+                              ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened |
+                                  ImGuiChildFlags_AutoResizeY,
+                              ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
             ImGui::TextColored(r ? ImVec4{0.35f, 0.89f, 0.91f, 1} : ImVec4{0.55f, 0.62f, 0.69f, 1},
                                "%02d", ++index);
             ImGui::TextWrapped("%s", g.name);
             ImGui::TextWrapped("%s",
                                r ? (r->derived ? tr("derived", language) : tr("ready", language))
                                  : tr("missing", language));
-            ImGui::SetCursorPosY(std::max(ImGui::GetCursorPosY(), 134 * uiFactor));
             if (r) {
                 if (button("play", {-1, 0})) {
                     if (core.loaded && core.currentId != g.id)
@@ -2412,6 +2734,53 @@ void App::libraryUi() {
             control(("play-" + r.id).c_str());
             ImGui::PopID();
         }
+}
+void App::presetUi() {
+    ImGui::TextWrapped("%s", tr("lookpresetintro", language));
+    constexpr const char *looks[] = {"lookstage", "lookoriginal", "lookpanorama",
+                                     "lookvoxel", "lookcrt", "lookarwall"};
+    for (int n = 0; n < int(std::size(looks)); ++n) {
+#ifndef SCU_QUEST
+        if (n == 5)
+            continue;
+#endif
+        if (settings.wearActive && n == 4)
+            continue;
+        settingBadge(looks[n]);
+        ImGui::SameLine();
+        if (button(looks[n], {-1, ImGui::GetFrameHeight() * 1.15f})) {
+            settings.applyLook(n, defaultSettings());
+            settingsApplied(false, true);
+            notify(tr(looks[n], language));
+        }
+    }
+}
+void App::profilesUi() {
+    ImGui::TextWrapped("%s", tr("optionprofileintro", language));
+    constexpr const char *load[] = {"optionload1", "optionload2", "optionload3"};
+    constexpr const char *save[] = {"optionsave1", "optionsave2", "optionsave3"};
+    for (int n = 0; n < int(std::size(load)); ++n) {
+        const int slot = n + 1;
+        std::error_code ec;
+        bool occupied = fs::is_regular_file(optionsProfile(slot) / "settings.ini", ec);
+        ImGui::Text("%s %d  ·  %s", tr("optionprofileslot", language), slot,
+                    tr(occupied ? "optionprofileoccupied" : "optionprofileempty", language));
+        ImGui::BeginDisabled(!occupied);
+        if (button(load[n]))
+            requestAction(10, slot);
+        ImGui::EndDisabled();
+        nextButton(save[n]);
+        if (button(save[n])) {
+            if (occupied)
+                requestAction(9, slot);
+            else {
+                actionSlot = slot;
+                actionPopup = 9;
+                commitAction();
+            }
+        }
+        ImGui::Separator();
+    }
 }
 void App::performanceOptions() {
     int profile = settings.performanceHeadroom == 35   ? 0
@@ -2484,6 +2853,11 @@ void App::voxelOptions() {
     bool changed = choice("voxelmode", settings.voxelMode,
                           {"voxelflat", "voxelthick", "voxellayers", "voxelsculpt"});
     ImGui::TextWrapped("%s", tr("voxelintro", language));
+#ifdef SCU_QUEST
+    ImGui::TextWrapped("%s", tr("voxelstickxr", language));
+#else
+    ImGui::TextWrapped("%s", tr("voxelstickhint", language));
+#endif
     if (settings.voxelMode) {
         int preset = settings.voxelThickness == 2 && settings.voxelSpacing == 2 &&
                              settings.voxelRelief == 1 && settings.voxelLight == 45
@@ -2692,28 +3066,23 @@ void App::optionsUi(int section) {
                 }
             }
 #endif
-            check("advancedoptions", settings.advancedOptions);
-            if (settings.advancedOptions) {
-                if (!settings.wearActive)
-                    slide("nativescale", settings.nativeScale, 0, 8);
-                slide("workers", settings.workers, 0, 16);
+            if (!settings.wearActive)
+                slide("nativescale", settings.nativeScale, 0, 8);
+            slide("workers", settings.workers, 0, 16);
 #if !defined(SCU_QUEST) && !defined(SCU_MOBILE)
-                bool soft = settings.renderer != 0;
-                if (tick("soft", soft)) {
-                    settings.renderer = soft ? 1 : 0;
-                    changed = true;
-                }
-#endif
-                slide("scanlines", settings.scanlines, 0, 60);
+            bool soft = settings.renderer != 0;
+            if (tick("soft", soft)) {
+                settings.renderer = soft ? 1 : 0;
+                changed = true;
             }
+#endif
+            slide("scanlines", settings.scanlines, 0, 60);
         }
         if (ImGui::CollapsingHeader(tr("quickqualitygroup", language),
                                     ImGuiTreeNodeFlags_DefaultOpen)) {
             performanceOptions();
             check("performance", settings.performance);
         }
-        if (button("defaults"))
-            requestAction(3);
         break;
     }
     case 2:
@@ -2868,6 +3237,35 @@ void App::optionsUi(int section) {
         break;
     case 7: {
         check("autosave", settings.autosave);
+        ImGui::Text("%s %d", tr("slotnumber", language), settings.slot);
+        ImGui::BeginDisabled(!core.loaded);
+        auto path = library.dataDir / "saves" /
+                    (core.saveKey + "-" + std::to_string(settings.slot) + ".state");
+        std::error_code ec;
+        if (button("save")) {
+            if (fs::exists(path, ec))
+                requestAction(5, settings.slot);
+            else {
+                try {
+                    core.save(settings.slot);
+                    notify(tr("saved", language));
+                } catch (const std::exception &e) {
+                    error(e);
+                }
+            }
+        }
+        nextButton("load");
+        ImGui::BeginDisabled(!fs::exists(path, ec));
+        if (button("load"))
+            requestAction(4, settings.slot);
+        ImGui::EndDisabled();
+        nextButton("reset");
+        if (button("reset"))
+            requestAction(2);
+        nextButton("capture");
+        if (button("capture"))
+            screenshotRequested = true;
+        ImGui::EndDisabled();
         ImGui::TextWrapped("%s", tr("slothelp", language));
         for (int n = 1; n <= 9; ++n) {
             auto path =
@@ -2897,34 +3295,9 @@ void App::optionsUi(int section) {
             }
             control(("slot" + std::to_string(n)).c_str());
         }
-        ImGui::BeginDisabled(!core.loaded);
-        if (button("save")) {
-            auto path = library.dataDir / "saves" /
-                        (core.saveKey + "-" + std::to_string(settings.slot) + ".state");
-            if (fs::exists(path))
-                requestAction(5, settings.slot);
-            else {
-                try {
-                    core.save(settings.slot);
-                    notify(tr("saved", language));
-                } catch (const std::exception &e) {
-                    error(e);
-                }
-            }
-        }
-        std::error_code ec;
-        auto path = library.dataDir / "saves" /
-                    (core.saveKey + "-" + std::to_string(settings.slot) + ".state");
-        ImGui::BeginDisabled(!fs::exists(path, ec));
-        if (button("load"))
-            requestAction(4, settings.slot);
-        ImGui::EndDisabled();
-        if (button("reset"))
-            requestAction(2);
-        if (button("capture"))
-            screenshotRequested = true;
-        ImGui::EndDisabled();
         ImGui::TextWrapped("%s", tr("savehelp", language));
+        if (button("progressreset", {-1, 0}))
+            requestAction(8);
         break;
     }
 #ifdef SCU_QUEST

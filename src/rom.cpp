@@ -5,6 +5,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <cstring>
+#include <chrono>
 namespace scu {
 const std::vector<Game> &games() {
     static const std::vector<Game> all = {
@@ -301,12 +302,65 @@ std::vector<uint8_t> Library::bytes(const RomEntry &r) const {
             throw std::runtime_error("Lock-on identity mismatch");
         return sk;
     }
-    for (auto &raw : readRoms(fs::u8path(r.path)))
+    auto path = fs::u8path(r.path);
+    if (path.is_relative())
+        path = dataDir.parent_path() / path;
+    for (auto &raw : readRoms(path))
         if (raw.member == r.member) {
             if (checksum(raw.bytes) != r.crc)
                 throw std::runtime_error("Cartridge changed since import");
             return std::move(raw.bytes);
         }
     throw std::runtime_error("Imported member missing");
+}
+size_t Library::archiveSaves() const {
+    const auto profile = fs::canonical(dataDir);
+    const auto saves = profile / "saves";
+    if (!fs::exists(saves))
+        return 0;
+    if (!fs::is_directory(saves) || fs::canonical(saves) != saves)
+        throw std::runtime_error("Save folder is redirected");
+    std::vector<fs::path> files;
+    for (const auto &entry : fs::directory_iterator(saves)) {
+        if (!fs::is_regular_file(entry.symlink_status()))
+            continue;
+        auto name = entry.path().filename();
+        if (name.extension() == ".bak" || name.extension() == ".tmp")
+            name = name.stem();
+        if (name.extension() == ".srm" || name.extension() == ".state" || name.extension() == ".brm")
+            files.push_back(entry.path());
+    }
+    if (files.empty())
+        return 0;
+    const auto recovery = profile / "save-recovery";
+    fs::create_directory(recovery);
+    if (fs::canonical(recovery) != recovery)
+        throw std::runtime_error("Save recovery folder is redirected");
+    const auto time = std::chrono::system_clock::now().time_since_epoch().count();
+    const auto destination = recovery / std::to_string(time);
+    if (!fs::create_directory(destination))
+        throw std::runtime_error("Save recovery folder already exists");
+    size_t moved = 0;
+    try {
+        for (const auto &file : files) {
+            fs::rename(file, destination / file.filename());
+            ++moved;
+        }
+    } catch (...) {
+        bool incomplete = false;
+        for (size_t i = 0; i < moved; ++i) {
+            std::error_code ec;
+            if (fs::exists(files[i], ec) || ec) {
+                incomplete = true;
+                continue;
+            }
+            fs::rename(destination / files[i].filename(), files[i], ec);
+            incomplete |= bool(ec);
+        }
+        if (incomplete)
+            throw std::runtime_error("Some saves are in " + destination.u8string());
+        throw;
+    }
+    return moved;
 }
 } // namespace scu

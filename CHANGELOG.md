@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.12.0 Runtime preview
+
+- Simple opens by default with ready-to-play looks. Switch to Advanced for the full sections and save up to three local settings profiles.
+- Restore all settings or the visible section. A separate confirmed action archives cartridge and app saves to local recovery.
+- The Android interface scales touch, clipping and drawn elements together on high-density screens.
+- The right stick tilts voxel scenes. Press it to recenter or hold the right shoulder to explore an expanded map on desktop and mobile. Player and spawn markers share the volume projection.
+- The visual guide displays the loaded cartridge's image and supports local captures of matching views, depth and backgrounds.
+- Rewind budgets include the codec and snapshot workspace and retain the newest fitting checkpoint when possible.
+
 ## 0.11.0 Voxel development preview — 2026-11-06
 
 - Optional thick pixels, priority-layered voxels and sculpted surfaces. Known stages use their world coordinates; unsupported scenes use the complete original screen. The native reference, game timing and collisions stay independent.

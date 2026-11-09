@@ -15,10 +15,10 @@ def run(args):
 build=a.sdk/'build-tools/36.0.0';suffix='.exe' if os.name=='nt' else ''
 edition='wear' if a.wear else 'mobile'
 package='com.vhaloo.soniccompilationultra.'+edition
-version='0.11.0-'+edition+'-preview'
+version='0.12.0-'+edition+'-preview'
 signature=run([build/('apksigner.bat' if os.name=='nt' else 'apksigner'),'verify','--verbose','--print-certs',a.apk])
 badging=run([build/('aapt2'+suffix),'dump','badging',a.apk])
-for expected in [f"name='{package}'","versionCode='1100'",f"versionName='{version}'",f"minSdkVersion:'{26 if a.wear else 24}'","targetSdkVersion:'36'",'MobileActivity']:
+for expected in [f"name='{package}'","versionCode='1200'",f"versionName='{version}'",f"minSdkVersion:'{26 if a.wear else 24}'","targetSdkVersion:'36'",'MobileActivity']:
     assert expected in badging,expected
 manifest=run([build/('aapt2'+suffix),'dump','xmltree','--file','AndroidManifest.xml',a.apk])
 for banned in ['oculus','openxr','IMMERSIVE_HMD','android.permission.CAMERA','android.permission.RECORD_AUDIO',
@@ -80,8 +80,13 @@ with zipfile.ZipFile(a.apk) as z,tempfile.TemporaryDirectory(prefix='scu-mobile-
             cartridges.append({'id':game,'crc32':crc,'sha256':hashlib.sha256(raw).hexdigest()})
         assert len(cartridges)==12
         settings=dict(line.split('=',1) for line in z.read(prefix+'UserData/settings.ini').decode('utf-8').splitlines() if '=' in line)
-        assert settings['mobileLayout']=='0' and settings['mobileTouch']=='0' and settings['view']=='2'
+        assert settings['mobileLayout']=='0' and settings['mobileTouch']=='0' and settings['view']=='2' and settings['advancedOptions']=='0'
         if a.wear:assert settings['wearZoom']=='0' and settings['wearFisheye']=='1'
+        for entry in cartridges:
+            if entry['id'] != 'skchip':
+                for guide in ('views.bmp','depth.bmp','background.bmp'):
+                    assert z.read(prefix+'UserData/guide-captures/'+entry['id']+'/'+guide).startswith(b'BM')
+        assert not any(n.startswith(prefix+'UserData/saves/') for n in names)
     for n in names:
         if n.startswith('assets/'):
             raw=z.read(n);assert b'C:\\Users\\' not in raw and b'E:\\Emulation' not in raw,n

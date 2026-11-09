@@ -33,7 +33,8 @@ Click **Play**, then press **Enter** or **gamepad Start** on the original title 
 | Explain the selected setting | F1 in options | Y / Triangle / top face button |
 | Resume from options | Resume button | Start |
 | Zoom | + / − or Ctrl + wheel | Hold RB + Up/Down |
-| Free camera | WASD; Shift moves faster | Right stick |
+| Free camera | WASD; Shift moves faster | Right stick in Free camera, or hold RB and move the right stick in an expanded voxel view |
+| Look around the voxel scene | Advanced → Video → Depth and voxels | Right stick to tilt, press it to recenter |
 | Save / load | Shift + F1…F9 / F1…F9 | Choose in Saves |
 | Rewind at normal speed with reversed sound | Hold Backspace | Hold L2 / Xbox LT (default) |
 | Screenshot | F12 | Hold RB + Start |
@@ -44,6 +45,8 @@ The first two controllers drive players 1 and 2. A second keyboard player uses *
 You can also click the menu reminder at the bottom of the game. Short keyboard presses are kept until the next game tick, so a fast display refresh does not swallow a quick Start or jump.
 
 ## Pick a comfortable view
+
+Open **Presets** in the default Simple menu to apply an entire look in one action. A preset replaces the active picture, camera and quality settings. Choose **Advanced** to open the detailed sections and save up to three setups under **Profiles**. You can load a profile after applying a preset or restoring defaults.
 
 - **Whole-level overview (default):** the supported current map fits, with a player marker and live inset. Spinball’s four boards and 3D Blast’s 22 terrain maps are supported. Puzzle boards and special stages keep their complete native screen.
 - **Balanced:** the default quality; lower overview sampling reduces work without cropping the stage.
@@ -64,6 +67,8 @@ Focus any setting for an illustrated explanation. Large menus show it alongside 
 Save slots belong to a particular cartridge checksum. A damaged state or a different ROM is rejected. Previous files are preserved as `.bak`. Normal cartridge saves and app states are separate. Auto-resume keeps a local checkpoint when you close or switch games.
 
 The Saves page shows all nine slots and their dates. Loads, overwrites, resets, switching games and restoring defaults have gamepad-friendly confirmations; Cancel receives focus first. You can turn these off under Gameplay.
+
+**Restore all settings** returns to the defaults. In Advanced, **Restore this section** affects the visible section. **Reset all saved progress** in Saves moves the active checkpoints and cartridge saves to a local `save-recovery` folder after confirmation.
 
 **Rewind** is enabled on new installs. Hold **L2 / LT** or **Backspace** to go backwards at the cartridge’s normal speed, including music and effects; release to continue from that moment. The on-screen reminder shows the available seconds. At the oldest retained moment, holding rewind keeps the game still. **Gameplay** lets you disable rewind or its reverse sound, and choose a 24 / 96 / 192 MB history budget. Lightweight limits history to 24 MB. **Controls** lets you choose LT, LB or RT. Existing preferences are retained, so enable Rewind under Gameplay if you previously disabled it.
 

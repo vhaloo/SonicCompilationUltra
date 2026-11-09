@@ -1,8 +1,8 @@
-# Standalone Meta Quest XR preview 0.11
+# Standalone Meta Quest 3 runtime preview
 
 Play your own cartridges on a giant AR mural, a complete-board pinball cabinet, a 3D CRT, a curved gallery, a floor atlas or a simple spatial screen. **Y opens the options.** Every control has an illustrated explanation in English, French, Spanish and Japanese.
 
-**Development preview — no 0.11 headset testing.** Compilation, Android lint, pure interaction/geometry checks and archive/signature audits are the current evidence. All hardware/runtime results in older reports apply only to their stated versions. [Quick controls](XR_CONTROLS.md) · [Depth and voxels](VOXELS.md) · [Research, engineering choices and limits](XR_DEVELOPMENT.md).
+**Experimental.** Use the release notes to check which tests ran on a headset. Compilation, Android lint, pure interaction checks and archive/signature audits cover different parts of the app. [Quick controls](XR_CONTROLS.md) · [Depth and voxels](VOXELS.md) · [Research, engineering choices and limits](XR_DEVELOPMENT.md).
 
 ## Install and add your cartridges
 
@@ -41,7 +41,7 @@ See the [illustrated control guide](XR_CONTROLS.md). The spatial remote has eigh
 
 The native close-up is an independently movable CRT in expanded modes. Consumer, compact and studio enclosures, picture width and CRT effects are adjustable. Coplanar main-TV mode aligns the surrounding terrain exactly to its flat picture plane; the alternative curved composition remains selectable.
 
-Auto displays a large virtual controller when tracked controllers and external pads are absent. Pinch/drag its stick with one hand and use the other for buttons. Losing focus/tracking releases input. These input paths are implemented and compiled, with real-hand/controller usability still untested in 0.11. Bluetooth pads remain supported by the existing menu/input path.
+Auto displays a large virtual controller when tracked controllers and external pads are absent. Pinch or drag its stick with one hand and use the other for buttons. Losing focus or tracking releases input. Bluetooth pads can also navigate the Simple and Advanced settings.
 
 AR scenery is transparent by default. Empty regions reveal the room; terrain/actors stay visible. Disable Transparent AR background to recover the chosen background style. The native CRT and Spinball board retain their complete original image.
 

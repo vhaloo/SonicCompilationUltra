@@ -343,14 +343,16 @@ void Core::loadSram() {
             std::copy(b.begin(), b.end(), p);
     }
 }
-void Core::unload() {
+void Core::unload(bool keepProgress) {
     if (loaded) {
-        try {
-            saveSram();
-            if (settings.autosave && frame > 30)
-                writeBytesAtomic(library.dataDir / "saves" / (saveKey + "-auto.state"), state());
-        } catch (const std::exception &e) {
-            status = e.what();
+        if (keepProgress) {
+            try {
+                saveSram();
+                if (settings.autosave && frame > 30)
+                    writeBytesAtomic(library.dataDir / "saves" / (saveKey + "-auto.state"), state());
+            } catch (const std::exception &e) {
+                status = e.what();
+            }
         }
         retro_unload_game();
         loaded = false;
@@ -458,9 +460,7 @@ void Core::tick() {
     lastButtons = buttons[0];
     if (settings.rewind && !rewindScratch.empty()) {
         try {
-            size_t budget = rewindLimit();
-            history.push(rewindScratch, frameAudio,
-                         budget > rewindScratch.capacity() ? budget - rewindScratch.capacity() : 0);
+            history.push(rewindScratch, frameAudio, rewindHistoryLimit());
         } catch (const std::exception &e) {
             history.clear();
             status = e.what();
@@ -579,9 +579,11 @@ void Core::loadState(int slot) {
 }
 void Core::setRewinding(bool on) {
     if (settings.rewind)
-        history.trim(rewindLimit());
-    else
+        history.trim(rewindHistoryLimit());
+    else {
         history.clear();
+        std::vector<uint8_t>().swap(rewindScratch);
+    }
     on = on && loaded && settings.rewind;
     if (on == rewinding)
         return;
@@ -596,6 +598,10 @@ size_t Core::rewindLimit() const {
     static const size_t budgets[] = {24, 96, 192};
     return budgets[settings.quality == 0 ? 0 : std::clamp(settings.rewindMemory, 0, 2)] * 1024 *
            1024;
+}
+size_t Core::rewindHistoryLimit() const {
+    const size_t total = rewindLimit(), scratch = rewindScratch.capacity();
+    return total > scratch ? total - scratch : 0;
 }
 bool Core::rewind() {
     if (!loaded || !settings.rewind)

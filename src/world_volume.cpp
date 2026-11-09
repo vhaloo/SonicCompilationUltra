@@ -33,6 +33,15 @@ bool World::prepareVolume(const SCUSnapshot &s, const Game *game, const Settings
         return false;
     }
     Scene scene = inspect(s, game);
+    const auto mode = s.ram[0xF600];
+    if (scene.family >= 1 && scene.family <= 3 && !scene.ready &&
+        (mode == 0 || mode == 4 || (mode & 0x80))) {
+        if (volume.valid()) {
+            volume.clear();
+            volumeMesh.clear();
+        }
+        return false;
+    }
     expanded = expanded && scene.ready && canvas.width > 0 && canvas.height > 0 &&
                terrainPixels.size() == size_t(canvas.width) * canvas.height &&
                priority.size() == terrainPixels.size();

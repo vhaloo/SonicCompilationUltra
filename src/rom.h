@@ -40,5 +40,6 @@ class Library {
     const RomEntry *find(const std::string &id) const;
     std::vector<uint8_t> bytes(const RomEntry &entry) const;
     void refreshLockons();
+    size_t archiveSaves() const;
 };
 } // namespace scu

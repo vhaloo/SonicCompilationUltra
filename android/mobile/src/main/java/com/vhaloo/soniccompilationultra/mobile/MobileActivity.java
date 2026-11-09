@@ -195,7 +195,8 @@ public final class MobileActivity extends SDLActivity {
     @Override protected String[] getLibraries() { return new String[]{"c++_shared", "SDL2", "main"}; }
     @Override protected String[] getArguments() {
         java.util.ArrayList<String> args = new java.util.ArrayList<>();
-        args.add("--data-dir"); args.add(new File(root, "UserData").getAbsolutePath());
+        File dataDir = new File(root, "UserData");
+        args.add("--data-dir"); args.add(dataDir.getAbsolutePath());
         if (getIntent().getBooleanExtra("scu_menu_only", false)) {
             args.add("--menu-only");
             String language = getIntent().getStringExtra("scu_language");
@@ -203,6 +204,17 @@ public final class MobileActivity extends SDLActivity {
                 args.add("--language"); args.add(language);
             }
 
+        }
+        // adb-driven private checkpoints live in the isolated, debuggable QA build.
+        if ((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+                && getPackageName().endsWith(".qa")) {
+            int frames = getIntent().getIntExtra("scu_qa_frames", 0);
+            File timeline = new File(dataDir, "qa.timeline");
+            if (frames > 0 && frames <= 20000 && timeline.isFile()) {
+                java.util.Collections.addAll(args, "--no-autoresume", "--mute", "--frames",
+                        Integer.toString(frames), "--render-every", "120", "--script",
+                        timeline.getAbsolutePath(), "--report", new File(dataDir, "qa.json").getAbsolutePath());
+            }
         }
         if (preparationError != null) { args.add("--startup-error"); args.add(preparationError); }
         return args.toArray(new String[0]);

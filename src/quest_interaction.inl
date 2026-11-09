@@ -160,7 +160,7 @@ void spatialAction(int action, float dt) {
         app.dirty = true;
         return;
     }
-    if (action >= SectionFirst && action < SectionFirst + 10) {
+    if (action >= SectionFirst && action < SectionFirst + App::sectionCount()) {
         app.showSection(action - SectionFirst);
         placeMenu();
         return;

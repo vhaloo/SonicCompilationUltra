@@ -16,6 +16,7 @@ class VoxelGpu {
     ~VoxelGpu();
     SDL_Texture *render(SDL_Renderer *, const voxel::Frame &, const voxel::Mesher &,
                         const Settings &, int width, int height);
+    voxel::Vec3 project(voxel::Vec3 point) const;
     void release();
     void invalidate();
     const char *status() const;

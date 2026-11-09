@@ -279,8 +279,7 @@ void MobilePresentation::action(touch::Action a) {
         app.backRequested = true;
     } else if (a == A::Previous || a == A::Next) {
         if (!app.guideOpen && !app.actionPopup && !app.browsing())
-            app.showSection((app.menuTab() + App::sectionCount() + (a == A::Next ? 1 : -1)) %
-                            App::sectionCount());
+            app.changeSection(a == A::Next ? 1 : -1);
     } else if (a == A::Overview) {
         if (app.settings.wearActive)
             app.settings.wearZoom = 0;
@@ -507,7 +506,7 @@ void MobilePresentation::drawControls() {
     data.DisplaySize = {width / density, height / density};
     data.FramebufferScale = {density, density};
     data.AddDrawList(&draw);
-    ImGui_ImplSDLRenderer2_RenderDrawData(&data, app.renderer);
+    app.renderImGui(&data);
 }
 void MobilePresentation::endFrame() {
     const auto submitStarted = SDL_GetPerformanceCounter();

@@ -144,8 +144,14 @@ void RewindHistory::push(const std::vector<uint8_t> &state, const std::vector<in
         used -= entries.front().bytes();
         entries.pop_front();
     }
-    if (bytes() + entryBytes <= limit) {
-        used += entryBytes;
+    if (entries.empty() && bytes() + entryBytes > limit) {
+        // One standalone checkpoint can still fit when the codec cannot.
+        workspace.reset();
+        std::vector<uint8_t>().swap(entry.state);
+        entry.previousSize = 0;
+    }
+    if (bytes() + entry.bytes() <= limit) {
+        used += entry.bytes();
         entries.push_back(std::move(entry));
     } else
         clear();

@@ -27,6 +27,16 @@ int main() {
         writeBytesAtomic(path, testProgram(true));
         Library library(dir);
         require(library.importFile(path) == 1, "Synthetic cartridge import");
+        const auto portableRoot = dir / "portable";
+        const auto relativeRom = fs::path("ROMs") / "original-test-program.bin";
+        writeBytesAtomic(portableRoot / relativeRom, testProgram(true));
+        Library portable(portableRoot / "UserData");
+        portable.entries.push_back(library.entries.front());
+        portable.entries.front().path = relativeRom.generic_u8string();
+        portable.save();
+        portable.load();
+        require(portable.bytes(portable.entries.front()) == testProgram(true),
+                "A portable cartridge path must resolve from the package folder");
         Settings defaults;
         require(defaults.rewind && defaults.rewindAudio && defaults.rewindButton == 0,
                 "New installs must default to L2/LT with reverse sound");
@@ -176,27 +186,34 @@ int main() {
                 "Stereo channel identities were reversed");
         RewindHistory history;
         std::vector<uint8_t> smallState(4096, 0x42);
-        for (int n = 0; n < 100; ++n) {
+        const std::vector<int16_t> audioBlock(2048, 0x15);
+        constexpr size_t compressedBudget = 384 * 1024;
+        for (int n = 0; n < 180; ++n) {
             smallState[0] = uint8_t(n);
-            history.push(smallState, stereo, 8192);
+            history.push(smallState, audioBlock, compressedBudget);
         }
-        require(history.size() > 1 && history.size() < 100 && history.bytes() <= 8192,
+        require(history.size() > 1 && history.size() < 180 && history.bytes() <= compressedBudget,
                 "Rewind exceeded its allocation budget");
         std::vector<uint8_t> restored;
         std::vector<int16_t> reversed;
         require(history.pop(restored, reversed) && restored == smallState,
                 "Compressed history did not round trip");
-        smallState[0] = 98;
+        smallState[0] = 178;
         require(history.pop(restored, reversed) && restored == smallState,
                 "Eviction broke the preceding delta state");
         history.trim(4096);
         require(history.bytes() <= 4096, "Changing memory budget did not immediately trim history");
         history.push(smallState, stereo, 1);
         require(history.size() == 0 && history.bytes() == 0, "Oversized entry exceeded budget");
+        history.push(smallState, stereo, 8192);
+        smallState[0] = 179;
+        history.push(smallState, stereo, 8192);
+        require(history.size() == 1 && history.bytes() <= 8192 && history.pop(restored, reversed) &&
+                    restored == smallState, "A tiny budget should still keep a standalone checkpoint");
         const std::vector<uint8_t> larger(12000, 0xA5), smaller(2000, 0x5A);
-        history.push(larger, stereo, 65536);
-        history.push(smaller, stereo, 65536);
-        history.push(smallState, stereo, 65536);
+        history.push(larger, stereo, compressedBudget);
+        history.push(smaller, stereo, compressedBudget);
+        history.push(smallState, stereo, compressedBudget);
         require(history.pop(restored, reversed) && restored == smallState &&
                     history.pop(restored, reversed) && restored == smaller &&
                     history.pop(restored, reversed) && restored == larger && history.bytes() == 0,

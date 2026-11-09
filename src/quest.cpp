@@ -1097,6 +1097,8 @@ struct QuestPresentation::Impl {
             blockPointerTrigger = false;
         lastMenu = app.menu;
         if (clicked && !previousThumb) {
+            if (!app.menu && app.settings.voxelMode)
+                app.resetVoxelOrbit();
             app.settings.questRemote = true;
             app.dirty = true;
             placeDeck(true);

@@ -26,8 +26,6 @@ The placement formats were checked against the primary [Sonic 1](https://github.
 
 The pinned, separately licensed [Musashi disassembler](https://github.com/kstenerud/Musashi) distinguishes instructions from adjacent data without executing them. Synthetic checks, static private cartridge audits and sampled native stage entries cover decoding, defeat, visibility, framing and read-only snapshots. See [tested coverage](TEST_REPORT.md); these are not full-campaign certification.
 
-![Both future Death Egg boss locations and script origins](screenshots/boss-spawns-0.2.1.png)
-
 ![Gamepad-accessible boss and script preview controls](screenshots/camera-options-0.2.1.png)
 
 

@@ -83,8 +83,8 @@ std::vector<SpatialButton> spatialButtons(int page) {
     case 5:
         for (int n = 0; n < 10; ++n) {
             const char *keys[]{"library",  "video",    "camera", "atmosphere", "sound",
-                               "controls", "gameplay", "saves",  "about",      "questtab"};
-            grid(SectionFirst + n, keys[n]);
+                               "controls", "gameplay", "saves",  "optionprofiles", "questtab"};
+            grid(SectionFirst + (n == 8 ? 10 : n), keys[n]);
         }
         grid(ScrollUp, "remote_scroll_up", true);
         grid(ScrollDown, "remote_scroll_down", true);

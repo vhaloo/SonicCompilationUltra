@@ -1115,7 +1115,15 @@ struct XrStageRenderer::Impl {
                              content.nativeWidth, content.nativeHeight);
         glUniform4f(holeUniform, hole.x, hole.y, hole.width, hole.height);
         glUniform1i(clipUniform, 0);
-        Matrix root = poseMatrix(origin, s.questScale * .01f);
+        Matrix orbit = Matrix::identity();
+        if (volumeReady) {
+            const Settings defaults;
+            const float yaw = std::clamp(s.voxelYaw - defaults.voxelYaw, -45, 45) * pi / 360.f;
+            const float pitch = std::clamp(s.voxelPitch - defaults.voxelPitch, -25, 25) * pi / 360.f;
+            const float sy = std::sin(yaw), cy = std::cos(yaw), sx = std::sin(pitch), cx = std::cos(pitch);
+            orbit = poseMatrix({{cy * sx, sy * cx, -sy * sx, cy * cx}, {0, 0, 0}});
+        }
+        Matrix root = product(poseMatrix(origin, s.questScale * .01f), orbit);
         Matrix volumeModel = Matrix::identity();
         if (volumeReady) {
             const auto &f = *content.volume;
@@ -1124,7 +1132,7 @@ struct XrStageRenderer::Impl {
                 const float w =
                     std::min(content.surfaceSize.width, content.surfaceSize.height * sourceRatio);
                 volumeModel =
-                    product(poseMatrix(origin), placement({0, 0, 0}, {w, w / sourceRatio, w}));
+                    product(product(poseMatrix(origin), orbit), placement({0, 0, 0}, {w, w / sourceRatio, w}));
             } else if (mode == 4) {
                 const float boardRatio = std::clamp(ratio, .25f, 2.f);
                 const float sx = std::min(1.f, sourceRatio / boardRatio),

@@ -1,4 +1,4 @@
-name: XR companion desktop compile only
+name: Desktop build and runtime checks
 on:
   push:
     branches: [quest-standalone]
@@ -46,15 +46,17 @@ jobs:
           python tools/audit_voxel_development.py
       - name: Configure Windows
         if: runner.os == 'Windows'
-        run: cmake -S . -B build -A x64 -DBUILD_TESTING=OFF -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON
+        run: cmake -S . -B build -A x64 -DBUILD_TESTING=ON -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON
       - name: Configure Linux
         if: runner.os == 'Linux'
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON
       - name: Configure macOS
         if: runner.os == 'macOS'
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=${{ matrix.deployment }}
-      - name: Compile without starting the application
-        run: cmake --build build --config Release --parallel 3 --target SonicCompilationUltra
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON -DCMAKE_DISABLE_FIND_PACKAGE_SDL2=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=${{ matrix.deployment }}
+      - name: Compile app and fixtures
+        run: cmake --build build --config Release --parallel 3
+      - name: Test the emulator core and controller UI with the generated cartridge
+        run: ctest --test-dir build -C Release --output-on-failure
       - name: Pure spatial checks without SDL or a game
         run: |
           cmake -S tests/spatial -B build-spatial

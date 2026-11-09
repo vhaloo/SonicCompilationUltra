@@ -24,6 +24,7 @@ class Core {
     void queueAudio(const int16_t *data, size_t frames);
     bool restoreState(const std::vector<uint8_t> &data, bool rewindFrame);
     size_t rewindLimit() const;
+    size_t rewindHistoryLimit() const;
     void saveSram();
     void loadSram();
     void gameplayMods(uint16_t pressed);
@@ -52,7 +53,7 @@ class Core {
     explicit Core(Settings &s, Library &l) : settings(s), library(l) {}
     ~Core();
     bool load(const std::string &id);
-    void unload();
+    void unload(bool keepProgress = true);
     void reset();
     void tick();
     void updateOptions();

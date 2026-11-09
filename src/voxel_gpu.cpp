@@ -303,6 +303,7 @@ struct VoxelGpu::Impl {
     uint64_t lastMesh = ~uint64_t(0);
     std::array<uint64_t, voxel::planeCount> atlasPixels{};
     std::array<int, 4> lastView{{-999, -999, -999, -999}};
+    voxel::Matrix projection = voxel::Matrix::identity();
     struct Buffer {
         U id = 0;
         I count = 0;
@@ -542,8 +543,8 @@ struct VoxelGpu::Impl {
         g.UseProgram(program);
         g.Uniform1i(image, 0);
         g.Uniform1f(light, s.voxelLight * .01f);
-        auto matrix =
-            voxel::pictureCamera(mesh.bounds(), w, h, float(s.voxelYaw), float(s.voxelPitch));
+        projection = voxel::pictureCamera(mesh.bounds(), w, h, float(s.voxelYaw), float(s.voxelPitch));
+        auto matrix = projection;
         // SDL target textures address row zero at the top. Render that row at
         // the GL image's bottom so ordinary SDL copies need no special flip.
         for (int column = 0; column < 4; ++column)
@@ -611,6 +612,9 @@ void VoxelGpu::release() {
 void VoxelGpu::invalidate() {
     impl->release(false);
     impl.reset(new Impl);
+}
+voxel::Vec3 VoxelGpu::project(voxel::Vec3 point) const {
+    return voxel::transform(impl->projection, point);
 }
 const char *VoxelGpu::status() const {
     return impl->status;

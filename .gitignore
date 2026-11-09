@@ -19,7 +19,13 @@ quest-wall-anchor.txt
 *.7z
 *.png
 *.jpg
-!docs/screenshots/*.png
+!docs/screenshots/fullscreen-options.png
+!docs/screenshots/camera-options-0.2.1.png
+!docs/screenshots/quest-crt-preview.png
+!docs/screenshots/quest-curved-preview.png
+!docs/screenshots/quest-options.png
+!docs/screenshots/quest-pinball-preview.png
+!docs/screenshots/tiny-guide.png
 !docs/illustrations/settings-preview-gallery.png
 !docs/illustrations/voxel-flat.png
 !docs/illustrations/voxel-layered.png

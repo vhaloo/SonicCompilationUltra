@@ -106,5 +106,7 @@ struct Settings {
     void load(const fs::path &dir);
     void save(const fs::path &dir) const;
     void preset(int n);
+    void applyLook(int n, const Settings &defaults);
+    void restoreDefaults(const Settings &defaults, int section);
 };
 } // namespace scu

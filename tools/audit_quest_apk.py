@@ -24,7 +24,7 @@ signature=run([signer,'verify','--verbose','--print-certs',a.apk])
 aapt=tools/('aapt2.exe' if os.name=='nt' else 'aapt2')
 badging=run([aapt,'dump','badging',a.apk])
 assert "package: name='com.vhaloo.soniccompilationultra.quest'" in badging
-assert "versionCode='1100'" in badging and "versionName='0.11.0-xr-preview'" in badging
+assert "versionCode='1200'" in badging and "versionName='0.12.0-xr-preview'" in badging
 assert "native-code: 'arm64-v8a'" in badging
 assert 'QuestActivity' in badging
 manifest=run([aapt,'dump','xmltree','--file','AndroidManifest.xml',a.apk])
@@ -71,13 +71,11 @@ with zipfile.ZipFile(a.apk) as z, tempfile.TemporaryDirectory(prefix='scu-quest-
         assert prefix+'personal-wall-preset-0500.txt' not in names,'Personal preset in ROM-free APK'
         assert prefix+'personal-xr-preset-0600.txt' not in names,'Personal XR profile in ROM-free APK'
     else:
-        assert prefix+'personal-wall-preset-0500.txt' in names,'Personal wall profile flag missing'
-        assert prefix+'personal-xr-preset-0600.txt' in names,'Personal XR profile flag missing'
         for config in ['UserData/library.tsv','UserData/settings.ini']:
             raw_config=z.read(prefix+config)
             assert b'\r' not in raw_config and not raw_config.startswith(b'\xef\xbb\xbf'), 'Package text must use UTF-8 LF: '+config
         settings=dict(line.split('=',1) for line in z.read(prefix+'UserData/settings.ini').decode().splitlines() if '=' in line)
-        for key,value in {'questMode':'2','questPassthrough':'1','questWallHeight':'200','questRefresh':'90','questWallLocked':'1','questCompanion':'1'}.items():
+        for key,value in {'advancedOptions':'0','questMode':'2','questPassthrough':'1','questWallHeight':'200','questRefresh':'90','questWallLocked':'1','questCompanion':'1'}.items():
             assert settings.get(key)==value,(key,settings.get(key))
         lines=z.read(prefix+'UserData/library.tsv').decode().splitlines()
         for line in lines:
@@ -88,13 +86,18 @@ with zipfile.ZipFile(a.apk) as z, tempfile.TemporaryDirectory(prefix='scu-quest-
             assert zlib.crc32(raw)&0xffffffff==int(crc,16),(game,crc)
             cartridges.append({'id':game,'crc32':crc,'sha256':hashlib.sha256(raw).hexdigest()})
         assert len(cartridges)==12
+        for entry in cartridges:
+            if entry['id'] != 'skchip':
+                for guide in ('views.bmp','depth.bmp','background.bmp'):
+                    assert z.read(prefix+'UserData/guide-captures/'+entry['id']+'/'+guide).startswith(b'BM')
+        assert not any(n.startswith(prefix+'UserData/saves/') for n in names)
     for name in names:
         if name.startswith('assets/'):
             data=z.read(name)
             assert b'C:\\Users\\' not in data and b'E:\\Emulation' not in data,name
 report={'apk':str(a.apk),'sha256':hashlib.sha256(a.apk.read_bytes()).hexdigest(),'bytes':a.apk.stat().st_size,
         'signature_verified':True,'signature':signature,'package':'com.vhaloo.soniccompilationultra.quest',
-        'version':'0.11.0-xr-preview','abi':'arm64-v8a','native_dependencies':dependencies,
+        'version':'0.12.0-xr-preview','abi':'arm64-v8a','native_dependencies':dependencies,
         'private_game_data_included':a.allow_private,'cartridges':cartridges,
         'font_bytes':len(font),'application_executed':False,'headset_runtime_qualified':False}
 a.out.parent.mkdir(parents=True,exist_ok=True);a.out.write_text(json.dumps(report,indent=2))

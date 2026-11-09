@@ -49,8 +49,6 @@ struct Harness {
         app->core.headless = true;
         auto base = SDL_GetBasePath();
         app->initialise(base ? fs::u8path(base) : fs::current_path(), true);
-        // This legacy exhaustive navigation fixture intentionally exposes all controls.
-        app->settings.advancedOptions = true;
         SDL_free(base);
         require(app->pads[0] != nullptr, "SDL virtual controller is not recognised");
         frame(6);
@@ -343,6 +341,27 @@ int main() {
         {
             Harness h;
             auto &a = *h.app;
+            require(!a.settings.advancedOptions && !a.controls.count("camera"),
+                    "new players should start with the simple menu");
+            h.tab(1);
+            h.activate("lookvoxel");
+            require(a.settings.voxelMode == 2 && a.settings.view == 1, "apply voxel look");
+            h.activate("advancedmode");
+            require(a.settings.advancedOptions, "advanced settings reachable");
+            h.tab(App::profilesSection());
+            h.activate("optionsave1");
+            require(fs::exists(a.library.dataDir / "option-profiles" / "1" / "settings.ini"),
+                    "save an options profile");
+            h.activate("simplemode");
+            h.activate("lookstage");
+            require(a.settings.voxelMode == 0 && a.settings.view == 2, "preset replaces picture");
+            h.activate("advancedmode");
+            h.tab(App::profilesSection());
+            h.activate("optionload1");
+            h.activate("yes");
+            require(a.settings.voxelMode == 2 && a.settings.view == 1, "profile restores picture");
+            a.settings.applyLook(0, Settings{});
+            h.tab(0);
             h.activate("import");
             require(a.browsing(), "A must open ROM browser");
             h.activate("file:nested");
@@ -359,6 +378,15 @@ int main() {
             h.activate("play-" + a.library.entries.front().id);
             require(a.core.loaded && !a.menu, "gamepad game launch");
             a.core.tick();
+            a.settings.voxelMode = 2;
+            SDL_JoystickSetVirtualAxis(h.joystick, SDL_CONTROLLER_AXIS_RIGHTX, 26000);
+            SDL_JoystickUpdate();
+            a.pan(.04);
+            require(a.settings.voxelYaw > Settings{}.voxelYaw, "right stick tilts the scene");
+            SDL_JoystickSetVirtualAxis(h.joystick, SDL_CONTROLLER_AXIS_RIGHTX, 0);
+            h.press(SDL_CONTROLLER_BUTTON_RIGHTSTICK);
+            require(a.settings.voxelYaw == Settings{}.voxelYaw, "right-stick click recenters");
+            a.settings.voxelMode = 0;
             h.press(SDL_CONTROLLER_BUTTON_BACK);
             require(a.menu, "Select opens options");
             std::cerr << "Controller import and launch passed\n";
@@ -590,7 +618,7 @@ int main() {
                               {7680, 1440}}) {
                 SDL_SetWindowSize(a.window, size.first, size.second);
                 h.frame();
-                for (int n = 0; n < 9; ++n) {
+                for (int n = 0; n < App::sectionCount(); ++n) {
                     h.tab(n);
                     require(GImGui->NavId != 0, "no gamepad focus at resized menu");
                 }
@@ -629,7 +657,8 @@ int main() {
             h.frame();
             int before = a.menuTab();
             h.press(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
-            require(a.menuTab() == (before + 1) % 9, "reconnected controller cannot navigate");
+            require(a.menuTab() == (before + 1) % App::sectionCount(),
+                    "reconnected controller cannot navigate");
             std::cout << "PASS: SDL virtual gamepad import, path keyboard, all settings/pages, "
                          "sliders/choices, saves, confirmations, shortcuts, 5 sizes and reconnect; "
                       << h.visited.size() << " focused controls\n";

@@ -217,4 +217,139 @@ void Settings::preset(int n) {
     workers = 0;
     smoothMap = n > 0;
 }
+void Settings::applyLook(int n, const Settings &defaults) {
+    Settings picture = defaults;
+    picture.language = language;
+    picture.fullscreen = fullscreen;
+    picture.span = span;
+    picture.display = display;
+    picture.menuLayout = menuLayout;
+    picture.uiScale = uiScale;
+    picture.highContrast = highContrast;
+    picture.vsync = vsync;
+    picture.renderer = renderer;
+    picture.advancedOptions = advancedOptions;
+    picture.reduceMotion = reduceMotion;
+    restoreDefaults(picture, 1);
+    restoreDefaults(picture, 2);
+    restoreDefaults(picture, 3);
+    questMode = defaults.questMode;
+    questPassthrough = defaults.questPassthrough;
+    questTransparent = defaults.questTransparent;
+    questCrt = defaults.questCrt;
+    questSurroundBrightness = defaults.questSurroundBrightness;
+    questSpinballAuto = defaults.questSpinballAuto;
+    if (n >= 1 && n <= 4) {
+        questMode = 0;
+        questPassthrough = false;
+    }
+    switch (n) {
+    case 1: // Original cartridge framing
+        view = 4;
+        wearZoom = 1000;
+        wearFisheye = false;
+        background = 5;
+        questSpinballAuto = false;
+        break;
+    case 2: // Panorama
+        view = 1;
+        panoramaHeight = 384;
+        wearZoom = 500;
+        break;
+    case 3: // Voxel diorama
+        view = 1;
+        panoramaHeight = 320;
+        voxelMode = 2;
+        wearZoom = 650;
+        break;
+    case 4: // CRT
+        view = 4;
+        wearZoom = 1000;
+        wearFisheye = false;
+        desktopPresentation = 2;
+        questMode = 5;
+        questSpinballAuto = false;
+        break;
+    case 5: // Full level on an AR wall
+        questMode = 1;
+        questPassthrough = true;
+        questTransparent = true;
+        questWallLocked = true;
+        questSpinballAuto = false;
+        break;
+    }
+}
+void Settings::restoreDefaults(const Settings &defaults, int section) {
+    auto reset = [&](auto... fields) { ((this->*fields = defaults.*fields), ...); };
+#define F(field) &Settings::field
+    switch (section) {
+    case 0: {
+        auto game = lastGame;
+        auto directory = lastDirectory;
+        *this = defaults;
+        lastGame = std::move(game);
+        lastDirectory = std::move(directory);
+        break;
+    }
+    case 1: // Video and performance
+        reset(F(voxelMode), F(voxelDetail), F(voxelThickness), F(voxelSpacing), F(voxelRelief),
+              F(voxelLight), F(voxelYaw), F(voxelPitch), F(voxelBackground), F(voxelCrt),
+              F(language), F(quality), F(view), F(overviewStyle), F(wearZoom), F(wearFisheye),
+              F(zoom), F(zoomOut), F(panoramaHeight), F(mapExtension), F(smoothMap), F(fullscreen),
+              F(span), F(display), F(menuLayout), F(uiScale), F(highContrast), F(vsync),
+              F(integerScale), F(desktopPresentation), F(desktopFrameScale), F(desktopCrtStrength),
+              F(desktopCabinetAngle), F(desktopSurround), F(desktopCrtMask),
+              F(nativeScale), F(workers), F(renderer), F(scanlines), F(performance), F(autoPerformance),
+              F(adaptiveEffects), F(performanceHeadroom), F(performanceTarget), F(minimumRenderScale),
+              F(maximumRenderScale), F(performancePixelLock), F(thermalAware));
+        break;
+    case 2: // Camera, HUD and previews
+        reset(F(camera), F(left), F(top), F(panSpeed), F(hud), F(hudScale), F(locator), F(minimap),
+              F(ghost), F(help), F(playerInset), F(enemyPreview), F(bossPreview), F(scriptPreview),
+              F(objectPreview), F(objectOrigins), F(frozenPreviews), F(enemyStyle), F(enemyOpacity),
+              F(spawnTint), F(spawnLabels), F(fitSpawns), F(hintCorner), F(hintScale), F(hintOpacity),
+              F(hintMargin), F(hintDetail), F(hintSeconds), F(noticeSeconds), F(rewindIndicator));
+        break;
+    case 3:
+        reset(F(background), F(blur), F(brightness), F(parallax), F(reduceMotion));
+        break;
+    case 4:
+        reset(F(volume), F(mute), F(pauseUnfocused));
+        break;
+    case 5:
+        reset(F(padLabels), F(spinballTriggers), F(jumpLayout), F(rewindButton), F(quickControls),
+              F(deadzone));
+        break;
+    case 6:
+        reset(F(lockon), F(spindash), F(fastBoot), F(noSpriteLimit), F(rewind), F(rewindAudio),
+              F(rewindMemory), F(invincible), F(infiniteAir), F(region), F(confirmActions), F(confirmQuit));
+        break;
+    case 7:
+        reset(F(slot), F(autosave));
+        break;
+    case 9: // Phone, tablet and watch
+        reset(F(wearZoom), F(wearFisheye), F(wearLensStrength), F(wearCrownSpeed), F(wearCrownReverse),
+              F(mobileLayout), F(mobileOrientation), F(mobileTouch), F(mobileTouchScale),
+              F(mobileOpacity), F(mobileDeadzone), F(mobileSafeMargin), F(mobileRefresh),
+              F(mobileRenderQuality), F(mobileStickX), F(mobileStickY), F(mobileButtonsX),
+              F(mobileButtonsY), F(mobileLeftHanded), F(mobileImmersive), F(mobileHints));
+        break;
+    case 10: // Quest
+        reset(F(questWidth), F(questDistance), F(questHeight), F(questTilt), F(questResolution),
+              F(questAnchor), F(questHaptics), F(questMode), F(questWallHeight), F(questWallGap),
+              F(questRefresh), F(questWallDetail), F(questMenuDistance), F(questScale),
+              F(questResizeSpeed), F(questCabinetWidth), F(questCabinetHeight), F(questCabinetTilt),
+              F(questTvWidth), F(questCurve), F(questCrt), F(questCrtMask), F(questCrtStrength),
+              F(questCrtCurve), F(questGlass), F(questSurroundBrightness), F(questEnvironment),
+              F(questEyeDetail), F(questRemoteScale), F(questOptionsScale), F(questInsetWidth),
+              F(questHandJoystick), F(questTvModel), F(questTransparent), F(questRemote),
+              F(questHandTracking), F(questInsetCrt), F(questCrtCoplanar), F(questMoveRotate),
+              F(questControlHints), F(questSpinballAuto), F(questSurround), F(questWorldBackdrop),
+              F(questAutoWall), F(questWallLocked), F(questAdaptive), F(questPauseLost),
+              F(questCompanion), F(questPassthrough), F(questTouch), F(questFlip), F(questShaderQuality),
+              F(questFoveation));
+        break;
+    }
+#undef F
+}
 } // namespace scu
