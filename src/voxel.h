@@ -93,6 +93,8 @@ uint64_t shapeSignature(const Frame &, Plane, const Options &, uint64_t *pixelSi
 size_t cellBudget(int detail, bool watch, bool mobile, int effects, bool adaptive);
 std::array<int, 2> grid(double coverageWidth, double coverageHeight, int sourceWidth,
                         int sourceHeight, size_t budget);
+std::array<int, 2> pictureSize(int width, int height, int quality, int detail, int scale,
+                               int maximum, bool mobile, bool watch);
 struct Matrix {
     std::array<float, 16> v{};
     static Matrix identity();

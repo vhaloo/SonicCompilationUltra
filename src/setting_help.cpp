@@ -150,21 +150,31 @@ static const SettingHelp entries[] = {
       "他の拡張場面では背景を装飾として繰り返します。ARを透明にすると背景は常に省略し、部屋を見せま"
       "す。"),
     H("voxeldetail", Depth,
-      "Maximum sampling budget for the voxel geometry. Fine settings retain more small pixels but "
-      "cost memory and drawing work. Automatic quality can lower the complete grid under load; it "
-      "never drops the last objects to meet a face limit. Watches use a smaller ceiling. The "
-      "original reference screen and menus remain separate.",
-      "Budget maximal d’échantillonnage de la géométrie. Les niveaux fins conservent plus de "
-      "petits pixels mais coûtent de la mémoire et du rendu. La qualité automatique réduit la "
-      "grille entière si nécessaire, sans supprimer les derniers objets. La montre utilise une "
-      "limite plus basse. Écran de référence et menus restent séparés.",
-      "Presupuesto máximo de muestreo geométrico. Los niveles finos conservan más píxeles "
-      "pequeños, con mayor memoria y trabajo. La calidad automática reduce la rejilla completa si "
-      "hace falta; no descarta los últimos objetos. El reloj tiene un límite menor. Pantalla de "
-      "referencia y menús siguen separados.",
-      "形を作るサンプリング量の上限です。細かいほど小さなピクセルを残せますが、メモリと描画負荷が増"
-      "えます。自動の画質調整は必要に応じて格子全体を粗くし、末尾の物体だけを省きません。時計は小さ"
-      "な上限を使い、基準画面とメニューは別に保ちます。"),
+      "Performance uses larger blocks. Sharp keeps finer edges and textures, especially on wide "
+      "screens. Automatic quality can reduce detail during busy scenes. Framing and controls stay the same.",
+      "Fluidité utilise de plus gros blocs. Détaillé conserve des contours et des textures plus fins, "
+      "surtout sur un écran large. La qualité automatique peut réduire le détail quand la scène se charge. "
+      "Le cadrage et les commandes restent identiques.",
+      "Rendimiento usa bloques más grandes. Nítido conserva bordes y texturas más finos, sobre todo "
+      "en pantallas anchas. La calidad automática puede bajar el detalle en escenas exigentes. El encuadre y los controles se mantienen.",
+      "速度優先ではブロックが大きくなります。精細では特にワイド画面で輪郭や模様が細かく見えます。"
+      "負荷が高い場面では自動画質で細かさを調整します。画角と操作は同じです。"),
+    H("voxelframing", Depth,
+      "Follow player shows a closer stretch of the level, with more room across a wide screen. "
+      "Use selected view keeps the View setting, including the whole level. Spinball keeps its full table in Overview.",
+      "Suivre le joueur montre une portion du niveau de plus près et profite de la largeur de l’écran. "
+      "Utiliser la vue choisie reprend le réglage Vue, y compris le niveau entier. La vue d’ensemble conserve la table de Spinball.",
+      "Seguir al jugador acerca un tramo del nivel y aprovecha el ancho de la pantalla. "
+      "Usar la vista elegida conserva el ajuste de Vista, incluido el nivel completo. Vista general conserva la mesa de Spinball.",
+      "追従はプレイヤー周辺を拡大し、ワイド画面では横に広く表示します。選択中の表示では全体図などの画面設定を使います。"
+      "スピンボールは全体表示で台全体を映します。"),
+    H("voxeladjustments", Depth,
+      "Fine-tune the current style. Thickness changes each pixel, spacing separates layers, "
+      "and surface relief adds steps to Sculpted voxels.",
+      "Affine le style actuel. L’épaisseur change chaque pixel, l’espacement écarte les couches "
+      "et le relief de surface ajoute des marches aux voxels sculptés.",
+      "Afina el estilo actual. El grosor cambia cada píxel, el espacio separa las capas y el relieve añade escalones a los vóxeles esculpidos.",
+      "現在のスタイルを微調整します。ピクセルの厚み、レイヤーの間隔、段差のあるボクセルの凹凸を調整できます。"),
     H("voxelyaw", Depth,
       "Orbit the desktop/mobile picture to reveal thickness. Front view restores straight-on "
       "alignment; Diorama chooses a gentle angle. The camera fits the complete volume without "
@@ -1569,14 +1579,14 @@ static const SettingHelp entries[] = {
       "ピクセル表示は画面の物理画素を使い、パノラマは指定した高さに合わせます。全体図は対応マップ全"
       "域、オリジナルはカートリッジ本来の画面です。"),
     H("overviewstyle", View,
-      "Automatic chooses a terrain diagram for streamed Sonic 3 art and cartridge art elsewhere. "
-      "The diagram describes terrain, not collision. Live actors remain visible.",
-      "Automatique choisit un schéma pour les graphismes chargés progressivement de Sonic 3, et "
-      "les graphismes de la cartouche ailleurs. Ce schéma décrit le terrain, pas les collisions.",
-      "Automático usa un esquema para los gráficos de Sonic 3 cargados por zonas y gráficos del "
-      "cartucho en los demás. El esquema representa terreno, no colisiones.",
-      "自動では逐次読み込みを使うソニック3を地形図、それ以外をゲーム画像で表示します。地形図は当た"
-      "り判定ではありません。動くキャラクターも表示します。"),
+      "In Whole level, replace the terrain artwork with a single-colour silhouette to read its "
+      "shape. Leave it off to see the cartridge art. Characters remain visible.",
+      "Dans Niveau entier, remplace les textures par une silhouette unie pour mieux lire la forme "
+      "du terrain. Laisse ce réglage désactivé pour voir les graphismes de la cartouche. Les personnages restent visibles.",
+      "En Nivel completo, sustituye las texturas por una silueta de un solo color para distinguir "
+      "la forma del terreno. Déjalo desactivado para ver el arte del cartucho. Los personajes siguen visibles.",
+      "全体表示の地形を単色にして形を読み取りやすくします。オフではゲーム本来の画像を表示します。"
+      "キャラクターはそのまま表示されます。"),
     H("zoom", Zoom,
       "1× with a 1× zoom-out divisor is one game pixel per physical screen pixel. Higher "
       "magnification shows less terrain and larger characters.",
@@ -1919,14 +1929,14 @@ static const SettingHelp entries[] = {
       "選んだ隅にクリック可能な小さい操作案内を表示します。内容・大きさ・表示時間を調整できます。Se"
       "lect/View・Esc・F10は常に使えます。巻き戻し・通知・性能表示は独立しています。"),
     H("backgroundstyle", Background,
-      "Choose stretched blurred scenery, sharp scenery, tiled scenery, a gradient, a dark wash or "
-      "black. The terrain and characters stay sharp.",
-      "Choisit un décor étiré flou, net, répété, un dégradé, un fond sombre ou noir. Le terrain et "
-      "les personnages restent nets.",
-      "Elige paisaje estirado difuminado, nítido, repetido, degradado, oscuro o negro. El terreno "
-      "y los personajes siguen nítidos.",
-      "引き伸ばしたぼかし背景・鮮明・繰り返し・グラデーション・暗色・黒から選びます。地形とキャラク"
-      "ターは鮮明なままです。"),
+      "Soft mirrored scenery fills wide screens while preserving the scenery’s proportions. "
+      "The extended background holds through loading fades. Choose a gradient, solid colour or transparency for a simpler look.",
+      "Le décor doux en miroir remplit les écrans larges en gardant les proportions du paysage. "
+      "Le fond reste visible pendant les fondus de chargement. Un dégradé, un fond uni ou la transparence donnent un rendu plus sobre.",
+      "El paisaje difuminado en espejo llena pantallas anchas conservando las proporciones. "
+      "El fondo permanece visible durante los fundidos de carga. Elige degradado, color sólido o transparencia para una vista más sencilla.",
+      "鏡合わせの柔らかな背景は風景の比率を保ってワイド画面に広がります。読み込み中も背景を保ちます。"
+      "簡素な表示にはグラデーション、単色、透明を選べます。"),
     H("blur", Background,
       "Blur only the extended backdrop. Higher values soften repeated scenery; zero keeps it "
       "sharp.",

@@ -385,7 +385,8 @@ void World::freeze(const Scene &, Settings &s) {
     cameraValid = true;
 }
 bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, int dh,
-                    const std::vector<uint32_t> *native, int nw, int nh) {
+                    const std::vector<uint32_t> *native, int nw, int nh,
+                    std::array<int, 2> viewOffset) {
     enemySpriteCount = enemyMarkerCount = 0;
     Scene v = inspect(s, g);
     if (!v.ready || cfg.view == 4 || (v.family >= 4 && !cfg.mapExtension)) {
@@ -488,6 +489,10 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
                                            : clampi(canvas.left, 0, int(v.width - coverW));
             canvas.top = v.height < coverH ? int((v.height - coverH) / 2)
                                            : clampi(canvas.top, 0, int(v.height - coverH));
+            if (v.width >= coverW)
+                canvas.left = clampi(canvas.left + viewOffset[0], 0, int(v.width - coverW));
+            if (v.height >= coverH)
+                canvas.top = clampi(canvas.top + viewOffset[1], 0, int(v.height - coverH));
         }
     }
     for (unsigned t = 0; t < 2048; t++) {
@@ -533,8 +538,7 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
         shape = hashTerrain(shape, &version, sizeof version);
     }
     shapeSignature = shape;
-    bool schematic =
-        overview && (cfg.overviewStyle == 2 || (cfg.overviewStyle == 0 && v.family == 3));
+    bool schematic = overview && cfg.overviewStyle == 2;
     uint64_t rasterSignature = shape;
     if (v.family <= 3)
         for (unsigned tile = 0; tile < 2048; ++tile)
@@ -542,10 +546,17 @@ bool World::compose(const SCUSnapshot &s, const Game *g, Settings &cfg, int dw, 
                 rasterSignature =
                     schematic ? hashTerrain(rasterSignature, &visibleTile[tile], sizeof(bool))
                               : hashTerrain(rasterSignature, s.vram + tile * 32, 32);
-    uint64_t signature =
-        schematic ? rasterSignature : hashTerrain(rasterSignature, s.palettes, sizeof s.palettes);
-    if (!schematic)
-        signature = hashTerrain(signature, &v.cameraY, sizeof(v.cameraY));
+    uint64_t signature = rasterSignature;
+    if (!schematic) {
+        const bool uniformPalette =
+            std::all_of(std::begin(s.palettes) + 1, std::end(s.palettes), [&](const auto &line) {
+                return std::memcmp(line, s.palettes[0], sizeof(line)) == 0;
+            });
+        signature = hashTerrain(signature, s.palettes,
+                                uniformPalette ? sizeof(s.palettes[0]) : sizeof(s.palettes));
+        if (!uniformPalette)
+            signature = hashTerrain(signature, &v.cameraY, sizeof(v.cameraY));
+    }
     const bool sampleEligible = !schematic && size_t(w) * h <= 2500000;
     const bool sampleCached = sampleEligible && rasterSignature == sampleSignature &&
                               terrainSamples.size() == size_t(w) * h;
@@ -921,35 +932,71 @@ static void blurImage(std::array<uint32_t, 320 * 224> &img, int r) {
             img.swap(tmp);
         }
 }
-void World::makeBackdrop(const SCUSnapshot &s, const Scene &v, const Settings &cfg,
-                         const std::vector<uint32_t> &native, int nw, int nh) {
-    if (cfg.background == 6 || cfg.projectionTransparent) {
+void World::makeBackdrop(const SCUSnapshot &s, const Scene &v, const Settings &cfg) {
+    const int mode = cfg.projectionTransparent ? 6 : cfg.background;
+    const std::array<int, 3> style{{mode, mode == 0 ? cfg.blur : 0, cfg.brightness}};
+    const bool fixed = !cfg.parallax || cfg.reduceMotion || cfg.camera == 2 || cfg.camera == 4 ||
+                       cfg.view == 2;
+    bool sourceChanged = false;
+    if (mode < 4 && v.ready &&
+        (!fixed || backdropFamily != v.family || backdropStage != v.stage)) {
+        // Ignore a blank or nearly black hardware plane while the cartridge
+        // changes palettes, loads a stage, or runs a title card. The actual
+        // cartridge viewport still shows its own transitions.
+        int visibleSamples = 0;
+        for (size_t i = 0; i < backdrop.size() && visibleSamples < 12; i += 97)
+            visibleSamples += (s.background[i / 320][i % 320] & 0x00F0F0F0u) != 0;
+        if (visibleSamples >= 12) {
+            const size_t bytes = backdrop.size() * sizeof(uint32_t);
+            sourceChanged = backdropFamily < 0 ||
+                            std::memcmp(backdropSource.data(), s.background, bytes) != 0;
+            if (sourceChanged) {
+                backdropSource.resize(backdrop.size());
+                std::memcpy(backdropSource.data(), s.background, bytes);
+            }
+            backdropFamily = v.family;
+            backdropStage = v.stage;
+        }
+    }
+    if (!sourceChanged && style == backdropStyle)
+        return;
+    backdropStyle = style;
+    ++backdropVersion;
+    if (mode == 6) {
         backdrop.fill(0);
         return;
     }
-    if (v.ready) {
-        std::memcpy(backdrop.data(), s.background, 320 * 224 * sizeof(uint32_t));
-    } else if (!native.empty()) {
-        for (int y = 0; y < 224; y++)
-            for (int x = 0; x < 320; x++)
-                backdrop[y * 320 + x] = native[(size_t)y * nh / 224 * nw + x * nw / 320];
-    } else {
-        backdrop.fill(0xFF122039);
-    }
-    if (cfg.background == 0 && cfg.blur > 0)
+    if (backdropFamily >= 0 && mode < 4)
+        std::copy(backdropSource.begin(), backdropSource.end(), backdrop.begin());
+    if (mode == 0 && cfg.blur > 0 && backdropFamily >= 0)
         blurImage(backdrop, cfg.blur);
-    uint32_t top = backdrop[160], bottom = backdrop[223 * 320 + 160];
+
+    auto average = [&](int from, int to) {
+        unsigned red = 0, green = 0, blue = 0;
+        for (int y = from; y < to; ++y)
+            for (int x = 0; x < 320; ++x) {
+                const auto color = backdropSource[y * 320 + x];
+                red += (color >> 16) & 255;
+                green += (color >> 8) & 255;
+                blue += color & 255;
+            }
+        const unsigned count = (to - from) * 320;
+        return (red / count << 16) | (green / count << 8) | (blue / count);
+    };
+    const bool gradient = mode == 3 || (mode < 4 && backdropFamily < 0);
+    const uint32_t top = mode == 3 && backdropFamily >= 0 ? average(0, 48) : 0x233653;
+    const uint32_t bottom = mode == 3 && backdropFamily >= 0 ? average(176, 224) : 0x0E192C;
     for (int y = 0; y < 224; y++)
         for (int x = 0; x < 320; x++) {
             auto &c = backdrop[y * 320 + x];
-            if (cfg.background == 3) {
+            if (gradient) {
                 int rr = (((top >> 16) & 255) * (223 - y) + ((bottom >> 16) & 255) * y) / 223,
                     gg = (((top >> 8) & 255) * (223 - y) + ((bottom >> 8) & 255) * y) / 223,
                     bb = ((top & 255) * (223 - y) + (bottom & 255) * y) / 223;
                 c = 0xFF000000u | (rr << 16) | (gg << 8) | bb;
-            } else if (cfg.background == 4)
+            } else if (mode == 4)
                 c = 0xFF12233C;
-            else if (cfg.background == 5)
+            else if (mode == 5)
                 c = 0xFF000000;
             c = 0xFF000000u | ((((c >> 16) & 255) * cfg.brightness / 100) << 16) |
                 ((((c >> 8) & 255) * cfg.brightness / 100) << 8) |

@@ -176,6 +176,19 @@ int main() {
                                     size_t(d[0]) * d[1] <= budget,
                                 "all platform grid budgets bounded");
                     }
+    const auto ultra = pictureSize(7680, 1440, 2, 3, 100, 8192, false, false);
+    const auto balanced = pictureSize(7680, 1440, 1, 1, 100, 8192, false, false);
+    const auto reduced = pictureSize(7680, 1440, 2, 3, 55, 8192, false, false);
+    const auto watch = pictureSize(454, 454, 2, 3, 100, 2048, true, true);
+    require(ultra == std::array<int, 2>{4096, 768}, "maximum desktop quality preserves 48:9");
+    require(balanced[0] > 1920 && balanced[0] < ultra[0] && reduced[0] < ultra[0],
+            "wide displays receive more pixels; adaptive quality still has room to reduce work");
+    require(watch[0] == watch[1] && watch[0] <= 454,
+            "a round-watch viewport stays square and within the drawable");
+    const auto wideLow = grid(1536, 288, 1536, 288, cellBudget(0, false, false, 3, false));
+    const auto wideSharp = grid(1536, 288, 1536, 288, cellBudget(3, false, false, 3, false));
+    require(wideSharp[0] >= wideLow[0] * 3 && wideSharp[1] >= wideLow[1] * 3,
+            "Sharp meaningfully increases scene detail at 48:9");
     Frame f;
     f.configure(32, 32, 0, 0, 32, 32);
     for (int y = 0; y < 32; ++y)

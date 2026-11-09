@@ -33,15 +33,16 @@ class App {
     DesktopFrame desktopFrame;
     VoxelGpu volumeGpu;
     bool cachedVolume = false, voxelWasEnabled = false, worldTextureStale = false;
-    bool volumeOnScreen = false;
+    bool volumeOnScreen = false, voxelRenderer = false, voxelFineTuning = false;
+    float voxelPanX = 0, voxelPanY = 0;
+    bool voxelFollows(const Scene &) const;
     ImGuiContext *uiContext = nullptr;
     bool uiPlatformReady = false, uiRendererReady = false;
     int textureW = 0, textureH = 0, nativeTW = 0, nativeTH = 0;
     std::vector<SDL_Rect> scanlineRects;
     int scanlineWidth = 0, scanlineHeight = 0;
-    int backgroundStage = -1;
-    bool backgroundFrozen = false;
-    uint64_t lastImageVersion = ~uint64_t(0), lastPresentationHash = 0, backdropSettingsHash = 0;
+    uint64_t lastImageVersion = ~uint64_t(0), lastPresentationHash = 0;
+    uint64_t uploadedBackdrop = ~uint64_t(0);
     bool cachedExpanded = false;
     bool browserOpen = false, folderMode = false;
     bool pathEditor = false, focusMenu = true, focusPage = false, focusBrowser = false;
@@ -183,6 +184,9 @@ class App {
     }
     bool voxelPresented() const {
         return volumeOnScreen;
+    }
+    std::array<int, 2> voxelPictureSize() const {
+        return volumeOnScreen ? volumeGpu.pictureSize() : std::array<int, 2>{};
     }
     void showSection(int n) {
         tab = n >= 0 && n < sectionCount() ? n : 0;

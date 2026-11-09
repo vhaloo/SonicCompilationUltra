@@ -46,6 +46,41 @@ static std::unique_ptr<SCUSnapshot> generated() {
 }
 int main() {
     Game fixture{"generated", "Generated compositor data", 0, 0, 1, "no cartridge"};
+    {
+        auto snapshot = generated();
+        auto world = std::make_unique<World>();
+        Settings options;
+        options.view = 2;
+        options.background = 1;
+        options.brightness = 100;
+        auto scene = world->inspect(*snapshot, &fixture);
+        require(scene.ready, "generated background scene is ready");
+        world->makeBackdrop(*snapshot, scene, options);
+        const auto artVersion = world->backdropVersion;
+        require(world->backdrop.front() == 0xff102030, "overview captures available scenery");
+        std::memset(snapshot->background, 0, sizeof snapshot->background);
+        scene.stage += 1;
+        world->makeBackdrop(*snapshot, scene, options);
+        require(world->backdropVersion == artVersion && world->backdrop.front() == 0xff102030,
+                "empty first frame of the next act does not erase or freeze the scenery");
+        for (auto &row : snapshot->background)
+            std::fill(std::begin(row), std::end(row), 0xff406080);
+        world->makeBackdrop(*snapshot, scene, options);
+        require(world->backdropVersion > artVersion && world->backdrop.front() == 0xff406080,
+                "overview accepts the next act once art becomes available");
+        options.projectionTransparent = true;
+        world->makeBackdrop(*snapshot, scene, options);
+        require(world->backdrop.front() == 0, "passthrough alpha remains clear");
+        options.projectionTransparent = false;
+        options.background = 5;
+        world->makeBackdrop(*snapshot, scene, options);
+        require(world->backdrop.front() == 0xff000000, "explicit black remains black");
+        options.background = 1;
+        world->setRom({});
+        scene.ready = false;
+        world->makeBackdrop(*snapshot, scene, options);
+        require(world->backdrop.front() == 0xff233653, "a new cartridge starts with a quiet fallback");
+    }
     int comparisons = 0;
     int volumeComparisons = 0;
     uint64_t uploaded = 0, full = 0;

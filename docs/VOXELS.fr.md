@@ -11,13 +11,13 @@ Ouvre **Vidéo → Profondeur et voxels → Volume des pixels**. Sur Quest, la p
 | Voxels par couches | Terrain et objets observés sont séparés selon leur priorité |
 | Voxels sculptés | Quatre petits paliers de luminosité ajoutent du relief aux surfaces |
 
-Commence avec **Discret**, **Diorama** ou **Prononcé**, puis ajuste l’épaisseur, l’écartement, la lumière et la limite de détail. Les profondeurs sont exprimées en pixels du jeu d’origine. Redimensionner la scène redimensionne aussi son épaisseur. Une lumière à zéro conserve les couleurs des textures. Le noir reste solide ; seuls les pixels transparents créent des trous.
+Commence avec **Discret**, **Diorama** ou **Prononcé**. **Fluidité**, **Équilibré** et **Détaillé** règlent la finesse du rendu. Ouvre **Affiner le relief et l’angle** pour ajuster le style. L’épaisseur est exprimée en pixels du jeu et suit la taille de la scène.
 
 ![Même décor original de démonstration, rendu en volumes](illustrations/voxel-layered.png)
 
 Cette image vient du générateur de maillage et d’un rendu de référence hors application. **Ce n’est ni une capture de jeu ni un essai sur appareil.** [Comparaison avec l’image plate et le relief sculpté](VOXELS.md).
 
-- **PC, téléphone, tablette :** Vue de face remet l’image droite ; Vue diorama choisit un angle doux. Les curseurs permettent de regarder de côté ou d’en haut sans couper le volume. Pour le vrai pixel 1:1, conserve le rendu plat en vue Pixel.
+- **PC, téléphone et tablette.** Incline avec le stick droit et clique pour recentrer. **Suivre le joueur** montre une portion détaillée du niveau. Maintiens RB et bouge le stick pour regarder plus loin. **Utiliser la vue choisie** reprend le cadrage habituel, dont **Niveau entier**. Dans Spinball, **Niveau entier** garde la table complète.
 - **Montre Wear OS :** couronne ou lunette rotative pour zoomer entre le niveau connu et l’écran original. Le fisheye reste disponible ; menus et commandes tactiles restent plats. La limite de géométrie est plus basse. Version expérimentale.
 - **VR/AR :** bouge la tête pour percevoir le relief réel. Les poignées sous les majeurs déplacent la scène et les deux poignées la redimensionnent. Les modes mur, sol, écran flottant, flipper et galerie courbe utilisent le même repère.
 - **Pièce CRT :** l’écran de référence reste plat par défaut, entouré d’un niveau en volume. Active **Pixels en volume dans la TV** pour le remplacer aussi, avec le niveau environnant activé.

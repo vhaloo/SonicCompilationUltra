@@ -13,6 +13,8 @@
 #include <ctime>
 #include <cfloat>
 namespace scu {
+static constexpr int voxelFollowHeight = 288;
+static constexpr int voxelStickDeadzone = 5200;
 void App::renderImGui(ImDrawData *data) {
     const auto scale = data->FramebufferScale;
     if (scale.x == 1.f && scale.y == 1.f) {
@@ -34,9 +36,41 @@ void App::renderImGui(ImDrawData *data) {
     SDL_RenderSetClipRect(renderer, clipped ? &clip : nullptr);
 }
 bool App::drawGameExample(HelpPicture picture) {
+    struct Comparison {
+        const char *key;
+        const char *file;
+        const char *first;
+        const char *second;
+        bool wide = false;
+        bool closeup = false;
+    };
+    static const Comparison comparisons[] = {
+        {"overviewstyle", "terrain.bmp", "nativeart", "terrainmap", true},
+        {"voxelframing", "voxel-framing.bmp", "voxelfollow", "voxelselectedview", true},
+        {"voxeldetail", "voxel-detail.bmp", "voxelcompact", "voxelveryfine", false, true},
+        {"voxelpreset", "voxel-style.bmp", "voxelsubtle", "voxelbold", false, true},
+        {"voxeladjustments", "voxel-style.bmp", "voxelsubtle", "voxelbold", false, true},
+        {"voxelthickness", "voxel-thickness.bmp", "guideminimum", "guidemaximum", false, true},
+        {"voxelspacing", "voxel-spacing.bmp", "guideminimum", "guidemaximum", false, true},
+        {"voxelrelief", "voxel-relief.bmp", "guideminimum", "guidemaximum", false, true},
+        {"voxellight", "voxel-light.bmp", "guideminimum", "guidemaximum", false, true},
+        {"voxelbackground", "voxel-background.bmp", "off", "guideenabled", false, true},
+        {"voxelyaw", "voxel-angle.bmp", "voxelfront", "voxelangle", false, true},
+        {"voxelpitch", "voxel-angle.bmp", "voxelfront", "voxelangle", false, true},
+        {"voxelfront", "voxel-angle.bmp", "voxelfront", "voxelangle", false, true},
+        {"voxelangle", "voxel-angle.bmp", "voxelfront", "voxelangle", false, true},
+        {"backgroundstyle", "background-wide.bmp", "blurred", "gradient", true},
+        {"blur", "background-blur.bmp", "guideminimum", "guidemaximum", true},
+        {"brightness", "background-brightness.bmp", "guideminimum", "guidemaximum", true},
+    };
+    const auto comparison = std::find_if(std::begin(comparisons), std::end(comparisons),
+                                         [&](const auto &item) { return item.key == guideKey; });
     const char *file = nullptr;
     int variant = 0;
-    if (picture == HelpPicture::View || picture == HelpPicture::Camera || picture == HelpPicture::Zoom) {
+    if (comparison != std::end(comparisons)) {
+        file = comparison->file;
+    } else if (picture == HelpPicture::View || picture == HelpPicture::Camera ||
+               picture == HelpPicture::Zoom) {
         file = "views.bmp";
         if (guideKey == "lookpanorama" || guideKey == "panoramaheight")
             variant = 2;
@@ -74,22 +108,29 @@ bool App::drawGameExample(HelpPicture picture) {
         const char *views[] = {"guideoriginal", "guideoverview", "lookpanorama", "guideexamplecrt"};
         const char *depth[] = {"voxelflat", "voxelthick", "voxellayers", "voxelsculpt"};
         const char *background[] = {"guideoriginal", "guidebackgroundoff"};
-        const bool relief = picture == HelpPicture::Depth;
-        const bool backdrop = picture == HelpPicture::Background;
-        const bool grid = !backdrop;
-        const char *const *names = relief ? depth : backdrop ? background : views;
+        const bool custom = comparison != std::end(comparisons);
+        const bool wide = custom && comparison->wide;
+        const bool relief = !custom && picture == HelpPicture::Depth;
+        const bool backdrop = !custom && picture == HelpPicture::Background;
+        const char *customNames[] = {custom ? comparison->first : "", custom ? comparison->second : ""};
+        const char *const *names = custom ? customNames : relief ? depth : backdrop ? background : views;
         const int count = relief ? 4 : 2;
+        const int columns = wide ? 1 : 2;
+        const int rows = wide || !(custom || backdrop) ? 2 : 1;
         ImGui::TextWrapped("%s · %s", tr("gamecaptureexample", language), game->name);
-        const bool pair = ImGui::GetContentRegionAvail().x >= 270;
+        if (wide || (custom && comparison->closeup))
+            ImGui::TextWrapped("%s", tr(wide ? "guidefullwidth" : "guidecloseup", language));
+        const bool pair = !wide && ImGui::GetContentRegionAvail().x >= 270;
         if (ImGui::BeginTable("##capture-pairs", pair ? 2 : 1, ImGuiTableFlags_SizingStretchSame)) {
             for (int i = 0; i < count; ++i) {
                 ImGui::TableNextColumn();
                 int cell = i == 1 && variant ? variant : i;
                 ImGui::TextWrapped("%s", tr(names[cell], language));
                 const float width = std::max(1.f, ImGui::GetContentRegionAvail().x);
-                float x = (cell % 2) * .5f, y = grid ? (cell / 2) * .5f : 0;
-                ImGui::Image(reinterpret_cast<ImTextureID>(guideCapture), {width, width * 9 / 16},
-                             {x, y}, {x + .5f, y + (grid ? .5f : 1.f)});
+                const float u = float(cell % columns) / columns, v = float(cell / columns) / rows;
+                ImGui::Image(reinterpret_cast<ImTextureID>(guideCapture),
+                             {width, width * 9 / (wide ? 48 : 16)}, {u, v},
+                             {u + 1.f / columns, v + 1.f / rows});
             }
             ImGui::EndTable();
         }
@@ -590,6 +631,9 @@ void App::initialise(const fs::path &base, bool hidden) {
     loadSettingsPreview();
     SDL_RendererInfo rendererInfo{};
     SDL_GetRendererInfo(renderer, &rendererInfo);
+    voxelRenderer = rendererInfo.name &&
+                    (!std::strcmp(rendererInfo.name, "opengl") ||
+                     !std::strcmp(rendererInfo.name, "opengles2"));
     SDL_Log("SCU renderer: %s; max texture %d x %d", rendererInfo.name,
             rendererInfo.max_texture_width, rendererInfo.max_texture_height);
     IMGUI_CHECKVERSION();
@@ -908,8 +952,7 @@ bool App::play(const std::string &id) {
     dirty = true;
     notice.clear();
     hintShownAt = overlayNow();
-    backgroundStage = -1;
-    backgroundFrozen = false;
+    voxelPanX = voxelPanY = 0;
     return true;
 }
 void App::beginBrowser(bool folder) {
@@ -956,9 +999,6 @@ void App::event(const SDL_Event &e) {
             pendingButtons[0] = pendingButtons[1] = 0;
             core.clearAudio();
         }
-        if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
-            backgroundStage = -1;
-        }
     }
     if (e.type == SDL_DROPFILE) {
         if (e.drop.file) {
@@ -968,12 +1008,17 @@ void App::event(const SDL_Event &e) {
         menu = true;
         tab = 0;
     }
+    const bool orbitAxis = e.type == SDL_CONTROLLERAXISMOTION && settings.voxelMode && !menu &&
+                           (e.caxis.axis == SDL_CONTROLLER_AXIS_RIGHTX ||
+                            e.caxis.axis == SDL_CONTROLLER_AXIS_RIGHTY);
     if (e.type == SDL_CONTROLLERBUTTONDOWN ||
-        (e.type == SDL_CONTROLLERAXISMOTION && std::abs(int(e.caxis.value)) > settings.deadzone)) {
+        (e.type == SDL_CONTROLLERAXISMOTION &&
+         std::abs(int(e.caxis.value)) > (orbitAxis ? voxelStickDeadzone : settings.deadzone))) {
         padUsed = true;
+        const auto instance = e.type == SDL_CONTROLLERAXISMOTION ? e.caxis.which : e.cbutton.which;
         for (int p = 0; p < 2; ++p)
             if (pads[p] &&
-                SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(pads[p])) == e.cdevice.which)
+                SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(pads[p])) == instance)
                 activePad = p;
         syncNavigationController();
     }
@@ -1335,46 +1380,67 @@ void App::resetVoxelOrbit() {
     settings.voxelYaw = defaults.voxelYaw;
     settings.voxelPitch = defaults.voxelPitch;
     orbitYawRemainder = orbitPitchRemainder = 0;
+    voxelPanX = voxelPanY = 0;
     dirty = true;
+}
+bool App::voxelFollows(const Scene &scene) const {
+#ifdef SCU_QUEST
+    (void)scene;
+    return false;
+#else
+    return voxelRenderer && std::strcmp(volumeGpu.status(), "voxelunsupported") &&
+           settings.voxelMode && settings.voxelFraming == 0 && !settings.wearActive &&
+           !settings.desktopPresentation && settings.view != 4 && scene.ready && scene.family != 4;
+#endif
 }
 void App::pan(double elapsed) {
     if (menu)
         return;
     float dx = 0, dy = 0;
-    if (pads[0]) {
-        auto axis = [&](SDL_GameControllerAxis which) {
-            int value = SDL_GameControllerGetAxis(pads[0], which);
-            float intensity = float(std::max(0, std::abs(value) - settings.deadzone)) /
-                              std::max(1, 32767 - settings.deadzone);
-            return std::copysign(std::min(1.f, intensity), float(value));
-        };
-        dx = axis(SDL_CONTROLLER_AXIS_RIGHTX);
-        dy = axis(SDL_CONTROLLER_AXIS_RIGHTY);
-    }
-    bool orbit = settings.voxelMode && (dx != 0 || dy != 0);
-    if (orbit) {
-#ifndef SCU_QUEST
-        if (pads[0] && !settings.wearActive && settings.view != 4 &&
-            SDL_GameControllerGetButton(pads[0], SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) &&
-            core.world.inspect(core.snapshot, core.game).ready) {
-            if (settings.camera != 3 || settings.view == 2) {
-                auto scene = core.world.inspect(core.snapshot, core.game);
-                settings.left = scene.cameraX;
-                settings.top = scene.cameraY;
-                settings.view = 0;
-                settings.camera = 3;
-                dirty = true;
+    if (settings.voxelMode) {
+        auto *pad = pads[activePad];
+        constexpr float deadzone = voxelStickDeadzone / 32767.f;
+        float best = deadzone;
+        // A companion or an idle player-one device cannot mask the stick on
+        // the controller the player is actually using.
+        for (auto *candidate : {pads[activePad], pads[1 - activePad]}) {
+            if (!candidate || !SDL_GameControllerGetAttached(candidate))
+                continue;
+            const float x = SDL_GameControllerGetAxis(candidate, SDL_CONTROLLER_AXIS_RIGHTX) / 32767.f;
+            const float y = SDL_GameControllerGetAxis(candidate, SDL_CONTROLLER_AXIS_RIGHTY) / 32767.f;
+            const float magnitude = std::hypot(x, y);
+            if (magnitude > best) {
+                const float scale = std::min(1.f, (magnitude - deadzone) / (1 - deadzone)) / magnitude;
+                dx = x * scale;
+                dy = y * scale;
+                best = magnitude;
+                pad = candidate;
             }
-            orbit = false;
         }
-#endif
-        if (orbit) {
+        if (dx || dy) {
             const float dt = float(std::clamp(elapsed, 0., .05));
+            if (SDL_GameControllerGetButton(pad, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)) {
+                const auto scene = core.world.inspect(core.snapshot, core.game);
+                if (voxelFollows(scene)) {
+                    auto move = [](float offset, float delta, int player, int level, double span,
+                                   float limit) {
+                        const int edge = std::max(0, int(level - span));
+                        const int base = std::clamp(int(player - span / 2), 0, edge);
+                        return std::clamp(offset + delta, std::max(-limit, float(-base)),
+                                          std::min(limit, float(edge - base)));
+                    };
+                    const double width = double(voxelFollowHeight) * drawableW / std::max(1, drawableH);
+                    voxelPanX = move(voxelPanX, dx * 520.f * dt, scene.playerX, scene.width, width, 960);
+                    voxelPanY = move(voxelPanY, dy * 360.f * dt, scene.playerY, scene.height,
+                                     voxelFollowHeight, 480);
+                    return;
+                }
+            }
             auto turn = [&](int &angle, float &remainder, float movement, int low, int high) {
                 remainder += movement;
-                int step = int(remainder);
+                const int step = int(remainder);
                 remainder -= step;
-                int next = std::clamp(angle + step, low, high);
+                const int next = std::clamp(angle + step, low, high);
                 if (next != angle) {
                     angle = next;
                     dirty = true;
@@ -1384,13 +1450,23 @@ void App::pan(double elapsed) {
             turn(settings.voxelYaw, orbitYawRemainder, dx * 65.f * dt, -57, 33);
             turn(settings.voxelPitch, orbitPitchRemainder, dy * 48.f * dt, -13, 37);
 #else
-            turn(settings.voxelYaw, orbitYawRemainder, dx * 90.f * dt, -60, 60);
-            turn(settings.voxelPitch, orbitPitchRemainder, dy * 72.f * dt, -60, 60);
+            turn(settings.voxelYaw, orbitYawRemainder, dx * 115.f * dt, -60, 60);
+            turn(settings.voxelPitch, orbitPitchRemainder, dy * 90.f * dt, -60, 60);
 #endif
             dx = dy = 0;
         }
+    } else if (pads[0]) {
+        auto axis = [&](SDL_GameControllerAxis which) {
+            int value = SDL_GameControllerGetAxis(pads[0], which);
+            float intensity = float(std::max(0, std::abs(value) - settings.deadzone)) /
+                              std::max(1, 32767 - settings.deadzone);
+            return std::copysign(std::min(1.f, intensity), float(value));
+        };
+        dx = axis(SDL_CONTROLLER_AXIS_RIGHTX);
+        dy = axis(SDL_CONTROLLER_AXIS_RIGHTY);
     }
-    if (settings.camera != 3)
+    if (settings.camera != 3 ||
+        (settings.voxelMode && voxelFollows(core.world.inspect(core.snapshot, core.game))))
         return;
     auto k = SDL_GetKeyboardState(nullptr);
     int speed = settings.panSpeed * ((k[SDL_SCANCODE_LSHIFT] || k[SDL_SCANCODE_RSHIFT]) ? 3 : 1);
@@ -1633,6 +1709,19 @@ void App::present(bool capture) {
     }
 #endif
     auto &renderSettings = *projectionSettings;
+    const Scene scene = core.world.inspect(core.snapshot, core.game);
+    const bool followVolume = voxelFollows(scene);
+    std::array<int, 2> viewOffset{};
+    if (followVolume) {
+        renderSettings.view = 1;
+        renderSettings.camera = 0;
+        renderSettings.panoramaHeight = voxelFollowHeight;
+        viewOffset = {int(std::round(voxelPanX / 4)) * 4, int(std::round(voxelPanY / 4)) * 4};
+    }
+#ifndef SCU_QUEST
+    if (!voxelRenderer)
+        renderSettings.voxelMode = 0;
+#endif
     if (renderSettings.voxelMode) {
         renderSettings.smoothMap = false;
         renderSettings.performancePixelLock = false;
@@ -1661,6 +1750,21 @@ void App::present(bool capture) {
         renderSettings.compositionPixels = std::min(renderSettings.compositionPixels, 300000);
     }
 #endif
+#ifndef SCU_QUEST
+    if (useVolume && voxelRenderer && std::strcmp(volumeGpu.status(), "voxelunsupported")) {
+#ifdef SCU_MOBILE
+        constexpr bool mobileDevice = true;
+#else
+        constexpr bool mobileDevice = false;
+#endif
+        const int budget = int(voxel::cellBudget(renderSettings.voxelDetail, settings.wearActive,
+                                               mobileDevice, renderSettings.effectsLevel,
+                                               renderSettings.autoPerformance)) * 4;
+        renderSettings.compositionPixels = renderSettings.compositionPixels
+                                               ? std::min(renderSettings.compositionPixels, budget)
+                                               : budget;
+    }
+#endif
     SDL_GetRendererOutputSize(renderer, &drawableW, &drawableH);
     if (drawableW <= 0 || drawableH <= 0)
         return;
@@ -1670,7 +1774,6 @@ void App::present(bool capture) {
     SDL_SetRenderDrawColor(renderer, transparentCanvas ? 0 : 6, transparentCanvas ? 0 : 12,
                            transparentCanvas ? 0 : 24, transparentCanvas ? 0 : 255);
     SDL_RenderClear(renderer);
-    Scene scene = core.world.inspect(core.snapshot, core.game);
     uint64_t hash = 1469598103934665603ull;
     for (int v : {renderSettings.voxelMode,
                   renderSettings.voxelDetail,
@@ -1690,6 +1793,8 @@ void App::present(bool capture) {
                   renderSettings.camera,
                   renderSettings.left,
                   renderSettings.top,
+                  viewOffset[0],
+                  viewOffset[1],
                   renderSettings.background,
                   renderSettings.blur,
                   renderSettings.brightness,
@@ -1727,7 +1832,8 @@ void App::present(bool capture) {
     if (refresh) {
         cachedExpanded = !renderSettings.projectionUiOnly && core.loaded &&
                          core.world.compose(core.snapshot, core.game, renderSettings, drawableW,
-                                            drawableH, &core.native, core.nativeW, core.nativeH);
+                                            drawableH, &core.native, core.nativeW, core.nativeH,
+                                            viewOffset);
         cachedVolume =
             !renderSettings.projectionUiOnly && core.loaded &&
             core.world.prepareVolume(core.snapshot, core.game, renderSettings, core.native,
@@ -1739,37 +1845,34 @@ void App::present(bool capture) {
     SDL_Texture *volumeTexture = nullptr;
     if (core.loaded && !renderSettings.projectionUiOnly) {
         if (!transparentCanvas) {
-            bool fixed = renderSettings.background >= 4 || !renderSettings.parallax ||
-                         renderSettings.reduceMotion ||
-                         (scene.ready && (renderSettings.camera == 2 ||
-                                          renderSettings.camera == 4 || renderSettings.view == 2));
-            uint64_t backdropHash = 1469598103934665603ull;
-            for (int value :
-                 {renderSettings.background, renderSettings.blur, renderSettings.brightness}) {
-                backdropHash ^= uint32_t(value);
-                backdropHash *= 1099511628211ull;
-            }
-            bool retainBackground = fixed && backgroundFrozen && backgroundStage == scene.stage &&
-                                    backdropSettingsHash == backdropHash;
-            if (refresh && !retainBackground)
-                core.world.makeBackdrop(core.snapshot, scene, renderSettings, core.native,
-                                        core.nativeW, core.nativeH);
-            if (!retainBackground) {
-                backgroundFrozen = fixed;
-                backgroundStage = scene.stage;
-                backdropSettingsHash = backdropHash;
-            }
-            bool createdBackground = !bgTexture;
+            if (refresh || !bgTexture)
+                core.world.makeBackdrop(core.snapshot, scene, renderSettings);
             if (!bgTexture) {
                 bgTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
                                               SDL_TEXTUREACCESS_STREAMING, 320, 224);
-                SDL_SetTextureScaleMode(bgTexture, SDL_ScaleModeLinear);
+                uploadedBackdrop = ~uint64_t(0);
             }
-            if (createdBackground || (refresh && !retainBackground))
-                SDL_UpdateTexture(bgTexture, nullptr, core.world.backdrop.data(), 320 * 4);
-            if (renderSettings.background == 6 || renderSettings.projectionTransparent) {
-                // Leave alpha zero behind terrain, actors and interface.
+            if (bgTexture && uploadedBackdrop != core.world.backdropVersion &&
+                SDL_UpdateTexture(bgTexture, nullptr, core.world.backdrop.data(), 320 * 4) == 0)
+                uploadedBackdrop = core.world.backdropVersion;
+            if (!bgTexture || uploadedBackdrop == ~uint64_t(0)) {
+                // The clear colour is also the texture-allocation fallback.
+            } else if (renderSettings.background == 0) {
+                SDL_SetTextureScaleMode(bgTexture, SDL_ScaleModeLinear);
+                const int width = std::max(1, (drawableH * 320 + 112) / 224);
+                const int center = (drawableW - width) / 2;
+                int first = center, tile = 0;
+                while (first > 0) {
+                    first -= width;
+                    --tile;
+                }
+                for (int x = first; x < drawableW; x += width, ++tile) {
+                    SDL_Rect destination{x, 0, width, drawableH};
+                    SDL_RenderCopyEx(renderer, bgTexture, nullptr, &destination, 0, nullptr,
+                                     tile % 2 ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
+                }
             } else if (renderSettings.background == 2 && expanded) {
+                SDL_SetTextureScaleMode(bgTexture, SDL_ScaleModeNearest);
                 int scale = std::max(1, (int)core.world.canvas.scale), tw = 320 * scale,
                     th = 224 * scale;
                 for (int y = 0; y < drawableH; y += th)
@@ -1777,8 +1880,11 @@ void App::present(bool capture) {
                         SDL_Rect d{x, y, tw, th};
                         SDL_RenderCopy(renderer, bgTexture, nullptr, &d);
                     }
-            } else
+            } else {
+                SDL_SetTextureScaleMode(bgTexture, renderSettings.background == 1
+                                                      ? SDL_ScaleModeNearest : SDL_ScaleModeLinear);
                 SDL_RenderCopy(renderer, bgTexture, nullptr, nullptr);
+            }
         }
         if (expanded) {
             auto &c = core.world.canvas;
@@ -2136,12 +2242,6 @@ void App::hud(bool volume) {
                                 IM_COL32(255, 222, 76, 255));
         }
     }
-    if (!volume && settings.view == 2 &&
-        (settings.overviewStyle == 2 || (settings.overviewStyle == 0 && v.family == 3)))
-        draw->AddText(
-            {io.DisplaySize.x / 2 - ImGui::CalcTextSize(tr("terrainmap", language)).x / 2,
-             std::max(12.f, topControls)},
-            IM_COL32(220, 248, 250, 255), tr("terrainmap", language));
     if (settings.ghost) {
         const auto plane = voxel::Plane::TerrainLow;
         const ImVec2 corners[] = {
@@ -2335,7 +2435,7 @@ void App::settingsApplied(bool updateDisplay, bool recenter) {
     language = detectLanguage(settings.language);
     core.updateOptions();
     core.clearAudio();
-    backgroundStage = -1;
+    voxelPanX = voxelPanY = 0;
     releaseInput = true;
     if (updateDisplay) {
         applyDisplay();
@@ -2891,31 +2991,46 @@ void App::voxelOptions() {
             settings.voxelLight = std::array<int, 3>{45, 70, 85}[preset];
             changed = true;
         }
-        changed |= slider("voxelthickness", settings.voxelThickness, 1, 32, "%d px");
-        if (settings.voxelMode > 1)
-            changed |= slider("voxelspacing", settings.voxelSpacing, 0, 64, "%d px");
-        if (settings.voxelMode == 3)
-            changed |= slider("voxelrelief", settings.voxelRelief, 0, 12, "%d px");
-        changed |= slider("voxellight", settings.voxelLight, 0, 100, "%d%%");
-        changed |= tick("voxelbackground", settings.voxelBackground);
-        changed |= choice("voxeldetail", settings.voxelDetail,
-                          {"voxelcompact", "balanced", "voxelfine", "voxelveryfine"});
+        int detail = std::min(settings.voxelDetail, 2);
+        if (choice("voxeldetail", detail, {"voxelcompact", "balanced", "voxelveryfine"})) {
+            settings.voxelDetail = detail == 2 ? 3 : detail;
+            changed = true;
+        }
+#ifndef SCU_QUEST
+        if (!settings.wearActive && !settings.desktopPresentation && settings.view != 4 &&
+            core.currentId != "spinball")
+            changed |= choice("voxelframing", settings.voxelFraming,
+                              {"voxelfollow", "voxelselectedview"});
+#endif
+        tick("voxeladjustments", voxelFineTuning);
+        if (voxelFineTuning) {
+            changed |= slider("voxelthickness", settings.voxelThickness, 1, 32, "%d px");
+            if (settings.voxelMode > 1)
+                changed |= slider("voxelspacing", settings.voxelSpacing, 0, 64, "%d px");
+            if (settings.voxelMode == 3)
+                changed |= slider("voxelrelief", settings.voxelRelief, 0, 12, "%d px");
+            changed |= slider("voxellight", settings.voxelLight, 0, 100, "%d%%");
+            changed |= tick("voxelbackground", settings.voxelBackground);
 #ifdef SCU_QUEST
-        changed |= tick("voxelcrt", settings.voxelCrt);
+            changed |= tick("voxelcrt", settings.voxelCrt);
+#else
+            changed |= slider("voxelyaw", settings.voxelYaw, -60, 60, "%d°");
+            changed |= slider("voxelpitch", settings.voxelPitch, -60, 60, "%d°");
+            if (button("voxelfront")) {
+                resetVoxelOrbit();
+                settings.voxelYaw = settings.voxelPitch = 0;
+                changed = true;
+            }
+            if (button("voxelangle")) {
+                resetVoxelOrbit();
+                changed = true;
+            }
+#endif
+        }
+#ifdef SCU_QUEST
         ImGui::TextWrapped("%s", tr("voxelvrhint", language));
 #else
-        changed |= slider("voxelyaw", settings.voxelYaw, -60, 60, "%d°");
-        changed |= slider("voxelpitch", settings.voxelPitch, -60, 60, "%d°");
-        if (button("voxelfront")) {
-            settings.voxelYaw = settings.voxelPitch = 0;
-            changed = true;
-        }
-        if (button("voxelangle")) {
-            settings.voxelYaw = -20;
-            settings.voxelPitch = 16;
-            changed = true;
-        }
-        if (!std::strcmp(volumeGpu.status(), "voxelunsupported"))
+        if (!voxelRenderer || !std::strcmp(volumeGpu.status(), "voxelunsupported"))
             ImGui::TextWrapped("%s", tr("voxelunsupported", language));
 #endif
         if (core.loaded && core.world.volume.valid())
@@ -2967,23 +3082,17 @@ void App::optionsUi(int section) {
             int preset = settings.quality;
             if (choice("preset", preset, {"low", "balanced", "ultra"})) {
                 settings.preset(preset);
-                backgroundStage = -1;
                 changed = true;
             }
             if (settings.wearActive) {
                 slide("wearzoom", settings.wearZoom, 0, 1000, "%d / 1000");
                 check("wearfisheye", settings.wearFisheye);
-                changed |= choice("overviewstyle", settings.overviewStyle,
-                                  {"auto", "nativeart", "terrainmap"});
             } else {
                 int view = settings.view == 4 ? 3 : settings.view;
                 if (choice("view", view, {"pixel", "panorama", "overview", "classic"})) {
                     settings.view = view == 3 ? 4 : view;
                     changed = true;
                 }
-                changed |= choice("overviewstyle", settings.overviewStyle,
-                                  {"auto", "nativeart", "terrainmap"});
-                ImGui::TextWrapped("%s", tr("maphelp", language));
                 ImGui::TextWrapped("%s", tr("overviewhelp", language));
                 if (slider("zoom", settings.zoom, 1, 8, "%d×")) {
                     settings.view = 0;
@@ -3002,6 +3111,13 @@ void App::optionsUi(int section) {
                 }
                 if (slider("panoramaheight", settings.panoramaHeight, 224, 4096, "%d px")) {
                     settings.view = 1;
+                    changed = true;
+                }
+            }
+            if (settings.wearActive || settings.view == 2) {
+                bool silhouette = settings.overviewStyle == 2;
+                if (tick("overviewstyle", silhouette)) {
+                    settings.overviewStyle = silhouette ? 2 : 0;
                     changed = true;
                 }
             }
@@ -3171,13 +3287,14 @@ void App::optionsUi(int section) {
         changed |= choice(
             "backgroundstyle", settings.background,
             {"blurred", "sharpbg", "parallaxbg", "gradient", "dark", "black", "transparentbg"});
-        slide("blur", settings.blur, 0, 16);
-        slide("brightness", settings.brightness, 10, 100, "%d%%");
-        check("parallax", settings.parallax);
+        if (settings.background == 0)
+            slide("blur", settings.blur, 0, 16);
+        if (settings.background < 5)
+            slide("brightness", settings.brightness, 10, 100, "%d%%");
+        if (settings.background < 4)
+            check("parallax", settings.parallax);
         check("motion", settings.reduceMotion);
         ImGui::TextWrapped("%s", tr("bghelp", language));
-        if (changed)
-            backgroundStage = -1;
         break;
     case 4:
         slide("volume", settings.volume, 0, 100, "%d%%");

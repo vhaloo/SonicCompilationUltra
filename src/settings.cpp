@@ -4,7 +4,7 @@
 #include <algorithm>
 namespace scu {
 #define INT_FIELDS(X)                                                                                            \
-    X(voxelMode, 0, 3) X(voxelDetail, 0, 3) X(voxelThickness, 1, 32) X(voxelSpacing, 0, 64)                      \
+    X(voxelMode, 0, 3) X(voxelDetail, 0, 3) X(voxelFraming, 0, 1) X(voxelThickness, 1, 32) X(voxelSpacing, 0, 64) \
     X(voxelRelief, 0, 12) X(voxelLight, 0, 100) X(voxelYaw, -60, 60) X(voxelPitch, -60, 60)                      \
     X(performanceTarget, 30, 120)                                                                                \
     X(performanceHeadroom, 10, 45)                                                                               \
@@ -204,7 +204,7 @@ void Settings::save(const fs::path &dir) const {
 }
 void Settings::preset(int n) {
     quality = n;
-    voxelDetail = std::clamp(n, 0, 2);
+    voxelDetail = n == 2 ? 3 : std::clamp(n, 0, 1);
     // Performance changes should not move the camera or replace a chosen view.
     background = n == 0 ? 3 : 0;
     blur = n == 0 ? 0 : n == 1 ? 5 : 9;
@@ -292,7 +292,7 @@ void Settings::restoreDefaults(const Settings &defaults, int section) {
         break;
     }
     case 1: // Video and performance
-        reset(F(voxelMode), F(voxelDetail), F(voxelThickness), F(voxelSpacing), F(voxelRelief),
+        reset(F(voxelMode), F(voxelDetail), F(voxelFraming), F(voxelThickness), F(voxelSpacing), F(voxelRelief),
               F(voxelLight), F(voxelYaw), F(voxelPitch), F(voxelBackground), F(voxelCrt),
               F(language), F(quality), F(view), F(overviewStyle), F(wearZoom), F(wearFisheye),
               F(zoom), F(zoomOut), F(panoramaHeight), F(mapExtension), F(smoothMap), F(fullscreen),

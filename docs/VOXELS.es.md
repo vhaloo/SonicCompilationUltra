@@ -11,13 +11,13 @@ Abre **Vídeo → Profundidad y vóxeles → Volumen de píxeles**. En Quest, la
 | Vóxeles por capas | Terreno y objetos observados se separan según su prioridad |
 | Vóxeles esculpidos | Cuatro pequeños escalones de brillo añaden relieve |
 
-Empieza con **Sutil**, **Diorama** o **Intenso**. Después ajusta grosor, separación, luz y límite de detalle. La profundidad usa píxeles del juego original; al redimensionar la escena también cambia su grosor. Luz cero conserva los colores de las texturas. El negro permanece sólido y solo la transparencia crea huecos.
+Empieza con **Sutil**, **Diorama** o **Intenso**. **Rendimiento**, **Equilibrado** y **Nítido** cambian el nivel de detalle. Abre **Afinar el relieve y el ángulo** para personalizar el estilo. El grosor se mide en píxeles del juego y cambia con el tamaño de la escena.
 
 ![Escenario original de demostración convertido en volúmenes](illustrations/voxel-layered.png)
 
 Es una imagen del generador de mallas y un renderizador de referencia independiente. **No es una captura del juego ni una prueba en un dispositivo.** [Comparación plana y esculpida](VOXELS.md).
 
-- **PC, teléfono y tableta:** Frontal recupera la alineación recta; Diorama elige un ángulo suave. Los deslizadores permiten mirar desde un lado o desde arriba sin recortar el volumen. Para píxel 1:1 real, conserva la vista Pixel con renderizado plano.
+- **PC, teléfono y tableta.** Inclina con la palanca derecha y púlsala para centrar. **Seguir al jugador** muestra con detalle un tramo del nivel. Mantén RB y mueve la palanca para mirar más lejos. **Usar la vista elegida** conserva el encuadre habitual, incluido **Nivel completo**. En Spinball, **Nivel completo** muestra toda la mesa.
 - **Wear OS:** corona o bisel giratorio para acercar desde el nivel conocido hasta la pantalla original. El fisheye sigue disponible; menús y controles táctiles permanecen planos. El reloj usa menos geometría. Edición experimental.
 - **VR/AR:** mueve la cabeza para ver profundidad estéreo real. Los agarres bajo los dedos medios mueven la escena; los dos agarres cambian su tamaño. Pared, suelo, pantalla flotante, pinball y galería curva comparten el mismo espacio.
 - **Sala CRT:** la referencia nativa permanece plana por defecto, rodeada por el nivel con volumen. Activa **Píxeles en volumen dentro del CRT** para sustituirla también, con el nivel circundante activado.

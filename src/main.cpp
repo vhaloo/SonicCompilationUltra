@@ -74,6 +74,7 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(camera)
     SET(voxelMode)
     SET(voxelDetail)
+    SET(voxelFraming)
     SET(voxelYaw)
     SET(voxelPitch)
     SET(voxelThickness)
@@ -165,6 +166,39 @@ static void execute(App &a, const Action &cmd, uint16_t &mask, bool &rewindMask)
         if (a.core.snapshot.ram[p] != v)
             throw std::runtime_error("RAM assertion failed at " + addr);
 #ifdef SCU_PRIVATE_QA
+    } else if (cmd.verb == "vpad") {
+        if (!a.headless)
+            throw std::runtime_error("Virtual controller probes require an isolated session");
+        static std::array<SDL_JoystickID, 2> devices{{-1, -1}};
+        int slot, control, value;
+        std::string operation;
+        if (!(in >> slot >> operation) || slot < 0 || slot >= int(devices.size()))
+            throw std::runtime_error("Invalid virtual controller slot");
+        if (operation == "attach") {
+            SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+            SDL_VirtualJoystickDesc desc{};
+            desc.version = SDL_VIRTUAL_JOYSTICK_DESC_VERSION;
+            desc.type = SDL_JOYSTICK_TYPE_GAMECONTROLLER;
+            desc.naxes = SDL_CONTROLLER_AXIS_MAX;
+            desc.nbuttons = SDL_CONTROLLER_BUTTON_MAX;
+            desc.axis_mask = (1u << SDL_CONTROLLER_AXIS_MAX) - 1;
+            desc.button_mask = (1u << SDL_CONTROLLER_BUTTON_MAX) - 1;
+            desc.name = slot ? "SCU QA Controller B" : "SCU QA Controller A";
+            int index = SDL_JoystickAttachVirtualEx(&desc);
+            if (index < 0)
+                throw std::runtime_error(SDL_GetError());
+            devices[slot] = SDL_JoystickGetDeviceInstanceID(index);
+        } else {
+            auto *pad = SDL_JoystickFromInstanceID(devices[slot]);
+            if (!pad || !(in >> control >> value))
+                throw std::runtime_error("Virtual controller unavailable");
+            const int result = operation == "axis" ? SDL_JoystickSetVirtualAxis(pad, control, value)
+                             : operation == "button" ? SDL_JoystickSetVirtualButton(pad, control, value)
+                                                     : -1;
+            if (result)
+                throw std::runtime_error(SDL_GetError());
+            SDL_JoystickUpdate();
+        }
     } else if (cmd.verb == "ram8" || cmd.verb == "ram16") {
         if (!a.headless || !a.core.loaded)
             throw std::runtime_error("Cartridge-state probes require an isolated loaded session");
@@ -510,6 +544,10 @@ int main(int argc, char **argv) {
                previous = SDL_GetPerformanceCounter() / freq, start = previous,
                measureStart = previous;
         uint64_t measureFrames = 0, executedFrames = 0, presentedFrames = 0;
+        const bool measurePresentation = args.count("--report") && renderEvery == 1 &&
+                                         args.count("--realtime");
+        std::array<uint64_t, 251> presentationIntervals{};
+        double lastFrameTime = 0;
         FrameDeadline pacing;
         double panelHz = 60;
         uint64_t displayPoll = 0;
@@ -604,6 +642,13 @@ int main(int argc, char **argv) {
                 headset->rendered();
 #endif
                 ++presentedFrames;
+                if (measurePresentation) {
+                    const double frameTime = SDL_GetPerformanceCounter() / freq;
+                    if (lastFrameTime)
+                        ++presentationIntervals[std::clamp(
+                            int(std::round((frameTime - lastFrameTime) * 1000)), 0, 250)];
+                    lastFrameTime = frameTime;
+                }
             }
 #ifdef SCU_QUEST
             headset->endFrame();
@@ -642,7 +687,7 @@ int main(int argc, char **argv) {
 #if !defined(SCU_QUEST) && !defined(SCU_MOBILE)
             if (!limit || args.count("--realtime"))
                 if (double delay = pacing.delay(SDL_GetPerformanceCounter() / freq,
-                                                a.focused ? targetHz : 15.);
+                                                a.focused || a.headless ? targetHz : 15.);
                     delay > 0)
                     SDL_Delay(Uint32(std::ceil(delay * 1000)));
 #endif
@@ -664,13 +709,28 @@ int main(int argc, char **argv) {
             auto hintBounds = a.overlayBounds("hint");
             auto nativeBounds = a.nativeFrameBounds();
             auto insetBounds = a.playerInsetBounds();
+            const auto voxelPicture = a.voxelPictureSize();
             double duration = SDL_GetPerformanceCounter() / freq - start;
+            uint64_t measuredIntervals = 0;
+            for (auto count : presentationIntervals)
+                measuredIntervals += count;
+            auto percentile = [&](double fraction) {
+                uint64_t count = 0;
+                for (size_t i = 0; i < presentationIntervals.size(); ++i) {
+                    count += presentationIntervals[i];
+                    if (count >= measuredIntervals * fraction)
+                        return i;
+                }
+                return size_t(0);
+            };
             std::ofstream out(fs::u8path(args["--report"]));
             out << "{\n  \"version\":\"" << SCU_VERSION << "\",\n  \"game\":\"" << a.core.currentId
                 << "\",\n  \"frames\":" << a.core.frame << ",\n  \"elapsed_seconds\":" << duration
                 << ",\n  \"average_frames_per_second\":" << executedFrames / duration
                 << ",\n  \"presented_frames\":" << presentedFrames
                 << ",\n  \"average_presented_frames_per_second\":" << presentedFrames / duration
+                << ",\n  \"presentation_intervals\":" << measuredIntervals
+                << ",\n  \"presentation_interval_p95_ms\":" << percentile(.95)
                 << ",\n  \"terrain_cache_bytes\":" << a.core.world.atlas.bytes()
                 << ",\n  \"terrain_cache_hits\":" << a.core.world.terrainCacheHits
                 << ",\n  \"terrain_cache_misses\":" << a.core.world.terrainCacheMisses
@@ -685,6 +745,11 @@ int main(int argc, char **argv) {
                 << ",\n  \"voxel_mode\":" << a.settings.voxelMode
                 << ",\n  \"voxel_rendered\":" << (a.voxelPresented() ? "true" : "false")
                 << ",\n  \"voxel_faces\":" << a.core.world.volumeMesh.faces()
+                << ",\n  \"voxel_grid\":[" << a.core.world.volume.width << ","
+                << a.core.world.volume.height << "]"
+                << ",\n  \"voxel_picture\":[" << voxelPicture[0] << "," << voxelPicture[1] << "]"
+                << ",\n  \"voxel_angle\":[" << a.settings.voxelYaw << "," << a.settings.voxelPitch << "]"
+                << ",\n  \"voxel_framing\":" << a.settings.voxelFraming
                 << ",\n  \"language\":" << a.language << ",\n  \"view\":" << a.settings.view
                 << ",\n  \"stage_coverage\":[" << a.core.world.canvas.coverageW << ","
                 << a.core.world.canvas.coverageH << "]"

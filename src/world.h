@@ -43,6 +43,9 @@ class World {
     TileAttributeCache terrainAttributes;
 
     uint64_t shapeSignature = 0, terrainSignature = 0;
+    std::vector<uint32_t> backdropSource;
+    std::array<int, 3> backdropStyle{{-1, -1, -1}};
+    int backdropFamily = -1, backdropStage = -1;
     std::vector<uint8_t> priority;
     std::vector<Sprite> sprites, satSprites;
     std::vector<uint8_t> rom;
@@ -68,6 +71,7 @@ class World {
     uint64_t restoredBytes = 0;
     std::vector<DamageRect> uploadRegions;
     std::array<uint32_t, 320 * 224> backdrop{};
+    uint64_t backdropVersion = 0;
     Scene inspect(const SCUSnapshot &s, const Game *game) const;
     void setRom(const std::vector<uint8_t> &r) {
         rom = r;
@@ -83,10 +87,13 @@ class World {
         priority.clear();
         volume.discard();
         volumeMesh.discard();
+        backdropFamily = -1;
+        backdropStyle = {{-1, -1, -1}};
         reset();
     }
     void reset() {
         lastStage = -1;
+        backdropStage = -1;
         cameraValid = false;
         enemies.reset();
     }
@@ -94,9 +101,8 @@ class World {
     uint16_t attribute(const SCUSnapshot &s, int family, int x, int y, bool bg = false) const;
     bool compose(const SCUSnapshot &s, const Game *game, Settings &settings, int drawableW,
                  int drawableH, const std::vector<uint32_t> *native = nullptr, int nativeW = 320,
-                 int nativeH = 224);
-    void makeBackdrop(const SCUSnapshot &s, const Scene &scene, const Settings &settings,
-                      const std::vector<uint32_t> &native, int nw, int nh);
+                 int nativeH = 224, std::array<int, 2> viewOffset = {});
+    void makeBackdrop(const SCUSnapshot &s, const Scene &scene, const Settings &settings);
     bool prepareVolume(const SCUSnapshot &, const Game *, const Settings &,
                        const std::vector<uint32_t> &native, int nw, int nh, bool expanded);
 };

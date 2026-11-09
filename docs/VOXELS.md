@@ -11,7 +11,7 @@ Open **Video → Depth and voxels → Pixel volume**. On Quest, the **Depth** pa
 | Layered voxels | Observed terrain and actors occupy separate priority planes |
 | Sculpted voxels | The same planes gain four small, brightness-based surface steps |
 
-**Subtle**, **Diorama** and **Bold** are starting points. Adjust thickness, space between layers, light and the detail ceiling separately. Thickness uses original game-pixel units; resizing the scene also scales its depth. Zero light preserves the source texture colours. A black pixel remains solid; only transparent pixels make holes.
+Choose **Subtle**, **Diorama** or **Bold** as a starting point. **Performance**, **Balanced** and **Sharp** change how finely the volume is sampled. Open **Fine-tune depth and angle** to adjust the style. Thickness uses original game-pixel units and scales with the scene.
 
 ![Original generated fixture, flat](illustrations/voxel-flat.png)
 ![The same original fixture, layered volumes](illustrations/voxel-layered.png)
@@ -21,7 +21,7 @@ These three pictures use original fixture art and the actual procedural mesh, re
 
 ## Choose a comfortable view
 
-- **PC, phone and tablet:** use **Front view** for straight alignment or **Diorama view** for a gentle angle. The side/above sliders orbit the picture and fit the complete volume without cropping it. Original 1:1 Pixel view remains available with the flat renderer; a tilted 3D projection changes that correspondence.
+- **PC, phone and tablet.** Use the right stick to tilt and press it to recenter. **Follow player** keeps a detailed stretch of the level in view. Hold the right shoulder and move the stick to look farther around that stretch. **Use selected view** keeps the regular framing, including **Whole level**. On Spinball, **Whole level** keeps the full table.
 - **Wear OS:** the crown or rotating bezel still changes the known-stage/native-screen zoom. Menus and touch controls stay flat, and the optional round lens applies to the game picture. Watches use a smaller geometry ceiling. The watch edition remains experimental.
 - **VR/AR:** head movement reveals real stereo depth. Use the middle-finger grips to place the complete scene, and two grips to resize it. Wall, floor, floating screen, cabinet and curved-gallery presentations use the same pixel-to-space mapping. Curved panels subdivide long faces and limit extreme depth to avoid folding the arc.
 - **CRT room:** the surrounding level gains volume while the native CRT reference remains flat by default. Enable **Voxel pixels inside the CRT** to replace that reference too. The surrounding-level option must be enabled.

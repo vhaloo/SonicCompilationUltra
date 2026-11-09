@@ -299,10 +299,10 @@ struct VoxelGpu::Impl {
     SDL_Texture *picture = nullptr;
     U program = 0, atlas = 0, fbo = 0, depth = 0;
     I camera = -1, light = -1, image = -1;
-    int width = 0, height = 0, atlasW = 0, atlasH = 0;
+    int width = 0, height = 0, atlasW = 0, atlasH = 0, pictureLimit = 2048;
     uint64_t lastMesh = ~uint64_t(0);
     std::array<uint64_t, voxel::planeCount> atlasPixels{};
-    std::array<int, 4> lastView{{-999, -999, -999, -999}};
+    std::array<int, 6> lastView{};
     voxel::Matrix projection = voxel::Matrix::identity();
     struct Buffer {
         U id = 0;
@@ -344,6 +344,11 @@ struct VoxelGpu::Impl {
         if (!context)
             throw std::runtime_error("A compatible OpenGL renderer is required for pixel volumes");
         g.load();
+        I textureLimit = 0, depthLimit = 0;
+        g.GetIntegerv(0x0D33, &textureLimit); // GL_MAX_TEXTURE_SIZE
+        g.GetIntegerv(0x84E8, &depthLimit); // GL_MAX_RENDERBUFFER_SIZE
+        if (textureLimit > 0 && depthLimit > 0)
+            pictureLimit = std::min(textureLimit, depthLimit);
         State state(g);
         U vs = shader(0x8B31, voxel::volumeVertex), fs = 0;
         try {
@@ -507,15 +512,19 @@ struct VoxelGpu::Impl {
     }
     SDL_Texture *render(const voxel::Frame &f, const voxel::Mesher &mesh, const Settings &s, int w,
                         int h) {
-        // Quantized quality changes avoid reallocating an image on each small
-        // governor adjustment. The selected camera extent never changes.
-        int cap = s.wearActive ? 512 : s.quality == 0 ? 854 : s.quality == 2 ? 1920 : 1280;
-        float limit = std::min({1.f, float(cap) / std::max(1, w), 1080.f / std::max(1, h)});
-        int scale = s.autoPerformance ? s.compositionScale : 100;
-        float bucket = scale > 85 ? 1.f : scale > 65 ? .75f : scale > 42 ? .5f : .35f;
-        w = std::max(8, int(w * limit * bucket) / 8 * 8);
-        h = std::max(8, int(h * limit * bucket) / 8 * 8);
-        std::array<int, 4> view{{s.voxelYaw, s.voxelPitch, s.voxelLight, w * 8192 + h}};
+        const int drawableW = w, drawableH = h;
+#ifdef __ANDROID__
+        constexpr bool mobile = true;
+#else
+        constexpr bool mobile = false;
+#endif
+        const auto size = voxel::pictureSize(w, h, s.quality, s.voxelDetail,
+                                             s.autoPerformance ? s.compositionScale : 100,
+                                             pictureLimit, mobile, s.wearActive);
+        w = size[0];
+        h = size[1];
+        const int aspect = int(10000. * drawableW / std::max(1, drawableH));
+        std::array<int, 6> view{{s.voxelYaw, s.voxelPitch, s.voxelLight, w, h, aspect}};
         bool texelsChanged = atlasDirty(f, mesh);
         if (picture && !texelsChanged && lastMesh == mesh.revision && lastView == view)
             return picture;
@@ -543,7 +552,8 @@ struct VoxelGpu::Impl {
         g.UseProgram(program);
         g.Uniform1i(image, 0);
         g.Uniform1f(light, s.voxelLight * .01f);
-        projection = voxel::pictureCamera(mesh.bounds(), w, h, float(s.voxelYaw), float(s.voxelPitch));
+        projection = voxel::pictureCamera(mesh.bounds(), drawableW, drawableH, float(s.voxelYaw),
+                                          float(s.voxelPitch));
         auto matrix = projection;
         // SDL target textures address row zero at the top. Render that row at
         // the GL image's bottom so ordinary SDL copies need no special flip.
@@ -615,6 +625,9 @@ void VoxelGpu::invalidate() {
 }
 voxel::Vec3 VoxelGpu::project(voxel::Vec3 point) const {
     return voxel::transform(impl->projection, point);
+}
+std::array<int, 2> VoxelGpu::pictureSize() const {
+    return {impl->width, impl->height};
 }
 const char *VoxelGpu::status() const {
     return impl->status;

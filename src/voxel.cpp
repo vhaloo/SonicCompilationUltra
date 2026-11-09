@@ -322,7 +322,7 @@ size_t Mesher::bytes() const {
     return bytes;
 }
 size_t cellBudget(int detail, bool watch, bool mobile, int effects, bool adaptive) {
-    size_t value = std::array<size_t, 4>{8192, 32768, 131072, 262144}[std::clamp(detail, 0, 3)];
+    size_t value = std::array<size_t, 3>{8192, 32768, 196608}[std::clamp(detail, 0, 2)];
     if (watch)
         value = std::min<size_t>(value, 8192);
     else if (mobile)
@@ -334,15 +334,36 @@ size_t cellBudget(int detail, bool watch, bool mobile, int effects, bool adaptiv
 std::array<int, 2> grid(double cw, double ch, int sw, int sh, size_t budget) {
     if (!std::isfinite(cw) || !std::isfinite(ch) || cw <= 0 || ch <= 0 || sw <= 0 || sh <= 0)
         return {0, 0};
-    // Dyadic sampling prevents one-pixel budget changes from rebuilding the
-    // complete mesh continuously. Coordinate extent remains unchanged.
-    int step = 1;
-    while (
-        (size_t((sw + step - 1) / step) * ((sh + step - 1) / step) > std::max<size_t>(1, budget) ||
-         (sw + step - 1) / step > 1024 || (sh + step - 1) / step > 512) &&
-        step < 65536)
-        step *= 2;
-    return {std::max(1, (sw + step - 1) / step), std::max(1, (sh + step - 1) / step)};
+    const double scale = std::min({1., 1024. / sw, 512. / sh,
+                                  std::sqrt(double(std::max<size_t>(1, budget)) / sw / sh)});
+    if (scale == 1.)
+        return {sw, sh};
+    auto bucket = [](double dimension) {
+        const int size = std::max(1, int(dimension));
+        return size >= 32 ? size / 8 * 8 : size;
+    };
+    int width = bucket(sw * scale), height = bucket(sh * scale);
+    budget = std::max<size_t>(1, budget);
+    if (size_t(width) * height > budget) {
+        if (width > height)
+            width = int(budget / height);
+        else
+            height = int(budget / width);
+    }
+    return {width, height};
+}
+std::array<int, 2> pictureSize(int width, int height, int quality, int detail, int scale,
+                               int maximum, bool mobile, bool watch) {
+    const double pixels = std::array<double, 3>{360000, 960000, 2400000}[std::clamp(quality, 0, 2)] *
+                          std::array<double, 3>{.60, 1., 1.5}[std::clamp(detail, 0, 2)] *
+                          (watch ? .09 : mobile ? .55 : 1.);
+    const int cap = std::clamp(maximum, 8, watch ? 512 : mobile ? 2560 : 4096);
+    const double headroom = scale > 85 ? 1. : scale > 65 ? .75 : scale > 42 ? .5 : .35;
+    const double w = std::max(1, width), h = std::max(1, height);
+    const double fit = std::min({1., double(cap) / w, double(cap) / h,
+                                 std::sqrt(pixels / (w * h))}) * headroom;
+    return {std::min(width, std::max(8, int(w * fit) / 8 * 8)),
+            std::min(height, std::max(8, int(h * fit) / 8 * 8))};
 }
 Matrix Matrix::identity() {
     Matrix r;

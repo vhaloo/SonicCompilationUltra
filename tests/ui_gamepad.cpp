@@ -65,13 +65,15 @@ struct Harness {
             resolved.filename().u8string().rfind("SCU-gamepad-", 0) == 0)
             fs::remove_all(resolved, ec);
     }
-    void frame(int count = 2) {
+    void frame(int count = 2, bool simulate = false) {
         for (int n = 0; n < count; ++n) {
             SDL_JoystickUpdate();
             SDL_Event e;
             while (SDL_PollEvent(&e))
                 app->event(e);
             app->pollInput();
+            if (simulate)
+                app->advanceGame(1. / 60, true);
             app->present();
             for (auto &item : app->controls)
                 if (GImGui->NavId == item.second)
@@ -379,13 +381,25 @@ int main() {
             require(a.core.loaded && !a.menu, "gamepad game launch");
             a.core.tick();
             a.settings.voxelMode = 2;
-            SDL_JoystickSetVirtualAxis(h.joystick, SDL_CONTROLLER_AXIS_RIGHTX, 26000);
-            SDL_JoystickUpdate();
-            a.pan(.04);
-            require(a.settings.voxelYaw > Settings{}.voxelYaw, "right stick tilts the scene");
-            SDL_JoystickSetVirtualAxis(h.joystick, SDL_CONTROLLER_AXIS_RIGHTX, 0);
-            h.press(SDL_CONTROLLER_BUTTON_RIGHTSTICK);
+            const int secondaryIndex = SDL_JoystickAttachVirtual(SDL_JOYSTICK_TYPE_GAMECONTROLLER,
+                                                                SDL_CONTROLLER_AXIS_MAX,
+                                                                SDL_CONTROLLER_BUTTON_MAX, 0);
+            require(secondaryIndex >= 0, "attach a second controller for the orbit regression");
+            auto *secondary = SDL_JoystickOpen(secondaryIndex);
+            require(secondary != nullptr, "open the second controller");
+            h.frame(2);
+            require(a.pads[1] != nullptr, "idle first controller leaves the second connected");
+            SDL_JoystickSetVirtualAxis(secondary, SDL_CONTROLLER_AXIS_RIGHTX, 10800);
+            h.frame(18, true);
+            require(a.settings.voxelYaw > Settings{}.voxelYaw + 3,
+                    "moderate right stick on the second controller tilts during gameplay");
+            SDL_JoystickSetVirtualAxis(secondary, SDL_CONTROLLER_AXIS_RIGHTX, 0);
+            SDL_JoystickSetVirtualButton(secondary, SDL_CONTROLLER_BUTTON_RIGHTSTICK, SDL_PRESSED);
+            h.frame(2, true);
             require(a.settings.voxelYaw == Settings{}.voxelYaw, "right-stick click recenters");
+            SDL_JoystickClose(secondary);
+            SDL_JoystickDetachVirtual(secondaryIndex);
+            h.frame();
             a.settings.voxelMode = 0;
             h.press(SDL_CONTROLLER_BUTTON_BACK);
             require(a.menu, "Select opens options");
@@ -429,6 +443,9 @@ int main() {
             }
             h.tab(3);
             h.choose("backgroundstyle");
+            require(!a.controls.count("blur"), "blur stays hidden for a sharp background");
+            a.settings.background = 0;
+            h.frame();
             h.adjust("blur", a.settings.blur);
             h.tab(4);
             h.adjust("volume", a.settings.volume);

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.12.1 Display preview
+
+- Whole-level view starts with cartridge art. Terrain silhouette is an optional overview aid.
+- Extended scenery survives loading fades. Soft mirrored scenery fills wide displays while keeping the scenery’s proportions.
+- Voxel diorama follows the player by default on supported desktop and mobile stages. Use the selected view to see the whole level in 3D. Spinball keeps the full table in Whole level.
+- The right stick tilts the scene on either connected gamepad. Press it to recenter or hold the right shoulder to pan while following the player. Performance, Balanced and Sharp control voxel detail. Fine adjustments are grouped under the current style.
+
 ## 0.12.0 Runtime preview
 
 - Simple opens by default with ready-to-play looks. Switch to Advanced for the full sections and save up to three local settings profiles.

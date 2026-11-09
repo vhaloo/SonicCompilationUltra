@@ -341,7 +341,6 @@ bool MobilePresentation::event(const SDL_Event &e) {
         if (app.bgTexture)
             SDL_DestroyTexture(app.bgTexture);
         app.bgTexture = nullptr;
-        app.backgroundStage = -1;
         app.lastImageVersion = ~uint64_t(0);
         app.loadSettingsPreview();
         ImGui_ImplSDLRenderer2_DestroyDeviceObjects();
