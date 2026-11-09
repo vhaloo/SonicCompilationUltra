@@ -44,6 +44,7 @@ class MobilePresentation {
     bool event(const SDL_Event &e);
     void prepareUi();
     void logicalSize(int &width, int &height) const;
+    float topControlsBottom() const;
     void options();
     bool chooseRom();
     void poll();

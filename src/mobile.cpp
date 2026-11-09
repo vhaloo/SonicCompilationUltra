@@ -148,9 +148,12 @@ void MobilePresentation::beginFrame() {
     safeTop = top;
     safeRight = right;
     safeBottom = bottom;
+    // An attached controller can be an idle or virtual Android input device.
+    // Auto follows the input the player actually uses.
+    const bool usingPad =
+        app.padUsed && app.pads[0] && SDL_GameControllerGetAttached(app.pads[0]);
     bool controls = app.settings.mobileTouch == 1 ||
-                    (app.settings.mobileTouch == 0 &&
-                     !(app.pads[0] && SDL_GameControllerGetAttached(app.pads[0])));
+                    (app.settings.mobileTouch == 0 && !usingPad);
     if (w != width || h != height || density != newDensity || wasMenu != app.menu ||
         wasControls != controls) {
         clearInput();
@@ -268,6 +271,14 @@ void MobilePresentation::prepareUi() {
     io.DisplaySize = {float(w), float(h)};
     io.DisplayFramebufferScale = {float(textureW) / w, float(textureH) / h};
 }
+float MobilePresentation::topControlsBottom() const {
+    if (app.menu || app.settings.wearActive)
+        return 0.f;
+    for (const auto &button : layout.buttons)
+        if (button.action == touch::Action::Menu)
+            return std::max(0.f, button.rect.y + button.rect.h - layout.canvas.y + 6.f);
+    return 0.f;
+}
 void MobilePresentation::action(touch::Action a) {
     using A = touch::Action;
     if (a == A::Utility) {
@@ -372,6 +383,7 @@ bool MobilePresentation::event(const SDL_Event &e) {
     touch::Point p{e.tfinger.x * width / density, e.tfinger.y * height / density};
     auto &io = ImGui::GetIO();
     if (e.type == SDL_FINGERDOWN) {
+        app.padUsed = false;
         auto a = input.down(id, p, layout);
         if (a != touch::Action::None) {
             action(a);

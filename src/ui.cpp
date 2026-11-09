@@ -2051,6 +2051,11 @@ void App::screenshot(const fs::path &path) {
 }
 void App::hud(bool volume) {
     auto &io = ImGui::GetIO();
+    float topControls = 0.f;
+#ifdef SCU_MOBILE
+    if (mobile)
+        topControls = mobile->topControlsBottom();
+#endif
     auto v = core.world.inspect(core.snapshot, core.game);
     auto &c = core.world.canvas;
     const float sx = float(io.DisplaySize.x / c.coverageW), sy = float(io.DisplaySize.y / c.coverageH);
@@ -2134,7 +2139,8 @@ void App::hud(bool volume) {
     if (!volume && settings.view == 2 &&
         (settings.overviewStyle == 2 || (settings.overviewStyle == 0 && v.family == 3)))
         draw->AddText(
-            {io.DisplaySize.x / 2 - ImGui::CalcTextSize(tr("terrainmap", language)).x / 2, 12},
+            {io.DisplaySize.x / 2 - ImGui::CalcTextSize(tr("terrainmap", language)).x / 2,
+             std::max(12.f, topControls)},
             IM_COL32(220, 248, 250, 255), tr("terrainmap", language));
     if (settings.ghost) {
         const auto plane = voxel::Plane::TerrainLow;
@@ -2152,7 +2158,7 @@ void App::hud(bool volume) {
             x = std::clamp(px + 30.0f, 0.0f, std::max(0.0f, io.DisplaySize.x - 320));
             y = std::clamp(py - 85.0f, 0.0f, std::max(0.0f, io.DisplaySize.y - 150));
         }
-        ImGui::SetNextWindowPos({x, y});
+        ImGui::SetNextWindowPos({x, std::max(y, topControls)});
         ImGui::SetNextWindowBgAlpha(0.76f);
         ImGui::Begin("##score", nullptr,
                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |

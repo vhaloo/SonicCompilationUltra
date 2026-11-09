@@ -438,15 +438,15 @@ static const SettingHelp entries[] = {
       "自動はシステムの回転設定に従います。大画面やマルチウィンドウでは指定が優先されない場合も、実"
       "際のサイズに適応します。"),
     H("mobiletouch", Resize,
-      "Automatic hides the joystick and A/B/C when a gamepad is attached. Always supports touch "
-      "and gamepad together. Menu, Map and zoom controls remain on screen even in gamepad-only "
-      "mode.",
-      "Auto masque joystick et A/B/C quand une manette est connectée. Toujours permet les deux. "
+      "Automatic hides the joystick and A/B/C after gamepad input. Touch the screen to bring "
+      "them back. Always supports touch and gamepad together. Menu, Map and zoom remain available.",
+      "Auto masque le joystick et A/B/C après une commande à la manette. Touche l’écran pour les "
+      "retrouver. Toujours permet les deux. "
       "Menu, Carte et zoom restent visibles même en mode manette seule.",
-      "Auto oculta joystick y A/B/C al conectar un mando. Siempre permite ambos. Menú, Mapa y zoom "
-      "permanecen incluso con solo mando.",
-      "自動はゲームパッド接続時に操作を隠します。常時表示では併用できます。メニュー・全体・ズームは"
-      "常に表示します。"),
+      "Auto oculta el joystick y A/B/C al usar un mando. Toca la pantalla para volver a mostrarlos. "
+      "Siempre permite ambos. Menú, Mapa y zoom permanecen visibles.",
+      "自動ではゲームパッドを使うと操作ボタンが消え、画面に触れると戻ります。常時表示では併用できます。"
+      "メニュー・全体・ズームは常に表示します。"),
     H("mobilerefresh", Resize,
       "This limits presentation, not game speed. The console simulation keeps its original timing. "
       "Higher limits request a matching display rate when available; the operating system may "
