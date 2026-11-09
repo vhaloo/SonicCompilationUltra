@@ -2289,31 +2289,61 @@ void App::hud(bool volume) {
             x = std::clamp(px + 30.0f, 0.0f, std::max(0.0f, io.DisplaySize.x - 320));
             y = std::clamp(py - 85.0f, 0.0f, std::max(0.0f, io.DisplaySize.y - 150));
         }
-        ImGui::SetNextWindowPos({x, std::max(y, topControls)});
-        ImGui::SetNextWindowBgAlpha(0.76f);
-        ImGui::Begin("##score", nullptr,
-                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
-                         ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings);
-        float size = settings.hudScale ? float(settings.hudScale)
-                                       : std::clamp(io.DisplaySize.y / 720.0f, 0.85f, 3.0f);
-        ImGui::SetWindowFontScale(std::min(3.0f, size) / uiFactor);
-        auto &r = core.snapshot.ram;
+        const auto &style = ImGui::GetStyle();
+        const auto padding = style.WindowPadding;
+        const float size = settings.hudScale ? float(settings.hudScale)
+                                             : std::clamp(io.DisplaySize.y / 720.0f, 0.85f, 3.0f);
+        auto panel = [&](float width, float height) {
+            const float fullWidth = width + padding.x * 2;
+            const ImVec2 first{std::clamp(x, 0.f, std::max(0.f, io.DisplaySize.x - fullWidth)),
+                               std::max(y, topControls)};
+            const ImVec2 last{first.x + fullWidth, first.y + height + padding.y * 2};
+            auto background = style.Colors[ImGuiCol_WindowBg];
+            background.w = .76f;
+            draw->AddRectFilled(first, last, ImGui::GetColorU32(background), style.WindowRounding);
+            if (style.WindowBorderSize > 0)
+                draw->AddRect(first, last, ImGui::GetColorU32(ImGuiCol_Border), style.WindowRounding,
+                              0, style.WindowBorderSize);
+            return ImVec2{first.x + padding.x, first.y + padding.y};
+        };
+        // The panel dimensions are known before drawing the first frame of a
+        // look. An auto-sized ImGui window can hide its initial sizing frame.
         if (v.family == 4 && nativeTexture && uploadedNative == core.imageVersion) {
-            float w = std::min(320.0f * size, io.DisplaySize.x - 60);
-            ImGui::Image((ImTextureID)(intptr_t)nativeTexture, {w, w * 16 / 320}, {0, 0},
-                         {1, 16.0f / 224});
-        } else if (v.family == 5) {
-            ImGui::Text("%s  %u", tr("rings", language), be16(r, 0x0A5A));
-            ImGui::Text("%s  %u", tr("lives", language), be16(r, 0x0680));
+            const float w = std::min(320.f * size, io.DisplaySize.x - 60);
+            const float h = w * 16 / core.nativeW;
+            const auto pos = panel(w, h);
+            draw->AddImage((ImTextureID)(intptr_t)nativeTexture, pos, {pos.x + w, pos.y + h},
+                           {0, 0}, {1, 16.f / core.nativeH});
         } else {
-            unsigned score = (uint32_t(be16(r, 0xFE26)) << 16) | be16(r, 0xFE28);
-            ImGui::TextColored({0.95f, 0.85f, 0.35f, 1}, "%s  %06u", tr("score", language),
-                               score * 10);
-            ImGui::Text("%s  %02u:%02u", tr("time", language), r[0xFE23], r[0xFE24]);
-            ImGui::Text("%s  %u", tr("rings", language), be16(r, 0xFE20));
-            ImGui::Text("%s  %u", tr("lives", language), r[0xFE12]);
+            const auto &r = core.snapshot.ram;
+            auto *font = ImGui::GetFont();
+            const float fontSize = ImGui::GetFontSize() * std::min(3.f, size) / uiFactor;
+            const float advance = fontSize + style.ItemSpacing.y;
+            std::array<std::array<char, 96>, 4> rows{};
+            int count = 0;
+            float width = 0;
+            auto line = [&](const char *format, auto... args) {
+                auto &text = rows[count++];
+                std::snprintf(text.data(), text.size(), format, args...);
+                width = std::max(width, font->CalcTextSizeA(fontSize, FLT_MAX, 0, text.data()).x);
+            };
+            if (v.family == 5) {
+                line("%s  %u", tr("rings", language), unsigned(be16(r, 0x0A5A)));
+                line("%s  %u", tr("lives", language), unsigned(be16(r, 0x0680)));
+            } else {
+                const unsigned score = (uint32_t(be16(r, 0xFE26)) << 16) | be16(r, 0xFE28);
+                line("%s  %06u", tr("score", language), score * 10);
+                line("%s  %02u:%02u", tr("time", language), unsigned(r[0xFE23]), unsigned(r[0xFE24]));
+                line("%s  %u", tr("rings", language), unsigned(be16(r, 0xFE20)));
+                line("%s  %u", tr("lives", language), unsigned(r[0xFE12]));
+            }
+            const auto pos = panel(width, fontSize + (count - 1) * advance);
+            for (int i = 0; i < count; ++i) {
+                const auto color = i == 0 && v.family != 5 ? IM_COL32(242, 217, 89, 255)
+                                                          : ImGui::GetColorU32(ImGuiCol_Text);
+                draw->AddText(font, fontSize, {pos.x, pos.y + i * advance}, color, rows[i].data());
+            }
         }
-        ImGui::End();
     }
     if (settings.minimap) {
         float mapW = std::min(420.0f, io.DisplaySize.x * 0.34f),
