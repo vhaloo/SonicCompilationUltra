@@ -6,6 +6,7 @@
 - Appearance presets set the view, depth and scenery while retaining the player's performance budget and controls. The menu names the active look and identifies custom edits.
 - Fixed cameras keep their saved position on the first frame. Switching presets, restoring profiles, resizing or recreating renderer targets rebuilds the active picture from the same running cartridge.
 - Reuse unchanged terrain planes and keep the same depth bounds as actors and previews enter or leave the view.
+- Sonic Spinball's automatic voxel framing shows the full table. A selected custom view still controls the crop.
 
 ## 0.12.1 Display preview
 

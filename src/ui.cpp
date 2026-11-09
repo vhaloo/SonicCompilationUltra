@@ -1778,6 +1778,12 @@ void App::present(bool capture) {
         viewOffset = {int(std::round(voxelPanX / 4)) * 4, int(std::round(voxelPanY / 4)) * 4};
     }
 #ifndef SCU_QUEST
+    if (scene.ready && scene.family == 4 && renderSettings.voxelMode &&
+        renderSettings.voxelFraming == 0 && renderSettings.view != 4 &&
+        !settings.wearActive && !settings.desktopPresentation) {
+        renderSettings.view = 2;
+        renderSettings.camera = 4;
+    }
     if (!voxelRenderer)
         renderSettings.voxelMode = 0;
     renderSettings.voxelTextureLimit = voxelTextureLimit;
