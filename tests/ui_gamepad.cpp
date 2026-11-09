@@ -618,11 +618,18 @@ int main() {
                               {7680, 1440}}) {
                 SDL_SetWindowSize(a.window, size.first, size.second);
                 h.frame();
+                std::cerr << "Checking controller focus at " << size.first << 'x' << size.second
+                          << '\n';
+                h.tab(0);
+                h.press(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
+                require(a.menuTab() == 1, "shoulder cannot reach Video after resize");
                 for (int n = 0; n < App::sectionCount(); ++n) {
-                    h.tab(n);
+                    a.showSection(n);
+                    h.frame();
                     require(GImGui->NavId != 0, "no gamepad focus at resized menu");
                 }
-                h.tab(1);
+                a.showSection(1);
+                h.frame();
                 h.find("zoomout");
                 h.press(SDL_CONTROLLER_BUTTON_Y);
                 require(a.guideVisible(), "illustrated detail unavailable at resized menu");

@@ -2559,7 +2559,7 @@ void App::ui() {
             notice.clear();
         ImGui::Separator();
     }
-    if (tab == 0 || tab == 1) {
+    if ((tab == 0 && !watch) || tab == 1) {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(.09f, .34f, .42f, 1));
         if (button("defaults", {-1, ImGui::GetFrameHeight() * 1.18f}))
             requestAction(3);
@@ -2664,6 +2664,13 @@ void App::ui() {
     }
 }
 void App::libraryUi() {
+    const bool canContinue = !core.loaded && library.find(settings.lastGame);
+    if (settings.wearActive) {
+        if (canContinue && button("continue", {-1, 0}))
+            play(settings.lastGame);
+        if (library.entries.empty() && button("import", {-1, 0}))
+            beginBrowser(false);
+    }
     if (!settings.advancedOptions && button("lookpresets", {-1, 0}))
         showSection(1);
     if (button("folder"))
@@ -2676,7 +2683,7 @@ void App::libraryUi() {
     }
     if (tick("readyonly", settings.readyOnly))
         dirty = true;
-    if (!core.loaded && library.find(settings.lastGame)) {
+    if (!settings.wearActive && canContinue) {
         if (button("continue"))
             play(settings.lastGame);
     }
