@@ -30,11 +30,9 @@ Layout arrange(Rect safe, const Options &o) {
             l.buttons.push_back({r(x, y, w, h), a});
         };
         if (o.menu) {
-            l.canvas = o.circular ? r(.16f, .16f, .68f, .59f) : r(.03f, .03f, .94f, .72f);
-            add(Action::Back, .36f, .79f, .28f, .14f);
-            // The crown scrolls menus. Touch-only watches retain two clear buttons.
-            add(Action::ScrollUp, .14f, .68f, .18f, .14f);
-            add(Action::ScrollDown, .68f, .68f, .18f, .14f);
+            // The menu owns the full display. Its content is inset for the bezel,
+            // and both a swipe and the crown can scroll without a control dock.
+            l.canvas = r(0, 0, 1, 1);
         } else {
             l.canvas = r(0, 0, 1, 1);
             add(Action::Menu, .40f, .06f, .20f, .13f);

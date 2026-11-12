@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-project(SonicCompilationUltra VERSION 0.12.2 LANGUAGES C CXX)
+project(SonicCompilationUltra VERSION 0.12.3 LANGUAGES C CXX)
 if(ANDROID)
   set(CMAKE_POSITION_INDEPENDENT_CODE ON)
   set(BUILD_TESTING OFF CACHE BOOL "" FORCE)

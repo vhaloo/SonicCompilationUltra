@@ -96,6 +96,7 @@ void MobilePresentation::clearInput() {
     if (pointerDown)
         ImGui::GetIO().AddMouseButtonEvent(0, false);
     pointerDown = false;
+    pointerScrolling = false;
 }
 void MobilePresentation::beginFrame() {
     frameStart = SDL_GetTicks64();
@@ -377,6 +378,8 @@ bool MobilePresentation::event(const SDL_Event &e) {
         if (app.menu && !pointerDown && layout.canvas.contains(p)) {
             pointer = id;
             pointerDown = true;
+            pointerScrolling = false;
+            pointerStart = pointerLast = p;
             io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
             io.AddMousePosEvent(p.x - layout.canvas.x, p.y - layout.canvas.y);
             io.AddMouseButtonEvent(0, true);
@@ -384,10 +387,25 @@ bool MobilePresentation::event(const SDL_Event &e) {
     } else {
         input.move(id, p);
         if (pointerDown && id == pointer) {
-            io.AddMousePosEvent(p.x - layout.canvas.x, p.y - layout.canvas.y);
+            const float dx = p.x - pointerStart.x, dy = p.y - pointerStart.y;
+            if (app.menu && app.settings.wearActive && !pointerScrolling &&
+                std::abs(dy) > 6.f && std::abs(dy) > std::abs(dx)) {
+                pointerScrolling = true;
+                ImGui::ClearActiveID();
+                io.AddMouseButtonEvent(0, false);
+            }
+            if (pointerScrolling) {
+                io.AddMousePosEvent(pointerStart.x - layout.canvas.x,
+                                   pointerStart.y - layout.canvas.y);
+                io.AddMouseWheelEvent(0, (p.y - pointerLast.y) /
+                                            std::max(1.f, ImGui::GetFontSize() * 5.f));
+            } else
+                io.AddMousePosEvent(p.x - layout.canvas.x, p.y - layout.canvas.y);
+            pointerLast = p;
             if (e.type == SDL_FINGERUP) {
                 io.AddMouseButtonEvent(0, false);
                 pointerDown = false;
+                pointerScrolling = false;
             }
         }
         if (e.type == SDL_FINGERUP)

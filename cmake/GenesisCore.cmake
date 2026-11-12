@@ -21,6 +21,11 @@ list(APPEND GX_SOURCES ${GX}/libretro/libretro.c src/observer.c)
 add_library(scu_core STATIC ${GX_SOURCES})
 target_include_directories(scu_core PRIVATE ${GX_INCLUDES} ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_compile_definitions(scu_core PRIVATE LSB_FIRST BYTE_ORDER=1234 LITTLE_ENDIAN=1234 USE_16BPP_RENDERING FRONTEND_SUPPORTS_RGB565 USE_LIBTREMOR HAVE_ZLIB HAVE_NO_LANGEXTRA MAXROMSIZE=10485760 HAVE_YM3438_CORE HAVE_OPLL_CORE __LIBRETRO__ USE_LIBRETRO_VFS)
+if(ANDROID AND ANDROID_ABI STREQUAL "armeabi-v7a")
+  # Fine scrolling can start a scanline at an odd byte. Use the core's existing
+  # byte-safe renderer instead of aligned ARM word stores at that offset.
+  target_compile_definitions(scu_core PRIVATE ALIGN_LONG)
+endif()
 if(NOT MSVC)
   target_link_libraries(scu_core PUBLIC m)
   # Match the upstream libretro Makefile's private static-inline functions.

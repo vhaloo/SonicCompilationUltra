@@ -62,7 +62,12 @@ jobs:
         env:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
-        run: python tools/smoke_ui.py --build build --package dist/SonicCompilationUltra-0.7.0-${{ matrix.platform }}-${{ matrix.arch }}
+        shell: python
+        run: |
+          import pathlib, subprocess, sys
+          packages = [p for p in pathlib.Path('dist').glob('SonicCompilationUltra-*-${{ matrix.platform }}-${{ matrix.arch }}') if p.is_dir()]
+          assert len(packages) == 1, packages
+          subprocess.run([sys.executable, 'tools/smoke_ui.py', '--build', 'build', '--package', str(packages[0])], check=True)
       - name: Upload packages and validation
         uses: actions/upload-artifact@v4
         with:

@@ -506,6 +506,13 @@ void App::control(const char *key) {
         ImGui::EndTooltip();
     }
 }
+static ImVec4 menuAccent(int index) {
+    static constexpr ImVec4 colors[] = {{.97f, .66f, .81f, 1}, {.79f, .68f, .98f, 1},
+                                       {.62f, .77f, .98f, 1}, {.52f, .85f, .89f, 1},
+                                       {.70f, .88f, .66f, 1}, {.97f, .81f, .53f, 1},
+                                       {.99f, .65f, .58f, 1}};
+    return colors[unsigned(index) % std::size(colors)];
+}
 bool App::button(const char *key, const ImVec2 &size) {
     std::string label = std::string(tr(key, language)) + "###" + key;
     bool result = ImGui::Button(label.c_str(), size);
@@ -610,6 +617,10 @@ void App::initialise(const fs::path &base, bool hidden) {
                                   (hidden ? SDL_WINDOW_HIDDEN : SDL_WINDOW_SHOWN));
     if (!window)
         throw std::runtime_error(SDL_GetError());
+    if (auto *icon = SDL_LoadBMP((base / "assets" / "SCU.bmp").u8string().c_str())) {
+        SDL_SetWindowIcon(window, icon);
+        SDL_FreeSurface(icon);
+    }
     SDL_SetWindowMinimumSize(window, 320, 240);
     renderer = SDL_CreateRenderer(window, -1,
                                   settings.renderer
@@ -728,6 +739,8 @@ App::~App() {
         SDL_DestroyTexture(bgTexture);
     if (settingsPreview)
         SDL_DestroyTexture(settingsPreview);
+    if (menuBackdrop)
+        SDL_DestroyTexture(menuBackdrop);
     if (guideCapture)
         SDL_DestroyTexture(guideCapture);
     if (guideNative)
@@ -743,6 +756,15 @@ void App::loadSettingsPreview() {
     if (settingsPreview)
         SDL_DestroyTexture(settingsPreview);
     settingsPreview = nullptr;
+    if (menuBackdrop)
+        SDL_DestroyTexture(menuBackdrop);
+    menuBackdrop = nullptr;
+    if (auto *surface = SDL_LoadBMP((basePath / "assets/SCU.bmp").u8string().c_str())) {
+        menuBackdrop = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_FreeSurface(surface);
+        if (menuBackdrop)
+            SDL_SetTextureScaleMode(menuBackdrop, SDL_ScaleModeLinear);
+    }
     if (guideCapture)
         SDL_DestroyTexture(guideCapture);
     if (guideNative)
@@ -2080,21 +2102,40 @@ void App::present(bool capture) {
                : settings.uiScale == 3 ? 1.4f
                                        : 1.f;
     if (settings.wearActive)
-        uiFactor = settings.uiScale == 2 ? 1.f : settings.uiScale == 3 ? 1.2f : .75f;
+        uiFactor = settings.uiScale == 1 ? .85f : settings.uiScale == 3 ? 1.2f : 1.f;
 #endif
     ImGui::GetStyle() = baseStyle;
     ImGui::GetStyle().ScaleAllSizes(uiFactor);
 #ifdef SCU_MOBILE
-    ImGui::GetStyle().FramePadding.y = (settings.wearActive ? 4 : 13) * uiFactor;
+    ImGui::GetStyle().FramePadding.y = (settings.wearActive ? 6 : 13) * uiFactor;
     ImGui::GetStyle().TouchExtraPadding = {3, 3};
     ImGui::GetStyle().ScrollbarSize = (settings.wearActive ? 12 : 24) * uiFactor;
+    if (settings.wearActive) {
+        ImGui::GetStyle().WindowPadding = {6 * uiFactor, 6 * uiFactor};
+        ImGui::GetStyle().CellPadding.y = 3 * uiFactor;
+    }
 #endif
+    if (menu && !settings.highContrast) {
+        const auto accent = menuAccent(tab);
+        auto fill = [&](float amount) {
+            return ImVec4{.025f + accent.x * amount, .03f + accent.y * amount,
+                          .05f + accent.z * amount, 1};
+        };
+        auto &colors = ImGui::GetStyle().Colors;
+        colors[ImGuiCol_Button] = fill(.18f);
+        colors[ImGuiCol_ButtonHovered] = fill(.32f);
+        colors[ImGuiCol_ButtonActive] = fill(.44f);
+        colors[ImGuiCol_Header] = fill(.24f);
+        colors[ImGuiCol_HeaderHovered] = fill(.35f);
+        colors[ImGuiCol_HeaderActive] = fill(.44f);
+        colors[ImGuiCol_CheckMark] = colors[ImGuiCol_SliderGrab] = accent;
+    }
     if (settings.highContrast) {
         ImGui::GetStyle().Colors[ImGuiCol_Text] = {1, 1, 1, 1};
         ImGui::GetStyle().Colors[ImGuiCol_FrameBg] = {0.02f, 0.04f, 0.08f, 1};
         ImGui::GetStyle().Colors[ImGuiCol_NavCursor] = {1, 1, 0, 1};
     }
-    io.FontGlobalScale = (settings.wearActive ? .65f : .75f) * uiFactor;
+    io.FontGlobalScale = (settings.wearActive ? .72f : .75f) * uiFactor;
     ImGui::NewFrame();
     menuInput(editing);
 #ifdef SCU_UI_TESTS
@@ -2598,9 +2639,19 @@ void App::commitAction() {
 void App::ui() {
     auto &io = ImGui::GetIO();
     const bool watch = settings.wearActive;
+    if (menuBackdrop && !settings.highContrast) {
+        auto *draw = ImGui::GetBackgroundDrawList();
+        draw->AddImage(reinterpret_cast<ImTextureID>(menuBackdrop), {0, 0}, io.DisplaySize);
+        draw->AddRectFilled({0, 0}, io.DisplaySize, IM_COL32(5, 10, 20, 205));
+        ImGui::SetNextWindowBgAlpha(.85f);
+    }
     bool compact = settings.menuLayout == 1;
     float width = compact ? std::min(1120 * uiFactor, io.DisplaySize.x - 12) : io.DisplaySize.x;
     float height = compact ? std::min(820 * uiFactor, io.DisplaySize.y - 12) : io.DisplaySize.y;
+    if (watch && settings.wearRound) {
+        width = io.DisplaySize.x * .82f;
+        height = io.DisplaySize.y * .82f;
+    }
     ImGui::SetNextWindowPos({io.DisplaySize.x / 2, io.DisplaySize.y / 2}, {}, {0.5f, 0.5f});
     ImGui::SetNextWindowSize({width, height});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding,
@@ -2611,7 +2662,8 @@ void App::ui() {
                  ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
     float safe = std::min(ImGui::GetContentRegionAvail().x, 1220 * uiFactor);
     ImGui::SetCursorPosX((width - safe) / 2);
-    ImGui::BeginChild("##safe", {safe, 0}, ImGuiChildFlags_NavFlattened);
+    ImGui::BeginChild("##safe", {safe, 0}, ImGuiChildFlags_NavFlattened,
+                      watch ? ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse : 0);
     bool small = safe < 650 * uiFactor, tiny = height < 450 * uiFactor;
     if (!tiny) {
         ImGui::TextColored({0.25f, 0.84f, 0.91f, 1}, "SONIC COMPILATION ULTRA");
@@ -2620,7 +2672,7 @@ void App::ui() {
     }
     if (focusMenu) {
         ImGui::SetKeyboardFocusHere();
-        ImGui::SetNavCursorVisible(true);
+        ImGui::SetNavCursorVisible(!watch || padUsed);
     }
     const char *importKey = safe < 400 * uiFactor ? "importshort" : "import";
     if (!watch) {
@@ -2642,7 +2694,7 @@ void App::ui() {
     }
     if (!watch)
         nextButton(settings.advancedOptions ? "simplemode" : "advancedmode");
-    if (button(settings.advancedOptions ? "simplemode" : "advancedmode")) {
+    if (!watch && button(settings.advancedOptions ? "simplemode" : "advancedmode")) {
         settings.advancedOptions = !settings.advancedOptions;
         if (tab != 0)
             tab = 1;
@@ -2651,7 +2703,8 @@ void App::ui() {
         flushSettings();
     }
     focusMenu = false;
-    ImGui::Separator();
+    if (!watch)
+        ImGui::Separator();
     const char *tabs[] = {"library",
                           settings.advancedOptions ? "video" : "lookpresets",
                           "camera",
@@ -2677,22 +2730,46 @@ void App::ui() {
     if (!visibleSection(tab))
         tab = 1;
     if (small) {
-        if (!watch) {
+        if (watch) {
+            ImGui::SetCursorPosX(7 * uiFactor);
+            if (button("mobileback"))
+                backRequested = true;
+            ImGui::SameLine();
+        } else {
             if (button("prevsection"))
                 changeSection(-1);
             ImGui::SameLine();
         }
-        ImGui::SetNextItemWidth(watch ? -1 : std::max(80.0f, safe - 100 * uiFactor));
-        if (ImGui::BeginCombo("##section", tr(tabs[tab], language))) {
+        ImGui::SetNextItemWidth(watch ? std::max(20.f, ImGui::GetContentRegionAvail().x - 7 * uiFactor)
+                                     : std::max(80.0f, safe - 100 * uiFactor));
+        if (watch)
+            ImGui::SetNextWindowSizeConstraints({io.DisplaySize.x * .70f, 0},
+                                                {io.DisplaySize.x * .78f, io.DisplaySize.y * .50f});
+        if (ImGui::BeginCombo("##section", tr(tabs[tab], language),
+                              watch ? ImGuiComboFlags_NoArrowButton | ImGuiComboFlags_PopupAlignLeft : 0)) {
             for (int n = 0; n < sectionCount(); ++n) {
                 if (!visibleSection(n))
                     continue;
+                if (!settings.highContrast)
+                    ImGui::PushStyleColor(ImGuiCol_Text, menuAccent(n));
                 if (ImGui::Selectable(tr(tabs[n], language), tab == n)) {
                     tab = n;
                     focusPage = true;
                 }
                 if (tab == n)
                     ImGui::SetItemDefaultFocus();
+                if (!settings.highContrast)
+                    ImGui::PopStyleColor();
+            }
+            if (watch) {
+                ImGui::Separator();
+                if (ImGui::Selectable(tr(settings.advancedOptions ? "simplemode" : "advancedmode", language))) {
+                    settings.advancedOptions = !settings.advancedOptions;
+                    if (tab != 0)
+                        tab = 1;
+                    focusPage = dirty = true;
+                    flushSettings();
+                }
             }
             ImGui::EndCombo();
         }
@@ -2711,7 +2788,7 @@ void App::ui() {
 #ifdef SCU_MOBILE
     footer = ImGui::GetFrameHeightWithSpacing() + 12;
     if (watch)
-        footer = ImGui::GetFrameHeightWithSpacing() + 3;
+        footer = 0;
 #endif
     float contentH = std::max(50.0f, ImGui::GetContentRegionAvail().y - footer);
     if (!small) {
@@ -2771,20 +2848,22 @@ void App::ui() {
         settingGuide();
         ImGui::EndChild();
     }
-    ImGui::Separator();
-    if (button(watch ? "guidebadge" :
+    if (!watch) {
+        ImGui::Separator();
+        if (button(
 #ifdef SCU_QUEST
                      "questguidebutton"
 #else
                      "settingguide"
 #endif
                ))
-        guideRequested = true;
+            guideRequested = true;
 #ifndef SCU_MOBILE
     ImGui::TextWrapped("%s", navigationHint().c_str());
     if (!tiny)
         ImGui::TextDisabled("%s", tr("autosettings", language));
 #endif
+    }
     ImGui::EndChild();
     ImGui::End();
     ImGui::PopStyleVar();
@@ -2796,11 +2875,13 @@ void App::ui() {
     ImGui::SetNextWindowPos({io.DisplaySize.x / 2, io.DisplaySize.y / 2}, {}, {0.5f, 0.5f});
     ImGui::SetNextWindowSize({std::min(620 * uiFactor, io.DisplaySize.x - 12),
                               std::max(100.0f, io.DisplaySize.y * 0.88f)});
+    if (watch && settings.wearRound)
+        ImGui::SetNextWindowSize({io.DisplaySize.x * .78f, io.DisplaySize.y * .72f});
     if (ImGui::BeginPopupModal("##setting-detail", nullptr,
                                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings)) {
         if (!guideOpen)
             ImGui::CloseCurrentPopup();
-        if (button("guideclose")) {
+        if (button(watch ? "mobileback" : "guideclose")) {
             guideOpen = false;
             ImGui::CloseCurrentPopup();
         }
@@ -2846,30 +2927,31 @@ void App::ui() {
             commitAction();
             ImGui::CloseCurrentPopup();
         }
-        ImGui::TextWrapped("%s", navigationHint().c_str());
+        if (!watch)
+            ImGui::TextWrapped("%s", navigationHint().c_str());
         ImGui::EndPopup();
     }
 }
 void App::libraryUi() {
     const bool canContinue = !core.loaded && library.find(settings.lastGame);
     if (settings.wearActive) {
-        if (canContinue && button("continue", {-1, 0}))
-            play(settings.lastGame);
         if (library.entries.empty() && button("import", {-1, 0}))
             beginBrowser(false);
     }
-    if (!settings.advancedOptions && button("lookpresets", {-1, 0}))
+    if (!settings.wearActive && !settings.advancedOptions && button("lookpresets", {-1, 0}))
         showSection(1);
-    if (button("folder"))
-        beginBrowser(true);
-    if (ImGui::GetContentRegionAvail().x > 580 * uiFactor)
-        ImGui::SameLine();
-    if (button("sourcehelp")) {
-        tab = 8;
-        focusPage = true;
+    if (!settings.wearActive) {
+        if (button("folder"))
+            beginBrowser(true);
+        if (ImGui::GetContentRegionAvail().x > 580 * uiFactor)
+            ImGui::SameLine();
+        if (button("sourcehelp")) {
+            tab = 8;
+            focusPage = true;
+        }
+        if (tick("readyonly", settings.readyOnly))
+            dirty = true;
     }
-    if (tick("readyonly", settings.readyOnly))
-        dirty = true;
     if (!settings.wearActive && canContinue) {
         if (button("continue"))
             play(settings.lastGame);
@@ -2890,12 +2972,49 @@ void App::libraryUi() {
                 continue;
             ImGui::TableNextColumn();
             ImGui::PushID(g.id);
+            ++index;
+            if (settings.wearActive && r) {
+                const float available = ImGui::GetContentRegionAvail().x;
+                const auto padding = ImGui::GetStyle().FramePadding;
+                const float textWidth = std::max(1.f, available - padding.x * 2 - 12);
+                const auto extent = ImGui::CalcTextSize(g.name, nullptr, false, textWidth);
+                const float rowHeight = std::max(48.f * uiFactor, extent.y + padding.y * 2);
+                auto accent = settings.highContrast ? ImVec4{1, 1, 1, 1} : menuAccent(index - 1);
+                const auto first = ImGui::GetCursorScreenPos();
+                const ImVec2 last{first.x + available, first.y + rowHeight};
+                auto *draw = ImGui::GetWindowDrawList();
+                draw->AddRectFilled(first, last,
+                                    ImGui::GetColorU32({.025f + accent.x * .09f,
+                                                       .03f + accent.y * .09f,
+                                                       .045f + accent.z * .09f, 1}), 10 * uiFactor);
+                draw->AddRect(first, last, ImGui::GetColorU32(ImGui::GetColorU32(accent), .65f),
+                              10 * uiFactor);
+                const bool selected = ImGui::Selectable("##play", false, 0, {0, rowHeight});
+                const auto pos = ImGui::GetItemRectMin();
+                ImGui::GetWindowDrawList()->AddCircleFilled(
+                    {pos.x + padding.x + 3, pos.y + rowHeight * .5f}, 2.5f,
+                    ImGui::GetColorU32(accent));
+                ImGui::GetWindowDrawList()->AddText(
+                    ImGui::GetFont(), ImGui::GetFontSize(),
+                    {pos.x + padding.x + 12, pos.y + (rowHeight - extent.y) * .5f},
+                    ImGui::GetColorU32(ImGuiCol_Text), g.name, nullptr, textWidth);
+                control((std::string("play-") + g.id).c_str());
+                if (selected) {
+                    if (core.loaded && core.currentId != g.id)
+                        requestAction(6, 1, g.id);
+                    else
+                        play(g.id);
+                }
+                ImGui::Separator();
+                ImGui::PopID();
+                continue;
+            }
             ImGui::BeginChild("##card", {0, 0},
                               ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened |
                                   ImGuiChildFlags_AutoResizeY,
                               ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
             ImGui::TextColored(r ? ImVec4{0.35f, 0.89f, 0.91f, 1} : ImVec4{0.55f, 0.62f, 0.69f, 1},
-                               "%02d", ++index);
+                               "%02d", index);
             ImGui::TextWrapped("%s", g.name);
             ImGui::TextWrapped("%s",
                                r ? (r->derived ? tr("derived", language) : tr("ready", language))
@@ -2914,6 +3033,14 @@ void App::libraryUi() {
             ImGui::PopID();
         }
         ImGui::EndTable();
+    }
+    if (settings.wearActive && !library.entries.empty()) {
+        if (button("import", {-1, 0}))
+            beginBrowser(false);
+        if (button("folder", {-1, 0}))
+            beginBrowser(true);
+        if (tick("readyonly", settings.readyOnly))
+            dirty = true;
     }
     for (auto &r : library.entries)
         if (r.id.rfind("custom-", 0) == 0) {

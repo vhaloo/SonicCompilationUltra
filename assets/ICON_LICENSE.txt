@@ -1,0 +1,11 @@
+Original palm icon
+
+SCU.png and the platform icons derived from it are original project artwork,
+generated with OpenAI imagegen from a text description without reference images.
+They contain a new palm composition and palette.
+
+To the extent rights apply, the project dedicates this icon artwork to the
+public domain under CC0 1.0 Universal.
+https://creativecommons.org/publicdomain/zero/1.0/
+
+The software and third-party components retain their respective licenses.

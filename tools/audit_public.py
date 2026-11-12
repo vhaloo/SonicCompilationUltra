@@ -14,7 +14,8 @@ for name in files:
     if not path.is_file():continue
     data=path.read_bytes()
     original_preview=name=='assets/settings-preview.bmp' and hashlib.sha256(data).hexdigest()=='dd663cf8fcb966ea47124bf9920cf0d79ce2f13d1c6ff761a0f5addb8cd96239'
-    if (path.suffix.lower() in banned and not original_preview) or path.name in {'settings.ini','library.tsv','quest-wall-anchor.txt'} or re.search(r'^(generated|private|private_assets|build[^/]*)/', name):bad.append(name)
+    original_icon=name=='assets/SCU.bmp' and hashlib.sha256(data).hexdigest()=='14c2250708f34f4b44a64551364c8f3f92a3e3d734858b08a2e9f32f74ffdd38'
+    if (path.suffix.lower() in banned and not original_preview and not original_icon) or path.name in {'settings.ini','library.tsv','quest-wall-anchor.txt'} or re.search(r'^(generated|private|private_assets|build[^/]*)/', name):bad.append(name)
     if path.suffix.lower() in texttypes and not name.startswith('vendor/'):
         text=data.decode('utf-8',errors='replace')
         if re.search(r'(?i)(?:[A-Z]:\\Users\\|E:[/\\]Emulation|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9]{30,})',text):bad.append(name+' (private path/token)')

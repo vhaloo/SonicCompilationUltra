@@ -69,6 +69,9 @@ static void option(Settings &s, const std::string &key, const std::string &value
     }
     SET(zoom)
     SET(zoomOut)
+    SET(wearZoom)
+    SET(wearCrownSpeed)
+    SET(wearLensStrength)
     SET(panoramaHeight)
     SET(mapExtension)
     SET(smoothMap)
@@ -798,6 +801,8 @@ int main(int argc, char **argv) {
                 << ",\n  \"voxel_angle\":[" << a.settings.voxelYaw << "," << a.settings.voxelPitch << "]"
                 << ",\n  \"voxel_framing\":" << a.settings.voxelFraming
                 << ",\n  \"language\":" << a.language << ",\n  \"view\":" << a.settings.view
+                << ",\n  \"wear_zoom\":" << a.settings.wearZoom
+                << ",\n  \"menu_open\":" << (a.menu ? "true" : "false")
                 << ",\n  \"stage_coverage\":[" << a.core.world.canvas.coverageW << ","
                 << a.core.world.canvas.coverageH << "]"
                 << ",\n  \"menu_layout\":" << a.settings.menuLayout << ",\n  \"hint_bounds\":["

@@ -1,0 +1,7 @@
+{
+  "generator": "OpenAI imagegen built-in",
+  "reference_images": [],
+  "prompt": "Create one original square application icon, a tightly framed detail of a tropical palm canopy and its short segmented trunk, designed as crisp handcrafted pixel art on a consistent coarse 64-by-64 logical pixel grid. It should feel like a tiny, vivid tropical landscape detail, with a bold lime, emerald and soft golden-green fan of leaves, a warm amber trunk, and a clear rich azure sky. Compose a distinctive new asymmetrical palm with broad readable leaf clusters, an expressive silhouette, and large simple pixel blocks that remain beautiful at smartwatch launcher size. Center the recognizable leaf-and-trunk detail in the middle 70 percent so circular icon masks preserve it. The artwork fills the square edge to edge. Bright, elegant, restrained palette, sharp edges, no blur. Use your own original composition and shapes, no reference images, no copied game sprites or scenery, no characters, no lettering, no numbers, no logo, no border, no interface, no extra objects.",
+  "license": "CC0-1.0",
+  "source": "SCU.png"
+}

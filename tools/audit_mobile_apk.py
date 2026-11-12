@@ -15,10 +15,10 @@ def run(args):
 build=a.sdk/'build-tools/36.0.0';suffix='.exe' if os.name=='nt' else ''
 edition='wear' if a.wear else 'mobile'
 package='com.vhaloo.soniccompilationultra.'+edition
-version='0.12.2-'+edition+'-preview'
+version='0.12.3-'+edition+'-preview'
 signature=run([build/('apksigner.bat' if os.name=='nt' else 'apksigner'),'verify','--verbose','--print-certs',a.apk])
 badging=run([build/('aapt2'+suffix),'dump','badging',a.apk])
-for expected in [f"name='{package}'","versionCode='1202'",f"versionName='{version}'",f"minSdkVersion:'{26 if a.wear else 24}'","targetSdkVersion:'36'",'MobileActivity']:
+for expected in [f"name='{package}'","versionCode='1203'",f"versionName='{version}'",f"minSdkVersion:'{26 if a.wear else 24}'","targetSdkVersion:'36'",'MobileActivity']:
     assert expected in badging,expected
 manifest=run([build/('aapt2'+suffix),'dump','xmltree','--file','AndroidManifest.xml',a.apk])
 for banned in ['oculus','openxr','IMMERSIVE_HMD','android.permission.CAMERA','android.permission.RECORD_AUDIO',

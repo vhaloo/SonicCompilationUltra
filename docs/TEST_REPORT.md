@@ -1,4 +1,15 @@
-# Validation report — 6 November 2026
+# Validation report
+
+## 0.12.3 interface preview — 11 November 2026
+
+- On a physical Galaxy Watch8 Classic SM-L500, Android API 37, ARMv7, 438 × 438: reproduced the production native scanline alignment crash, enabled the core's existing byte-safe path, then completed eleven timed fresh-boot cartridge sessions. The sessions cover Sonic 1, 2, 3, Sonic & Knuckles, Sonic 3 & Knuckles, Knuckles in Sonic 2, Spinball, 3D Blast, Mean Bean Machine, Sonic Classics and Blue Sphere. Scripted console input, same-device save/load and watch zoom endpoints completed without another native crash. These are short smoke checks, not every stage or complete playthroughs.
+- An isolated optimized `.qa` installation kept production saves and settings separate. Injected vertical touch swipes and Android rotary events scrolled the menu without launching a cartridge. The menu, section list and illustrated zoom guide were captured in English, French, Spanish and Japanese on that watch. These injected events do not certify a human finger or physical bezel interaction.
+- The 25-second menu check averaged 59.3 presented frames/s. The eleven 15-second cold game sessions averaged 39.6–52.1 presented frames/s, including loading and save/load/zoom transitions, with rewind disabled for these measurements. They do not establish sustained 60 fps. No battery endurance or other physical watch model was tested.
+- Windows unit, generated-cartridge runtime and controller-menu suites passed. The separate generated watch helper checks round layout, continuous camera, lens geometry and crown math, including the full-display menu regression. Platform builds, lint, signatures and package checks are recorded separately in the GitHub workflow results.
+- Existing PC/x86 save states cannot be used as ARMv7 test fixtures: the native emulator's legacy state body depends on architecture. Physical game sessions start from cartridges and create their own states. Keep old saves with their originating device.
+- The palm icon was generated from text without game art or reference images; its prompt and conditional CC0 dedication are under `assets/`. Public packages contain no ROMs or private game captures. No Quest headset, phone/tablet or Mac hardware session was performed for this revision; those builds do not imply physical validation.
+
+![Actual Galaxy Watch8 Classic library menu](screenshots/wear-menu-0.12.3.png)
 
 ## 0.11 voxel development preview
 

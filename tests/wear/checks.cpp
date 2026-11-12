@@ -76,6 +76,9 @@ int main() {
                     o.leftHanded = left;
                     o.utilityBank = bank;
                     auto l = touch::arrange({0, 0, float(size), float(size)}, o);
+                    if (menu)
+                        check(l.canvas.w == size && l.canvas.h == size && l.buttons.empty(),
+                              "watch menu still reserves space for the control dock");
                     for (auto b : l.buttons)
                         for (float x : {b.rect.x, b.rect.x + b.rect.w})
                             for (float y : {b.rect.y, b.rect.y + b.rect.h})

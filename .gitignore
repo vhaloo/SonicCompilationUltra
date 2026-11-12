@@ -11,6 +11,7 @@
 *.ram
 *.bmp
 !assets/settings-preview.bmp
+!assets/SCU.bmp
 *.bak
 settings.ini
 library.tsv
@@ -18,6 +19,10 @@ quest-wall-anchor.txt
 *.zip
 *.7z
 *.png
+!assets/SCU.png
+!android/app/src/main/res/drawable-nodpi/scu_icon.png
+!android/mobile/src/main/res/drawable-nodpi/scu_icon.png
+!docs/screenshots/wear-menu-0.12.3.png
 *.jpg
 !docs/screenshots/fullscreen-options.png
 !docs/screenshots/camera-options-0.2.1.png

@@ -25,6 +25,7 @@ class App {
 #endif
     SDL_Texture *worldTexture = nullptr, *nativeTexture = nullptr, *bgTexture = nullptr;
     SDL_Texture *settingsPreview = nullptr;
+    SDL_Texture *menuBackdrop = nullptr;
     SDL_Texture *guideCapture = nullptr, *guideNative = nullptr;
     std::vector<SDL_Texture *> retiredGuideTextures;
     fs::path guideCapturePath;

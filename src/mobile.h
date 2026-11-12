@@ -20,6 +20,8 @@ class MobilePresentation {
     bool wasMenu = true, wasControls = true;
     int64_t pointer = 0;
     bool pointerDown = false;
+    bool pointerScrolling = false;
+    touch::Point pointerStart{}, pointerLast{};
     int displayConfig = -1;
     uint64_t frameStart = 0;
     uint64_t metricsAt = 0;

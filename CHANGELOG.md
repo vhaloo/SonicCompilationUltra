@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12.3 Wear interface preview
+
+- ARMv7 uses the core's byte-safe scanline path. This fixes the native alignment fault found when starting a game on Galaxy Watch8 Classic.
+- Round watch menus use one navigation row and a compact game list with larger text and colored game tiles. Swipe or turn the crown to scroll. Simple and Advanced are available from the section selector.
+- Vertical swipes cancel the active button before scrolling. Explanations remain accessible from each setting's illustrated button.
+- Original palm artwork replaces the launcher and desktop icons across platforms. The icon artwork is dedicated under CC0 and the generation prompt is recorded in assets/ICON_PROVENANCE.json.
+- Optimized isolated Android QA builds support timed physical-device sessions while retaining the production application's user data.
+
 ## 0.12.2 Pixel-precision preview
 
 - Pixel-precise voxel rendering keeps a separate game-color texture when automatic quality simplifies depth geometry. The close 48:9 view keeps all 1536 × 288 source texels. Whole-level views sample their larger map to fit.

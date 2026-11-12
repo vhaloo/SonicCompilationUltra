@@ -2,13 +2,13 @@
 
 **A separate standalone watch APK**, with a round-screen layout, crown/bezel zoom and an optional fisheye. It does not require the phone app. The build targets Android 8.0 / API 26 or newer, OpenGL ES 2.0 and ARM64, ARMv7 or x86-64. Compatible Android rotary input is detected automatically; no model-name whitelist is used.
 
-This is an **experimental development preview**. No watch, emulator or game was started for 0.11. Compilation, lint, APK inspection and generated geometry/input checks do not certify physical compatibility, readability, battery life or sustained frame rate on a Pixel Watch or Galaxy Watch.
+This is an **experimental development preview**. Version 0.12.3 adds larger colored game rows, a palm backdrop and a single navigation row. It also enables the core's byte-safe scanline path on ARMv7, fixing the game-start alignment crash reproduced on a Galaxy Watch8 Classic. Physical checks and their limits are recorded in the release notes; other watch models and sustained battery life remain unqualified.
 
 ## Get ready
 
 1. Download **Android-Wear-ROM-free.apk**, then sideload it using your usual Wear OS ADB or companion sideload tool. The phone/tablet and Quest APKs are separate downloads.
 2. Open the library and choose your own supported cartridge. Public packages contain no ROMs. If the watch has no system document picker, copy your own cartridge files into the app's ROM inbox below, then tap **Choose ROM…**. The app copies supported files into private storage and imports them; return to the library when ready. Originals and existing private copies are kept.
-3. Choose **Play**. The **Menu** button or Android **Back** opens options. Rotate the crown to scroll options; touch Up/Down remains available without rotary hardware.
+3. Tap a colored game row to play. The **Menu** button or Android **Back** opens options. Swipe vertically or rotate the crown to scroll. Tap the section name beside **Back** to choose another page or switch between Simple and Advanced.
 
 Local USB/Wi-Fi ADB inbox, after installing the app:
 
@@ -17,7 +17,7 @@ adb shell mkdir -p /sdcard/Android/data/com.vhaloo.soniccompilationultra.wear/fi
 adb push YOUR_OWN_CARTRIDGE.zip /sdcard/Android/data/com.vhaloo.soniccompilationultra.wear/files/ROMs/
 ```
 
-These are user instructions; no device connection or installation was performed for this release. Only local cartridge files up to 32 MB are accepted. The app neither downloads ROMs nor requests network/storage-wide permissions. See the [cartridge guide](ROMS.md).
+Only local cartridge files up to 32 MB are accepted. The app neither downloads ROMs nor requests network/storage-wide permissions. See the [cartridge guide](ROMS.md).
 
 ## Zoom without losing the level
 
@@ -34,5 +34,7 @@ The new installation targets 60 fps with automatic scene sampling, effects and a
 ![Original illustrative examples, not watch captures](illustrations/settings-preview-gallery.png)
 
 The menu uses the same English/French/Spanish/Japanese setting explanations as desktop and XR. Tap a setting's icon for the illustrated guide. The examples are original demo art, not cartridge or device screenshots.
+
+Keep save states on the device architecture that created them. The native emulator's older save format is not portable between a 64-bit PC and an ARMv7 watch. Cartridge files can be imported independently.
 
 Platform references: [Android rotary input](https://developer.android.com/training/wearables/compose/rotary-input), [standalone Wear OS manifest and storage](https://developer.android.com/training/wearables/apps/standalone-apps). The lens follows the round-display design used in the owner's OrbitEmu project; its C++ implementation and controls are independent.

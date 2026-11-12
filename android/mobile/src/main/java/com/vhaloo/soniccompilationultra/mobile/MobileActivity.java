@@ -211,9 +211,18 @@ public final class MobileActivity extends SDLActivity {
             int frames = getIntent().getIntExtra("scu_qa_frames", 0);
             File timeline = new File(dataDir, "qa.timeline");
             if (frames > 0 && frames <= 20000 && timeline.isFile()) {
+                boolean realtime = getIntent().getBooleanExtra("scu_qa_realtime", false);
                 java.util.Collections.addAll(args, "--no-autoresume", "--mute", "--frames",
-                        Integer.toString(frames), "--render-every", "120", "--script",
+                        Integer.toString(frames), "--render-every", realtime ? "1" : "120", "--script",
                         timeline.getAbsolutePath(), "--report", new File(dataDir, "qa.json").getAbsolutePath());
+                if (realtime) {
+                    args.add("--realtime");
+                    int seconds = getIntent().getIntExtra("scu_qa_seconds", 0);
+                    if (seconds > 0 && seconds <= 300) {
+                        args.add("--seconds");
+                        args.add(Integer.toString(seconds));
+                    }
+                }
             }
         }
         if (preparationError != null) { args.add("--startup-error"); args.add(preparationError); }
