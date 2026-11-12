@@ -2,7 +2,7 @@
 
 **A separate standalone watch APK**, with a round-screen layout, crown/bezel zoom and an optional fisheye. It does not require the phone app. The build targets Android 8.0 / API 26 or newer, OpenGL ES 2.0 and ARM64, ARMv7 or x86-64. Compatible Android rotary input is detected automatically; no model-name whitelist is used.
 
-This is an **experimental development preview**. Version 0.13.0 extends the round picture to the screen rim, adds discreet game-specific controls and optional combined motion input. The colored menu uses the original palm backdrop and a single navigation row. The ARMv7 scanline crash fix from 0.12.3 is retained. [Physical checks and limits](TEST_REPORT.md) distinguish completed sessions from tests interrupted by a low watch battery; other models, sustained 60 fps and battery endurance remain unqualified.
+This is an **experimental development preview**. Version 0.13.0 extends the round picture to the screen rim, adds discreet game-specific controls and optional combined motion input. The colored menu uses the original palm backdrop and a single navigation row. The ARMv7 scanline crash fix from 0.12.3 is retained. [Physical checks and limits](TEST_REPORT.md) distinguish completed sessions, generated checks and build-only coverage; other models, sustained 60 fps and battery endurance remain unqualified.
 
 ## Get ready
 

@@ -23,6 +23,8 @@ quest-wall-anchor.txt
 !android/app/src/main/res/drawable-nodpi/scu_icon.png
 !android/mobile/src/main/res/drawable-nodpi/scu_icon.png
 !docs/screenshots/wear-menu-0.12.3.png
+!docs/screenshots/wear-menu-0.13.0.png
+!docs/screenshots/wear-motion-0.13.0.png
 *.jpg
 !docs/screenshots/fullscreen-options.png
 !docs/screenshots/camera-options-0.2.1.png

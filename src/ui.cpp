@@ -2671,7 +2671,8 @@ void App::ui() {
     float safe = std::min(ImGui::GetContentRegionAvail().x, 1220 * uiFactor);
     ImGui::SetCursorPosX((width - safe) / 2);
     ImGui::BeginChild("##safe", {safe, 0}, ImGuiChildFlags_NavFlattened,
-                      watch ? ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse : 0);
+                      watch ? ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
+                                  (!settings.highContrast ? ImGuiWindowFlags_NoBackground : 0) : 0);
     bool small = safe < 650 * uiFactor, tiny = height < 450 * uiFactor;
     if (!tiny) {
         ImGui::TextColored({0.25f, 0.84f, 0.91f, 1}, "SONIC COMPILATION ULTRA");
@@ -2819,7 +2820,8 @@ void App::ui() {
     float guideW = sideGuide ? 310 * uiFactor : 0;
     float pageW =
         sideGuide ? ImGui::GetContentRegionAvail().x - guideW - ImGui::GetStyle().ItemSpacing.x : 0;
-    ImGui::BeginChild("##page", {pageW, contentH}, ImGuiChildFlags_NavFlattened);
+    ImGui::BeginChild("##page", {pageW, contentH}, ImGuiChildFlags_NavFlattened,
+                      watch && !settings.highContrast ? ImGuiWindowFlags_NoBackground : 0);
     scrollPage();
     if (focusPage) {
         ImGui::SetScrollY(0);
