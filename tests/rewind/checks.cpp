@@ -41,7 +41,7 @@ int main() {
                 std::vector<uint8_t> state;
                 std::vector<int16_t> audio;
                 check(history.pop(state, audio), "missing rewind frame");
-                check(state == frames[tick], "state differs after reused zlib streams");
+                check(state == frames[tick], "state differs after reused LZ4 workspace");
                 reverseStereo(sounds[tick]);
                 check(audio == sounds[tick], "reverse stereo order changed");
                 check(history.bytes() <= 24 * 1024 * 1024, "inflate workspace escaped budget");
@@ -69,7 +69,30 @@ int main() {
     check(small.bytes() == 0, "trim did not release streams and buffers");
     small.push(bytes, audio, 0);
     check(small.bytes() == 0, "zero budget retained history");
+    // A raster-preserving cartridge checkpoint is much larger than the compact
+    // fixtures above. Reuse that working set without dropping ticks or audio.
+    RewindHistory raster;
+    std::vector<std::vector<uint8_t>> rasters;
+    bytes.assign(1800000, 0);
+    audio.assign(1470, 17);
+    for (int tick = 0; tick < 24; ++tick) {
+        for (int n = 0; n < 2000; ++n)
+            bytes[rng() % bytes.size()] ^= uint8_t(rng());
+        rasters.push_back(bytes);
+        raster.push(bytes, audio, 24 * 1024 * 1024);
+        check(raster.bytes() <= 24 * 1024 * 1024, "raster history escaped watch budget");
+    }
+    check(raster.size() == rasters.size(), "raster history discarded ticks");
+    for (int tick = 23; tick >= 0; --tick) {
+        std::vector<uint8_t> restored;
+        std::vector<int16_t> reversed;
+        check(raster.pop(restored, reversed) && restored == rasters[tick],
+              "large raster/audio round trip differs");
+        check(reversed == audio, "large raster audio changed");
+        ++verified;
+    }
+    check(raster.bytes() == 0, "empty raster history retained memory");
     std::printf("PASS %u exact generated state/audio round trips; sparse/dense, variable lengths, "
-                "stream resets and memory limits. No game/core/device execution.\n",
+                "reused block workspace and memory limits. No game/core/device execution.\n",
                 verified);
 }

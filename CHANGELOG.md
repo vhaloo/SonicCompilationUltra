@@ -7,6 +7,7 @@
 - Vertical swipes cancel the active button before scrolling. Explanations remain accessible from each setting's illustrated button.
 - Original palm artwork replaces the launcher and desktop icons across platforms. The icon artwork is dedicated under CC0 and the generation prompt is recorded in assets/ICON_PROVENANCE.json.
 - Optimized isolated Android QA builds support timed physical-device sessions while retaining the production application's user data.
+- Rewind uses a retained LZ4 block workspace instead of deflate for in-memory XOR history. Every native tick and its reversed stereo sound are retained; disk saves keep their existing format. Physical watch follow-up checks cover Sonic 1 and Spinball with rewind enabled.
 
 ## 0.12.2 Pixel-precision preview
 

@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/lz4/lz4",
+  "tag": "v1.11.1",
+  "files_sha256": {
+    "vendor/lz4/lz4.c": "2e58f124f1032f15aecc99772b7de624c4289245729fa5403506f00b06a54937",
+    "vendor/lz4/lz4.h": "c204caad0638a12c9ce80831094ec8fffb34aa57e74307067b08fc9452fc2611",
+    "licenses/LZ4-BSD-2-Clause.txt": "8b58c446121a109ccf32edc094bba3010a3d85e4ee3702950db55e4d3e87736c"
+  }
+}

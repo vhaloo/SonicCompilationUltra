@@ -24,6 +24,7 @@ Sonic Compilation Ultra is distributed for noncommercial use with complete sourc
 | minimp3 | lieff / contributors | [CC0 notice](licenses/minimp3-CC0.txt) |
 | SDL2 | Sam Lantinga and contributors; [source](https://github.com/libsdl-org/SDL) | [zlib licence](licenses/SDL2-zlib.txt) |
 | zlib 1.3.1 | Jean-loup Gailly and Mark Adler; [source](https://github.com/madler/zlib) | [zlib licence](licenses/zlib.txt) |
+| LZ4 1.11.1 block codec | Yann Collet and contributors; [source](https://github.com/lz4/lz4/tree/v1.11.1/lib) | [BSD 2-Clause](licenses/LZ4-BSD-2-Clause.txt); pinned source and hashes in `vendor/lz4` |
 | Dear ImGui | Omar Cornut and contributors; [source](https://github.com/ocornut/imgui) | [MIT](licenses/Dear-ImGui-MIT.txt) |
 | Musashi disassembler | Karl Stenerud; [source](https://github.com/kstenerud/Musashi) | [MIT-style notice](licenses/Musashi.txt), retained upstream source |
 | SCU Interface font, modified Noto Sans JP subset | Original font copyright Adobe and contributors; [Google Fonts source](https://github.com/google/fonts/tree/295d98a7a0c17c68f1341eaeea354e7960ea70d3/ofl/notosansjp) | [SIL OFL 1.1](licenses/Noto-Sans-JP-OFL.txt); renamed subset, original notices preserved |

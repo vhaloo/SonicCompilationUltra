@@ -2,92 +2,42 @@
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
-#include <zlib.h>
-#include <cstdlib>
-#include <limits>
+#include <lz4.h>
 
 namespace scu {
 struct RewindHistory::Workspace {
-    z_stream compressor{}, decompressor{};
-    bool compressReady = false, decompressReady = false;
-    size_t allocated = 0;
-    struct alignas(std::max_align_t) Allocation {
-        size_t bytes;
-    };
+    LZ4_stream_t *encoder = nullptr;
     std::vector<uint8_t> delta, compressed;
-    static voidpf allocate(voidpf opaque, uInt count, uInt size) {
-        auto &self = *static_cast<Workspace *>(opaque);
-        if (size &&
-            size_t(count) > (std::numeric_limits<size_t>::max() - sizeof(Allocation)) / size)
-            return nullptr;
-        size_t bytes = size_t(count) * size + sizeof(Allocation);
-        auto p = static_cast<Allocation *>(std::calloc(1, bytes));
-        if (!p)
-            return nullptr;
-        p->bytes = bytes;
-        self.allocated += bytes;
-        return p + 1;
-    }
-    static void release(voidpf opaque, voidpf address) {
-        if (!address)
-            return;
-        auto &self = *static_cast<Workspace *>(opaque);
-        auto p = static_cast<Allocation *>(address) - 1;
-        self.allocated -= p->bytes;
-        std::free(p);
-    }
-    void initialise(z_stream &stream) {
-        stream.zalloc = allocate;
-        stream.zfree = release;
-        stream.opaque = this;
-    }
     size_t compress() {
-        if (!compressReady) {
-            initialise(compressor);
-            // XOR deltas are mostly zero runs. RLE avoids dictionary search;
-            // a smaller hash workspace leaves more memory for actual history.
-            if (deflateInit2(&compressor, Z_BEST_SPEED, Z_DEFLATED, 15, 5, Z_RLE) != Z_OK)
+        if (!encoder) {
+            encoder = LZ4_createStream();
+            if (!encoder)
                 throw std::runtime_error("Rewind compression setup failed");
-            compressReady = true;
         }
-        if (deflateReset(&compressor) != Z_OK)
-            throw std::runtime_error("Rewind compressor reset failed");
-        // compressBound assumes zlib's default memory parameters. This stream
-        // uses a smaller workspace, so ask it for the correct worst-case bound.
-        compressed.resize(deflateBound(&compressor, uLong(delta.size())));
-        compressor.next_in = delta.data();
-        compressor.avail_in = uInt(delta.size());
-        compressor.next_out = compressed.data();
-        compressor.avail_out = uInt(compressed.size());
-        if (deflate(&compressor, Z_FINISH) != Z_STREAM_END)
+        // Reuse an aligned workspace, with independent bounded blocks. Disk
+        // saves keep their format; every guest tick and its sound are retained.
+        compressed.resize(LZ4_compressBound(int(delta.size())));
+        const int size = LZ4_compress_fast_extState(
+            encoder, reinterpret_cast<const char *>(delta.data()),
+            reinterpret_cast<char *>(compressed.data()), int(delta.size()),
+            int(compressed.size()), 1);
+        if (size <= 0)
             throw std::runtime_error("Rewind compression failed");
-        return compressor.total_out;
+        return size;
     }
     void expand(const std::vector<uint8_t> &source) {
-        if (!decompressReady) {
-            initialise(decompressor);
-            if (inflateInit(&decompressor) != Z_OK)
-                throw std::runtime_error("Rewind decoder setup failed");
-            decompressReady = true;
-        }
-        if (inflateReset(&decompressor) != Z_OK)
-            throw std::runtime_error("Rewind decoder reset failed");
-        decompressor.next_in = const_cast<Bytef *>(source.data());
-        decompressor.avail_in = uInt(source.size());
-        decompressor.next_out = delta.data();
-        decompressor.avail_out = uInt(delta.size());
-        if (inflate(&decompressor, Z_FINISH) != Z_STREAM_END ||
-            decompressor.total_out != delta.size() || decompressor.avail_in)
+        const int size = LZ4_decompress_safe(
+            reinterpret_cast<const char *>(source.data()),
+            reinterpret_cast<char *>(delta.data()), int(source.size()), int(delta.size()));
+        if (size != int(delta.size()))
             throw std::runtime_error("Invalid compressed rewind frame");
     }
     size_t bytes() const {
-        return sizeof(Workspace) + allocated + delta.capacity() + compressed.capacity();
+        return sizeof(Workspace) + (encoder ? LZ4_sizeofState() : 0) + delta.capacity() +
+               compressed.capacity();
     }
     ~Workspace() {
-        if (compressReady)
-            deflateEnd(&compressor);
-        if (decompressReady)
-            inflateEnd(&decompressor);
+        LZ4_freeStream(encoder);
     }
 };
 RewindHistory::RewindHistory() = default;
