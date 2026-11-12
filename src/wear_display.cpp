@@ -50,7 +50,7 @@ Vertex LensMesh::project(float u, float v) const {
     v = std::clamp(v, 0.f, 1.f);
     float w = float(width), h = float(height), scale = std::min(w / aspect, h);
     float rw = scale * aspect, rh = scale;
-    const float radius = std::min(w, h) * .48f;
+    const float radius = std::min(w, h) * .5f;
     if (round) {
         float fit = std::min(1.f, radius / std::hypot(rw * .5f, rh * .5f));
         rw *= fit;

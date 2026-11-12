@@ -10,6 +10,8 @@ namespace scu {
     X(performanceTarget, 30, 120)                                                                                \
     X(performanceHeadroom, 10, 45)                                                                               \
     X(wearZoom, 0, 1000)                                                                                         \
+    X(mobileActions, 0, 1) X(motionMode, 0, 2) X(motionSensitivity, 40, 240) X(motionDeadzone, 5, 50) \
+    X(motionFlickThreshold, 3, 20) \
     X(wearCrownSpeed, 0, 2) X(wearLensStrength, 0, 100) X(questFoveation, 0, 4) X(                               \
         minimumRenderScale, 25, 100) X(maximumRenderScale, 25, 100) X(questShaderQuality, 0, 2)                  \
         X(mobileLayout, 0, 2) X(mobileOrientation, 0, 2) X(mobileTouch, 0, 2) X(                                 \
@@ -116,7 +118,7 @@ namespace scu {
     X(autoPerformance)                                                                             \
     X(adaptiveEffects)                                                                             \
     X(advancedOptions)                                                                             \
-    X(wearFisheye) X(wearCrownReverse) X(performancePixelLock) X(thermalAware) X(mobileLeftHanded) \
+    X(wearFisheye) X(wearCrownReverse) X(wearFillMigrated) X(motionFlick) X(motionInvertX) X(motionInvertY) X(performancePixelLock) X(thermalAware) X(mobileLeftHanded) \
         X(mobileImmersive) X(mobileHints) X(questTransparent) X(questRemote) X(questHandTracking)  \
             X(questInsetCrt) X(questCrtCoplanar) X(spinballTriggers) X(questMoveRotate)            \
                 X(questControlHints) X(objectPreview) X(objectOrigins) X(frozenPreviews)           \
@@ -214,7 +216,7 @@ template <class T> auto appearance(T &s) {
                     s.voxelFraming, s.voxelThickness, s.voxelSpacing, s.voxelRelief, s.voxelLight,
                     s.voxelYaw, s.voxelPitch, s.voxelBackground, s.voxelCrt, s.desktopPresentation,
                     s.desktopFrameScale, s.desktopCrtStrength, s.desktopCabinetAngle,
-                    s.desktopSurround, s.desktopCrtMask, s.wearZoom, s.wearFisheye);
+                    s.desktopSurround, s.desktopCrtMask, s.wearZoom);
 }
 template <class T> auto spatialAppearance(T &s) {
     return std::tie(s.questMode, s.questPassthrough, s.questTransparent, s.questCrt,
@@ -230,7 +232,6 @@ Settings pictureForLook(int n, const Settings &defaults) {
     case 1: // Original cartridge framing
         picture.view = 4;
         picture.wearZoom = 1000;
-        picture.wearFisheye = false;
         picture.background = 5;
         picture.questSpinballAuto = false;
         break;
@@ -248,7 +249,6 @@ Settings pictureForLook(int n, const Settings &defaults) {
     case 4: // CRT
         picture.view = 4;
         picture.wearZoom = 1000;
-        picture.wearFisheye = false;
         picture.desktopPresentation = 2;
         picture.questMode = 5;
         picture.questSpinballAuto = false;
@@ -318,7 +318,8 @@ void Settings::restoreDefaults(const Settings &defaults, int section) {
         break;
     case 5:
         reset(F(padLabels), F(spinballTriggers), F(jumpLayout), F(rewindButton), F(quickControls),
-              F(deadzone));
+              F(deadzone),F(mobileActions),F(motionMode),F(motionSensitivity),F(motionDeadzone),
+              F(motionFlickThreshold),F(motionFlick),F(motionInvertX),F(motionInvertY));
         break;
     case 6:
         reset(F(lockon), F(spindash), F(fastBoot), F(noSpriteLimit), F(rewind), F(rewindAudio),
@@ -332,7 +333,9 @@ void Settings::restoreDefaults(const Settings &defaults, int section) {
               F(mobileLayout), F(mobileOrientation), F(mobileTouch), F(mobileTouchScale),
               F(mobileOpacity), F(mobileDeadzone), F(mobileSafeMargin), F(mobileRefresh),
               F(mobileRenderQuality), F(mobileStickX), F(mobileStickY), F(mobileButtonsX),
-              F(mobileButtonsY), F(mobileLeftHanded), F(mobileImmersive), F(mobileHints));
+              F(mobileButtonsY), F(mobileLeftHanded), F(mobileImmersive), F(mobileHints),
+              F(mobileActions),F(motionMode),F(motionSensitivity),F(motionDeadzone),
+              F(motionFlickThreshold),F(motionFlick),F(motionInvertX),F(motionInvertY));
         break;
     case 10: // Quest
         reset(F(questWidth), F(questDistance), F(questHeight), F(questTilt), F(questResolution),

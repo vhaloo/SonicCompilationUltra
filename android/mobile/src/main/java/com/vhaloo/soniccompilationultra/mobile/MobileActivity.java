@@ -15,6 +15,29 @@ public final class MobileActivity extends SDLActivity {
     private volatile boolean nativeReady, rotarySeen;
     private final java.util.concurrent.atomic.AtomicBoolean importingInbox=new java.util.concurrent.atomic.AtomicBoolean();
     public static native void nativeRotary(float value);
+    public static native void nativeMotion(float x,float y,float z,float w,float gx,float gy,float gz,
+                                          float ax,float ay,float az,int source,int rotation);
+    private MotionSensors motionSensors;
+    private boolean activityResumed=false,motionRequested=false,motionGestures=false;
+    private synchronized MotionSensors motionSensors() {
+        if(motionSensors==null)motionSensors=new MotionSensors(this,
+            (x,y,z,w,gx,gy,gz,ax,ay,az,source,rotation)->{
+                if(nativeReady)nativeMotion(x,y,z,w,gx,gy,gz,ax,ay,az,source,rotation);
+            },()->getWindow().getDecorView().getDisplay()==null?0:
+                   getWindow().getDecorView().getDisplay().getRotation());
+        return motionSensors;
+    }
+    public int motionSource(){return motionSensors().source();}
+    public void configureMotion(boolean enabled,boolean gestures) {
+        runOnUiThread(()->{
+            motionRequested=enabled;motionGestures=gestures;
+            motionSensors().active(enabled&&activityResumed,gestures);
+        });
+    }
+    @Override public void onResume(){super.onResume();activityResumed=true;
+        if(motionSensors!=null)motionSensors.active(motionRequested,motionGestures);}
+    @Override public void onPause(){activityResumed=false;
+        if(motionSensors!=null)motionSensors.stop();super.onPause();}
     private boolean isWatch() { return getPackageManager().hasSystemFeature(android.content.pm.PackageManager.FEATURE_WATCH); }
     private int deviceFlags() {
         boolean rotary=rotarySeen;
@@ -146,6 +169,7 @@ public final class MobileActivity extends SDLActivity {
         SDLActivity.onNativeKeyUp(android.view.KeyEvent.KEYCODE_BACK);
     }
     @Override public void onDestroy() {
+        if(motionSensors!=null)motionSensors.stop();
         nativeReady=false;
         super.onDestroy();
     }

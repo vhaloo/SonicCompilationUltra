@@ -1,6 +1,7 @@
 #include "ui.h"
 #include "quest.h"
 #include "mobile.h"
+#include "motion_controls.h"
 #include "voxel_export.h"
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_sdlrenderer2.h>
@@ -1362,8 +1363,8 @@ void App::pollInput() {
     core.buttons[0] |= spatialButtons;
     rewindHeld |= settings.rewind && spatialRewind;
 #endif
+    core.buttons[0] = motion::combine(motionButtons, core.buttons[0] | mobileButtons);
 #ifdef SCU_MOBILE
-    core.buttons[0] |= mobileButtons;
     rewindHeld |= settings.rewind && mobileRewind;
 #endif
     if (releaseInput) {
@@ -1917,7 +1918,9 @@ void App::present(bool capture) {
     bool expanded = core.loaded && cachedExpanded;
     SDL_Texture *volumeTexture = nullptr;
     if (core.loaded && !renderSettings.projectionUiOnly) {
-        if (!transparentCanvas) {
+        // A flat native watch frame covers its complete source canvas. Building
+        // and uploading an unseen blurred backdrop only costs frame time.
+        if (!transparentCanvas && !(renderSettings.wearActive && !expanded && !renderSettings.voxelMode)) {
             if (refresh || !bgTexture)
                 core.world.makeBackdrop(core.snapshot, scene, renderSettings);
             if (!bgTexture) {
@@ -2034,13 +2037,15 @@ void App::present(bool capture) {
                 : renderSettings.nativeScale
                     ? renderSettings.nativeScale
                     : std::min(float(safeW) / core.nativeW, float(availableH) / core.nativeH);
-            if (renderSettings.integerScale && scale >= 1)
+            if (renderSettings.integerScale && !renderSettings.wearActive && scale >= 1)
                 scale = std::floor(scale);
             scale = std::min(
                 scale, std::min(float(drawableW) / core.nativeW, float(availableH) / core.nativeH));
             SDL_Rect d{(drawableW - (int)(core.nativeW * scale)) / 2,
                        (availableH - (int)(core.nativeH * scale)) / 2, (int)(core.nativeW * scale),
                        (int)(core.nativeH * scale)};
+            if (renderSettings.wearActive)
+                d = {0, 0, drawableW, availableH};
             nativeBounds = {float(d.x), float(d.y), float(d.x + d.w), float(d.y + d.h)};
 #ifndef SCU_QUEST
             if (cachedVolume)
@@ -2296,8 +2301,10 @@ void App::hud(bool volume) {
             }
     }
     if (settings.locator) {
-        float r = 18, mx = std::clamp(px, 24.0f, io.DisplaySize.x - 24),
-              my = std::clamp(py, 32.0f, io.DisplaySize.y - 60);
+        const float markerScale = settings.wearActive ? .35f : 1.f;
+        float r = 18 * markerScale,
+              mx = std::clamp(px, 24.0f * markerScale, io.DisplaySize.x - 24 * markerScale),
+              my = std::clamp(py, 32.0f * markerScale, io.DisplaySize.y - 60 * markerScale);
         draw->AddCircle({mx, my}, r, IM_COL32(110, 242, 245, 210), 32, 2);
         draw->AddLine({mx, my - r - 5}, {mx, my - r - 16}, IM_COL32(240, 240, 240, 220), 2);
         if (mx != px || my != py) {
@@ -2323,7 +2330,7 @@ void App::hud(bool volume) {
             worldPoint(v.cameraX, v.cameraY + core.nativeH, plane)};
         draw->AddPolyline(corners, 4, IM_COL32(255, 255, 255, 110), ImDrawFlags_Closed, 1);
     }
-    if (settings.hud != 3) {
+    if (settings.hud != 3 && !settings.wearActive) {
         float safe = std::min(io.DisplaySize.x, io.DisplaySize.y * 16 / 9),
               x = settings.hud == 2 ? 18 : (io.DisplaySize.x - safe) / 2 + 18, y = 18;
         if (settings.hud == 1) {
@@ -2649,8 +2656,8 @@ void App::ui() {
     float width = compact ? std::min(1120 * uiFactor, io.DisplaySize.x - 12) : io.DisplaySize.x;
     float height = compact ? std::min(820 * uiFactor, io.DisplaySize.y - 12) : io.DisplaySize.y;
     if (watch && settings.wearRound) {
-        width = io.DisplaySize.x * .82f;
-        height = io.DisplaySize.y * .82f;
+        width = io.DisplaySize.x * .90f;
+        height = io.DisplaySize.y * .90f;
     }
     ImGui::SetNextWindowPos({io.DisplaySize.x / 2, io.DisplaySize.y / 2}, {}, {0.5f, 0.5f});
     ImGui::SetNextWindowSize({width, height});
@@ -2659,7 +2666,8 @@ void App::ui() {
     if (focusMenu)
         ImGui::SetNextWindowFocus();
     ImGui::Begin("###scu-menu", nullptr,
-                 ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
+                 ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings |
+                     (watch && !settings.highContrast ? ImGuiWindowFlags_NoBackground : 0));
     float safe = std::min(ImGui::GetContentRegionAvail().x, 1220 * uiFactor);
     ImGui::SetCursorPosX((width - safe) / 2);
     ImGui::BeginChild("##safe", {safe, 0}, ImGuiChildFlags_NavFlattened,
@@ -2823,15 +2831,19 @@ void App::ui() {
             notice.clear();
         ImGui::Separator();
     }
-    if ((tab == 0 && !watch) || tab == 1) {
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(.09f, .34f, .42f, 1));
-        if (button("defaults", {-1, ImGui::GetFrameHeight() * 1.18f}))
-            requestAction(3);
-        ImGui::PopStyleColor();
-    }
-    if (tab > 0 && tab != 8 && tab != profilesSection() &&
-        (tab != 1 || settings.advancedOptions) && button("sectiondefaults", {-1, 0}))
-        requestAction(7, tab);
+    auto resetControls = [&] {
+        if ((tab == 0 && !watch) || tab == 1) {
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(.09f, .34f, .42f, 1));
+            if (button("defaults", {-1, ImGui::GetFrameHeight() * 1.18f}))
+                requestAction(3);
+            ImGui::PopStyleColor();
+        }
+        if (tab > 0 && tab != 8 && tab != profilesSection() &&
+            (tab != 1 || settings.advancedOptions) && button("sectiondefaults", {-1, 0}))
+            requestAction(7, tab);
+    };
+    if (!watch)
+        resetControls();
     if (tab == 0)
         libraryUi();
     else if (tab == 1 && !settings.advancedOptions)
@@ -2840,6 +2852,8 @@ void App::ui() {
         profilesUi();
     else
         optionsUi(tab);
+    if (watch)
+        resetControls();
     focusPage = false;
     ImGui::EndChild();
     if (sideGuide) {
@@ -3542,6 +3556,14 @@ void App::optionsUi(int section) {
         ImGui::TextWrapped("%s", tr("audiohelp", language));
         break;
     case 5: {
+#ifdef SCU_MOBILE
+        if (mobile) {
+            mobile->inputOptions();
+            if (!settings.advancedOptions)
+                break;
+            ImGui::Separator();
+        }
+#endif
         changed |=
             choice("padlabels", settings.padLabels, {"auto", "Xbox", "PlayStation", "Nintendo"});
         changed |= tick("spinballtriggers", settings.spinballTriggers);

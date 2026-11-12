@@ -11,9 +11,19 @@
 #include <stdexcept>
 #include <atomic>
 #include <cstdio>
+#include <mutex>
 
 namespace {
 std::atomic<float> crownDelta{0};
+std::mutex motionMutex;
+scu::motion::Sample motionSample;
+}
+extern "C" JNIEXPORT void JNICALL
+Java_com_vhaloo_soniccompilationultra_mobile_MobileActivity_nativeMotion(
+    JNIEnv *, jclass, jfloat x,jfloat y,jfloat z,jfloat w,jfloat gx,jfloat gy,jfloat gz,
+    jfloat ax,jfloat ay,jfloat az,jint source,jint rotation) {
+    std::lock_guard<std::mutex> lock(motionMutex);
+    motionSample={{x,y,z,w},{gx,gy,gz},{ax,ay,az},SDL_GetTicks64(),source,rotation};
 }
 extern "C" JNIEXPORT void JNICALL
 Java_com_vhaloo_soniccompilationultra_mobile_MobileActivity_nativeRotary(JNIEnv *, jclass,
@@ -41,11 +51,12 @@ struct Activity {
         }
     }
 };
-const char *label(touch::Action a, bool pinball, int language) {
+const char *label(touch::Action a, touch::Profile profile, int language) {
     using A = touch::Action;
+    const bool pinball = profile == touch::Profile::Pinball;
     switch (a) {
     case A::A:
-        return pinball ? "L" : "A";
+        return pinball ? "L" : profile == touch::Profile::Jump ? tr("mobilejump", language) : "A";
     case A::B:
         return pinball ? "R" : "B";
     case A::C:
@@ -91,6 +102,9 @@ MobilePresentation::~MobilePresentation() {
 void MobilePresentation::clearInput() {
     input.clear();
     app.mobileButtons = 0;
+    app.motionButtons = 0;
+    motionController.recenter();
+    motionState = {};
     app.mobileRewind = false;
     scroll = 0;
     if (pointerDown)
@@ -111,6 +125,8 @@ void MobilePresentation::beginFrame() {
         metricsAt = SDL_GetTicks64();
         Activity a;
         if (a.type) {
+            availableMotion = a.env->CallIntMethod(a.object,
+                a.env->GetMethodID(a.type, "motionSource", "()I"));
             auto method = a.env->GetMethodID(a.type, "displayInfo", "()[I");
             auto result = static_cast<jintArray>(a.env->CallObjectMethod(a.object, method));
             if (result && a.env->GetArrayLength(result) >= 7) {
@@ -165,6 +181,23 @@ void MobilePresentation::beginFrame() {
         wasControls = controls;
     }
     auto &s = app.settings;
+    if (s.wearActive && !s.wearFillMigrated) {
+        s.wearFisheye = true;
+        s.wearFillMigrated = true;
+        app.dirty = true;
+    }
+    const bool sensorActive = s.motionMode && app.focused &&
+        ((app.core.loaded && !app.menu) || app.controlsMenu());
+    const int sensorConfig = int(sensorActive) + 2 * int(s.motionFlick);
+    if (motionConfig != sensorConfig) {
+        Activity a;
+        if (a.type)
+            a.env->CallVoidMethod(a.object,
+                a.env->GetMethodID(a.type, "configureMotion", "(ZZ)V"),
+                sensorActive ? JNI_TRUE : JNI_FALSE, s.motionFlick ? JNI_TRUE : JNI_FALSE);
+        motionConfig = sensorConfig;
+        motionController.recenter();
+    }
     touch::Options options;
     options.menu = app.menu;
     options.controls = controls;
@@ -176,7 +209,10 @@ void MobilePresentation::beginFrame() {
     options.stickY = float(s.mobileStickY);
     options.buttonsX = float(s.mobileButtonsX);
     options.buttonsY = float(s.mobileButtonsY);
-    options.pinball = app.core.currentId == "spinball";
+    options.profile = s.mobileActions ? touch::Profile::ABC :
+        touch::profileForGame(app.core.currentId,
+            app.core.currentId == "compilation" ?
+                app.core.world.inspect(app.core.snapshot, app.core.game).family : 0);
     options.watch = s.wearActive;
     options.circular = s.wearRound;
     options.utilityBank = utilityBank;
@@ -200,7 +236,7 @@ void MobilePresentation::beginFrame() {
                       s.mobileStickY,
                       s.mobileButtonsX,
                       s.mobileButtonsY,
-                      int(options.pinball),
+                      int(options.profile),
                       int(options.watch),
                       int(options.circular),
                       int(utilityBank)}) {
@@ -447,6 +483,20 @@ void MobilePresentation::poll() {
     app.mobileButtons = s.buttons;
     app.mobileRewind = s.rewind;
     scroll = s.scroll;
+    const auto &settings = app.settings;
+    motionController.configure({settings.motionMode,settings.motionSensitivity,settings.motionDeadzone,
+        settings.motionFlickThreshold,settings.motionFlick,settings.motionInvertX,settings.motionInvertY});
+    motion::Sample sample;
+    { std::lock_guard<std::mutex> lock(motionMutex); sample=motionSample; }
+    if (app.focused && ((!app.menu && app.core.loaded) || app.controlsMenu())) {
+        motionController.update(sample);
+        motionState=motionController.state(SDL_GetTicks64());
+        app.motionButtons=app.menu?0:motionState.directions;
+        if (!app.menu && motionState.flick)
+            app.motionButtons|=uint16_t(1u << (app.core.currentId=="spinball"?8:9));
+    } else {
+        motionController.recenter();motionState={};app.motionButtons=0;
+    }
 }
 void MobilePresentation::drawControls() {
     if (!controlsDraw)
@@ -456,20 +506,69 @@ void MobilePresentation::drawControls() {
     draw.PushTextureID(ImGui::GetIO().Fonts->TexID);
     draw.PushClipRect({0, 0}, {width / density, height / density});
     auto state = input.state(layout, app.settings.mobileDeadzone / 100.f);
-    int alpha = app.menu ? 245 : app.settings.mobileOpacity * 255 / 100;
-    auto panel = IM_COL32(12, 27, 46, alpha),
-         edge = IM_COL32(84, 204, 221, std::min(255, alpha + 50));
-    auto white = IM_COL32(235, 248, 255, std::min(255, alpha + 65));
+    const float opacity = app.menu ? 1.f : app.settings.mobileOpacity * .01f;
+    const auto white = IM_COL32(248, 248, 248, int(216 * opacity));
+    const auto shadow = IM_COL32(0, 0, 0, int(190 * opacity));
     auto font = ImGui::GetFont();
-    auto text = [&](const touch::Rect &r, const char *s, float size = 15.f) {
+    auto text = [&](const touch::Rect &r, const char *s, float size = 12.f) {
         auto extent = font->CalcTextSizeA(size, 10000, 0, s);
-        if (extent.x > r.w - 4 && extent.x > 0) {
-            size *= std::max(.5f, (r.w - 4) / extent.x);
+        if (extent.x > r.w * .8f && extent.x > 0) {
+            size *= std::max(.5f, r.w * .8f / extent.x);
             extent = font->CalcTextSizeA(size, 10000, 0, s);
         }
-        draw.AddText(font, size, {r.x + (r.w - extent.x) / 2, r.y + (r.h - extent.y) / 2}, white,
-                     s);
+        ImVec2 p{r.x + (r.w - extent.x) / 2, r.y + (r.h - extent.y) / 2};
+        draw.AddText(font, size, {p.x + .5f, p.y + .5f}, shadow, s);
+        draw.AddText(font, size, p, white, s);
     };
+    auto ring = [&](ImVec2 center, float radius, bool pressed) {
+        const float a = pressed ? std::min(1.f, opacity + .25f) : opacity;
+        draw.AddCircleFilled(center, radius, IM_COL32(0, 0, 0, int((pressed ? 22 : 5) * a)), 40);
+        draw.AddCircle(center, radius, IM_COL32(0, 0, 0, int(156 * a)), 40, 1.8f);
+        draw.AddCircle(center, radius, IM_COL32(248, 248, 248, int(216 * a)), 40, .65f);
+    };
+    // Keep overview statistics flat and compact, after the lens. Native zoom
+    // already contains the cartridge HUD; drawing a second copy would clutter it.
+    if (app.settings.wearActive && !app.menu && app.core.loaded &&
+        app.settings.hud != 3 && app.settings.wearZoomValue < 999.5) {
+        auto scene=app.core.world.inspect(app.core.snapshot,app.core.game);
+        const float screenW=width/density,screenH=height/density;
+        const float size=app.settings.hudScale?std::clamp(app.settings.hudScale*4.f,7.f,18.f):8.5f;
+        float cx=screenW*.5f,cy=screenH*.17f;
+        if(app.settings.hud==2)cx=screenW*.39f;
+        if(app.settings.hud==1 && scene.ready && app.core.world.canvas.coverageW>0 &&
+           app.core.world.canvas.coverageH>0) {
+            const auto &c=app.core.world.canvas;
+            const float u=std::clamp(float((scene.playerX-c.left)/c.coverageW),0.f,1.f);
+            const float v=std::clamp(float((scene.playerY-c.top)/c.coverageH),0.f,1.f);
+            const auto point=lens.project(u,v);
+            cx=std::clamp(point.x/density,screenW*.3f,screenW*.7f);
+            cy=std::clamp(point.y/density-30.f,screenH*.17f,screenH*.72f);
+        }
+        if(scene.ready && scene.family==4 && app.nativeFrameTexture()) {
+            const float w=screenW*.66f,h=w*16/app.core.nativeW;
+            draw.AddImage(reinterpret_cast<ImTextureID>(app.nativeFrameTexture()),
+                {cx-w*.5f,cy},{cx+w*.5f,cy+h},{0,0},{1,16.f/app.core.nativeH});
+        } else if(scene.ready) {
+            const auto &r=app.core.snapshot.ram;
+            char first[96]{},second[96]{};
+            if(scene.family==5)
+                std::snprintf(first,sizeof first,"%s %u   %s %u",tr("rings",app.language),
+                    unsigned(be16(r,0x0A5A)),tr("lives",app.language),unsigned(be16(r,0x0680)));
+            else {
+                const unsigned score=((uint32_t(be16(r,0xFE26))<<16)|be16(r,0xFE28))*10;
+                std::snprintf(first,sizeof first,"%06u   %02u:%02u",score,unsigned(r[0xFE23]),unsigned(r[0xFE24]));
+                std::snprintf(second,sizeof second,"%s %u   %s %u",tr("rings",app.language),
+                    unsigned(be16(r,0xFE20)),tr("lives",app.language),unsigned(r[0xFE12]));
+            }
+            for(int line=0;line<2;++line) {
+                const char *caption=line?second:first;if(!*caption)continue;
+                auto extent=font->CalcTextSizeA(size,10000,0,caption);
+                const ImVec2 p{cx-extent.x*.5f,cy+line*(size+2)};
+                draw.AddText(font,size,{p.x+.6f,p.y+.6f},IM_COL32(0,0,0,235),caption);
+                draw.AddText(font,size,p,IM_COL32(248,248,248,235),caption);
+            }
+        }
+    }
     if (layout.deck) {
         auto c = layout.canvas;
         auto safe = layout.safe;
@@ -481,22 +580,42 @@ void MobilePresentation::drawControls() {
         auto r = layout.stick;
         ImVec2 center{r.x + r.w / 2, r.y + r.h / 2};
         float radius = r.w / 2;
-        draw.AddCircleFilled(center, radius, panel, 48);
-        draw.AddCircle(center, radius, edge, 48, 2);
-        draw.AddLine({center.x - radius * .6f, center.y}, {center.x + radius * .6f, center.y}, edge,
-                     2);
-        draw.AddLine({center.x, center.y - radius * .6f}, {center.x, center.y + radius * .6f}, edge,
-                     2);
-        draw.AddCircleFilled(
-            {center.x + state.stick.x * radius * .55f, center.y + state.stick.y * radius * .55f},
-            radius * .3f, edge, 32);
+        const bool pressed = std::hypot(state.stick.x, state.stick.y) > .05f;
+        ring(center, radius - 1, pressed);
+        for (int direction = 0; direction < 4; ++direction) {
+            const float angle = direction * 1.570796327f;
+            auto point = [&](float x, float y) {
+                return ImVec2{center.x + x * std::cos(angle) - y * std::sin(angle),
+                              center.y + x * std::sin(angle) + y * std::cos(angle)};
+            };
+            const ImVec2 arrow[] = {point(-radius * .14f, -radius * .40f),
+                                    point(0, -radius * .64f),
+                                    point(radius * .14f, -radius * .40f)};
+            draw.AddPolyline(arrow, 3, shadow, 0, 1.8f);
+            draw.AddPolyline(arrow, 3, white, 0, .7f);
+        }
+        ImVec2 thumb{center.x + state.stick.x * radius * .55f,
+                     center.y + state.stick.y * radius * .55f};
+        if (pressed)
+            ring(thumb, radius * .23f, true);
+        draw.AddCircleFilled(thumb, .8f, white, 12);
     }
     for (const auto &b : layout.buttons) {
         auto r = b.rect;
-        draw.AddRectFilled({r.x, r.y}, {r.x + r.w, r.y + r.h}, panel, 10);
-        draw.AddRect({r.x, r.y}, {r.x + r.w, r.y + r.h}, edge, 10, 0, 1.5f);
-        text(r, label(b.action, app.core.currentId == "spinball", app.language),
-             r.w < 44 ? 14.f : 15.f);
+        const int bit = b.action == touch::Action::A ? 9 : b.action == touch::Action::B ? 0 :
+                        b.action == touch::Action::C ? 8 : b.action == touch::Action::Start ? 3 : -1;
+        const bool pressed = bit >= 0 ? (state.buttons & (1u << bit)) != 0 :
+                             b.action == touch::Action::Rewind && state.rewind;
+        if (b.circular)
+            ring({r.x + r.w * .5f, r.y + r.h * .5f}, std::min(r.w, r.h) * .5f - 1, pressed);
+        else {
+            draw.AddRect({r.x, r.y}, {r.x + r.w, r.y + r.h}, shadow, 9, 0, 1.8f);
+            draw.AddRect({r.x, r.y}, {r.x + r.w, r.y + r.h}, white, 9, 0, .65f);
+        }
+        const char *caption = app.settings.wearActive && b.action == touch::Action::Menu ? "..." :
+                              app.settings.wearActive && b.action == touch::Action::Utility ? "+" :
+                              label(b.action, layout.profile, app.language);
+        text(r, caption, r.w < 35 ? 10.f : 12.f);
     }
     if (!app.menu && layout.deck && app.settings.mobileHints) {
         auto r = layout.canvas;
@@ -531,9 +650,9 @@ void MobilePresentation::endFrame() {
     SDL_Rect dest{int(layout.canvas.x * density), int(layout.canvas.y * density),
                   int(layout.canvas.w * density), int(layout.canvas.h * density)};
     if (app.settings.wearActive && !app.menu) {
-        float blend = app.settings.wearFisheye ? app.settings.wearLensStrength * .01f : 0;
+        float blend = app.settings.wearFisheye ? 1.f : 0.f;
         lens.update(dest.w, dest.h, float(textureW) / textureH, app.settings.wearRound, blend,
-                    1.25f * blend);
+                    app.settings.wearLensStrength * .0125f);
         SDL_Rect oldViewport;
         SDL_RenderGetViewport(app.renderer, &oldViewport);
         SDL_RenderSetViewport(app.renderer, &dest);
@@ -584,6 +703,42 @@ bool MobilePresentation::chooseRom() {
         a.env->DeleteLocalRef(path);
     }
     return false;
+}
+void MobilePresentation::inputOptions() {
+    auto &s=app.settings;
+    bool changed=false;
+    if(s.advancedOptions)
+        changed|=app.choice("mobileactions",s.mobileActions,{"mobileactionauto","mobileactionabc"});
+    changed|=app.choice("motioncontrol",s.motionMode,{"off","motionhorizontal","motiontwod"});
+    if(s.motionMode) {
+        ImGui::TextWrapped("%s",tr(availableMotion==1?"motionfused":
+            availableMotion==2?"motiongravity":availableMotion==3?"motionaccelerometer":"motionunavailable",app.language));
+        changed|=app.tick("motionflick",s.motionFlick);
+        if(app.button("motioncenter"))motionController.recenter();
+        ImGui::TextWrapped("%s",tr("motioncenterhelp",app.language));
+        const float side=std::min(94.f,ImGui::GetContentRegionAvail().x);
+        auto p=ImGui::GetCursorScreenPos();
+        ImVec2 center{p.x+side*.5f,p.y+side*.5f};
+        auto *draw=ImGui::GetWindowDrawList();
+        draw->AddCircle(center,side*.4f,IM_COL32(140,157,181,150),40,1);
+        const float neutral=s.motionDeadzone*.01f*side*.4f;
+        draw->AddCircle(center,neutral,IM_COL32(140,157,181,100),24,1);
+        const ImVec2 indicator{center.x+motionState.x*side*.38f,center.y+motionState.y*side*.38f};
+        draw->AddLine(center,indicator,IM_COL32(123,218,213,220),2);
+        draw->AddCircleFilled(indicator,4,IM_COL32(123,218,213,230),16);
+        ImGui::Dummy({side,side});
+        if(s.advancedOptions) {
+            changed|=app.slider("motionsensitivity",s.motionSensitivity,40,240,"%d%%");
+            changed|=app.slider("motiondeadzone",s.motionDeadzone,5,50,"%d%%");
+            if(s.motionFlick)
+                changed|=app.slider("motionflickthreshold",s.motionFlickThreshold,3,20,"%d m/s2");
+            changed|=app.tick("motioninvertx",s.motionInvertX);
+            changed|=app.tick("motioninverty",s.motionInvertY);
+        }
+    }
+    if(!s.advancedOptions)
+        changed|=app.slider("mobileopacity",s.mobileOpacity,20,100,"%d%%");
+    if(changed)app.dirty=true;
 }
 void MobilePresentation::options() {
     auto &s = app.settings;

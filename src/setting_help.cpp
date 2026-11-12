@@ -298,16 +298,72 @@ static const SettingHelp entries[] = {
       "丸型画面の魚眼レンズは端を残して中央を拡大します。曲げるのはゲーム画像だけで、操作とメニュー"
       "は平面です。無効にすると縦横比を保つ長方形で表示します。"),
     H("wearlensstrength", Wear,
-      "Blend between the aspect-correct rectangle and the round lens. Higher values fill more of "
-      "the circular display and emphasize the center. Source corners remain inside the display at "
-      "every strength; no game edge is intentionally cropped.",
-      "Dose le passage du rectangle au fisheye rond. Une valeur haute remplit davantage le cercle "
-      "et agrandit le centre. Les coins de l’image restent dans l’écran à toutes les intensités.",
-      "Mezcla el rectángulo normal y la lente circular. Los valores altos llenan más el círculo y "
-      "destacan el centro. Las esquinas se conservan dentro de la pantalla en cualquier "
-      "intensidad.",
-      "縦横比を保つ長方形と円形レンズの割合です。強めると円を広く使い中央を大きくします。どの強さで"
-      "も元画像の四隅を画面内に残します。"),
+      "Change how strongly the center is magnified. The round lens always reaches the screen rim, "
+      "including at low strength. All source edges remain visible. Turn the lens off separately for a flat rectangle.",
+      "Règle le grossissement du centre. Le fisheye atteint toujours le bord de la montre, même à faible intensité. "
+      "Les bords du jeu restent visibles. Désactive séparément le fisheye pour un rectangle plat.",
+      "Ajusta la ampliación del centro. La lente siempre llega al borde, incluso con poca intensidad, "
+      "y conserva los bordes del juego. Desactívala por separado para un rectángulo plano.",
+      "中央を拡大する強さです。弱くしても円形レンズは画面の端まで広がり、元画像の端を残します。"
+      "平面の長方形に戻す場合はレンズ自体を無効にします。"),
+    H("mobileactions",Controller,
+      "Automatic uses one jump button in regular Sonic platformers, two independent flippers in Spinball, "
+      "and two actions in 3D Blast or Mean Bean. Touch both flippers together to launch. The directional pad remains available. "
+      "Full A/B/C restores every native button for custom in-game control configurations.",
+      "Le mode automatique affiche un saut dans les Sonic classiques, deux flippers dans Spinball et deux actions dans "
+      "3D Blast ou Mean Bean. Touche les deux flippers ensemble pour lancer. Les directions restent accessibles. "
+      "A/B/C complet permet les configurations personnalisées du jeu.",
+      "Automático muestra un salto en Sonic clásico, dos paletas en Spinball y dos acciones en 3D Blast o Mean Bean. "
+      "Pulsa ambas paletas para lanzar. La dirección sigue disponible. A/B/C completo permite controles personalizados del juego.",
+      "自動では通常のソニックにジャンプを1つ、Spinballに左右のフリッパー、3D BlastとMean Beanに2つの操作を表示します。"
+      "両フリッパーで発射します。方向操作も使えます。ゲーム内で操作を変更した場合はA・B・Cをすべて表示できます。"),
+    H("motioncontrol",Controller,
+      "Add wrist or device tilt to touch/gamepad controls. Horizontal controls left/right; all directions also controls up/down. "
+      "Android's fused rotation uses gyro and acceleration where available, with gravity or filtered-accelerometer fallbacks. "
+      "Sampling is 50 Hz while playing or previewing this page, and stops in the background. No sensor data is stored.",
+      "Ajoute l’inclinaison du poignet ou de l’appareil au tactile et à la manette. Le mode horizontal dirige gauche/droite ; "
+      "le mode complet ajoute haut/bas. Android fusionne gyroscope et accélération si possible, avec repli sur la gravité "
+      "ou l’accéléromètre filtré. La lecture à 50 Hz s’arrête en arrière-plan. Rien n’est enregistré.",
+      "Añade inclinación al táctil y al mando. Horizontal controla izquierda/derecha; completo añade arriba/abajo. "
+      "Android fusiona giro y aceleración cuando es posible, con gravedad o acelerómetro filtrado como alternativa. "
+      "Muestrea a 50 Hz al jugar o previsualizar y se detiene en segundo plano. No guarda datos.",
+      "手首や端末の傾きをタッチやゲームパッドに追加します。左右モードと上下左右モードがあります。"
+      "利用できるジャイロと加速度の統合、重力、加速度の順に選びます。プレイ中と設定確認中は50Hz、"
+      "バックグラウンドでは停止します。センサーデータは保存しません。"),
+    H("motionsensitivity",Controller,
+      "Higher sensitivity needs a smaller tilt. At 100%, roughly 25 degrees reaches full input. Center in a comfortable pose first.",
+      "Une sensibilité élevée demande moins d’inclinaison. À 100 %, environ 25 degrés donnent l’entrée maximale. Centre d’abord une posture confortable.",
+      "Una sensibilidad mayor necesita menos inclinación. Al 100%, unos 25 grados dan la entrada máxima. Centra primero una postura cómoda.",
+      "感度を上げると小さな傾きで操作できます。100%では約25度で最大入力です。まず楽な姿勢を中央に設定します。"),
+    H("motiondeadzone",Controller,
+      "Small movements inside the neutral zone do nothing. Increase it to ignore wrist tremor. The live dot shows the filtered tilt.",
+      "Les petits mouvements dans cette zone n’agissent pas. Agrandis-la pour ignorer les tremblements. Le point montre l’inclinaison filtrée.",
+      "Los movimientos pequeños dentro de esta zona no actúan. Auméntala para ignorar temblores. El punto muestra la inclinación filtrada.",
+      "中央の小さな動きは入力しません。手の揺れを無視するには範囲を広げます。点で平滑化した傾きを確認できます。"),
+    H("motionflick",Controller,
+      "A short acceleration gesture presses Jump, or both flippers in Spinball. Tilt remains available. "
+      "A cooldown and release threshold prevent one long shake from repeating. Off by default.",
+      "Un geste bref déclenche le saut, ou les deux flippers dans Spinball. L’inclinaison reste active. "
+      "Un délai et un seuil de relâchement empêchent les répétitions d’un même geste. Désactivé par défaut.",
+      "Un gesto breve pulsa Salto, o ambas paletas en Spinball. La inclinación sigue activa. "
+      "Un intervalo y un umbral de reposo evitan repetir una sola sacudida. Desactivado de inicio.",
+      "短く振るとジャンプ、Spinballでは両フリッパーを押します。傾き操作も続けられます。"
+      "待ち時間と静止確認で同じ振りの連続入力を防ぎます。初期設定は無効です。"),
+    H("motionflickthreshold",Controller,
+      "Acceleration needed for the gesture, with gravity removed. Higher values need a firmer flick. Tune it after centering.",
+      "Accélération nécessaire au geste, sans la gravité. Une valeur haute demande un geste plus net. Ajuste après le centrage.",
+      "Aceleración necesaria sin gravedad. Un valor alto requiere un gesto más firme. Ajusta después de centrar.",
+      "重力を除いた加速度のしきい値です。上げると強く振る必要があります。中央を設定してから調整します。"),
+    H("motioninvertx",Controller,
+      "Reverse left/right tilt. Useful for the other wrist or a different grip. Touch and gamepad directions are unchanged.",
+      "Inverse gauche/droite pour l’autre poignet ou une autre prise. Le tactile et la manette gardent leurs directions.",
+      "Invierte izquierda/derecha para otra muñeca o agarre. El táctil y el mando conservan su dirección.",
+      "左右の傾きを反転します。反対の手首や持ち方に合わせられます。タッチとゲームパッドの方向は変わりません。"),
+    H("motioninverty",Controller,
+      "Reverse up/down tilt in the all-directions mode. Touch directions take priority on the axis being touched.",
+      "Inverse haut/bas dans le mode complet. Le tactile a priorité sur l’axe que tu utilises.",
+      "Invierte arriba/abajo en el modo completo. El táctil tiene prioridad en el eje utilizado.",
+      "上下左右モードの上下を反転します。タッチで操作した軸はタッチが優先されます。"),
     H("wearcrownspeed", Wear,
       "Choose how far one crown or rotating-bezel step travels along the whole-stage/native-screen "
       "zoom range. Works with Android rotary-encoder events on compatible Pixel Watch and Galaxy "

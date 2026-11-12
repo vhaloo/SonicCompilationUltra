@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.20)
+project(MotionInputChecks LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+add_executable(motion_checks checks.cpp ../../src/motion_controls.cpp)
+target_include_directories(motion_checks PRIVATE ../../src)
+enable_testing()
+add_test(NAME calibrated_motion_and_input_priority COMMAND motion_checks)

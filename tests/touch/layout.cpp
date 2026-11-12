@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <algorithm>
 using namespace scu::touch;
 static void require(bool v, const char *message) {
     if (!v) {
@@ -94,6 +95,33 @@ int main() {
     require(in.state(m, .25f).scroll == 1, "held scroll down");
     in.up(9);
     require(in.state(m, .25f).scroll == 0, "scroll release");
+    for (auto id : {"sonic1","sonic2","sonic3","sandk","sonic3k","sonic2k","sphere"}) {
+        require(profileForGame(id)==Profile::Jump,"platformer did not get one jump action");
+        for(bool watch:{false,true}) {
+            Options o;o.watch=watch;o.circular=watch;o.profile=profileForGame(id);
+            auto layout=arrange({0,0,438,438},o);
+            require(std::count_if(layout.buttons.begin(),layout.buttons.end(),[](auto b){
+                return b.action==Action::A||b.action==Action::B||b.action==Action::C;})==1,
+                "platformer has duplicate action buttons");
+        }
+    }
+    require(profileForGame("compilation",1)==Profile::Jump&&
+            profileForGame("compilation",2)==Profile::Jump&&
+            profileForGame("compilation",0)==Profile::TwoActions,"Classics bank profile");
+    for(bool watch:{false,true})for(bool left:{false,true}) {
+        Options o;o.watch=watch;o.circular=watch;o.leftHanded=left;o.profile=Profile::Pinball;
+        auto layout=arrange({0,0,438,438},o);
+        require(button(layout,Action::A).x<button(layout,Action::B).x,"flipper sides swapped");
+        Input controls;
+        require(controls.down(10,button(layout,Action::A),layout)==Action::A,"left flipper obscured");
+        require(controls.down(11,button(layout,Action::B),layout)==Action::B,"right flipper obscured");
+        require((controls.state(layout,.25f).buttons&513)==513,"simultaneous flippers failed");
+        controls.up(10);require(controls.state(layout,.25f).buttons==1,"left release affected right");
+        controls.move(11,{0,0});require(controls.state(layout,.25f).buttons==0,"flipper stuck outside circle");
+        auto target=std::find_if(layout.buttons.begin(),layout.buttons.end(),[](auto b){return b.action==Action::B;});
+        require(controls.down(12,{target->rect.x,target->rect.y},layout)==Action::None,
+                "invisible circular-button corner captures touches");
+    }
     std::printf("PASS %d adaptive layouts plus multitouch ownership, simultaneous flippers, "
                 "rewind, release and scrolling. No game linked or executed.\n",
                 cases);

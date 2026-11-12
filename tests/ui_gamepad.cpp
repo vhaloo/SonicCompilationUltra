@@ -380,6 +380,18 @@ int main() {
             h.activate("play-" + a.library.entries.front().id);
             require(a.core.loaded && !a.menu, "gamepad game launch");
             a.core.tick();
+            a.motionButtons=uint16_t(1u<<6);
+            a.mobileButtons=uint16_t(1u<<9);
+            h.frame(2);
+            require((a.core.buttons[0]&((1u<<6)|(1u<<9)))==((1u<<6)|(1u<<9)),
+                    "motion and touch did not reach the game together");
+            SDL_JoystickSetVirtualAxis(h.joystick,SDL_CONTROLLER_AXIS_LEFTX,24000);
+            h.frame(2);
+            require((a.core.buttons[0]&(1u<<7))&&!(a.core.buttons[0]&(1u<<6))&&
+                    (a.core.buttons[0]&(1u<<9)),"gamepad direction did not override motion");
+            SDL_JoystickSetVirtualAxis(h.joystick,SDL_CONTROLLER_AXIS_LEFTX,0);
+            a.motionButtons=a.mobileButtons=0;
+            h.frame(2);
             a.settings.voxelMode = 2;
             const int secondaryIndex = SDL_JoystickAttachVirtual(SDL_JOYSTICK_TYPE_GAMECONTROLLER,
                                                                 SDL_CONTROLLER_AXIS_MAX,

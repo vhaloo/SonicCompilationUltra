@@ -13,6 +13,28 @@ struct Text {
         }                                                                                          \
     }
 static const Text texts[] = {
+    T("mobilejump","Jump","Saut","Saltar","ジャンプ"),
+    T("mobileactions","Touch actions","Actions tactiles","Acciones táctiles","タッチ操作"),
+    T("mobileactionauto","Adapt to game","Selon le jeu","Según el juego","ゲームに合わせる"),
+    T("mobileactionabc","Full A / B / C","A / B / C complets","A / B / C completos","A・B・Cをすべて表示"),
+    T("motioncontrol","Motion + touch","Mouvement + tactile","Movimiento + táctil","傾き＋タッチ"),
+    T("motionhorizontal","Tilt left / right","Incliner gauche / droite","Inclinar izquierda / derecha","左右に傾ける"),
+    T("motiontwod","Tilt in all directions","Incliner dans toutes les directions","Inclinar en todas direcciones","上下左右に傾ける"),
+    T("motionflick","Flick: jump / both flippers","Geste : saut / deux flippers","Gesto: salto / ambas paletas","振ってジャンプ・両フリッパー"),
+    T("motioncenter","Center now","Centrer maintenant","Centrar ahora","今の姿勢を中央にする"),
+    T("motioncenterhelp","Hold comfortably, center, then resume. Touch directions take priority.",
+      "Tiens une position confortable, centre, puis reprends. Le tactile garde la priorité.",
+      "Busca una postura cómoda, centra y continúa. La dirección táctil tiene prioridad.",
+      "楽な姿勢で中央を設定して再開します。タッチの方向操作が優先です。"),
+    T("motionfused","Fused orientation sensor","Capteur d’orientation fusionné","Sensor de orientación fusionada","統合された姿勢センサー"),
+    T("motiongravity","Gravity sensor fallback","Repli sur le capteur de gravité","Sensor de gravedad disponible","重力センサーを使用"),
+    T("motionaccelerometer","Filtered accelerometer fallback","Repli sur l’accéléromètre filtré","Acelerómetro filtrado disponible","加速度を平滑化して使用"),
+    T("motionunavailable","No compatible motion sensor detected","Aucun capteur de mouvement compatible","No se detecta un sensor compatible","対応する動きセンサーがありません"),
+    T("motionsensitivity","Tilt sensitivity","Sensibilité de l’inclinaison","Sensibilidad de inclinación","傾きの感度"),
+    T("motiondeadzone","Neutral zone","Zone neutre","Zona neutra","中央の遊び"),
+    T("motionflickthreshold","Gesture strength","Force du geste","Fuerza del gesto","振る強さ"),
+    T("motioninvertx","Reverse horizontal tilt","Inverser l’inclinaison horizontale","Invertir inclinación horizontal","左右の傾きを反転"),
+    T("motioninverty","Reverse vertical tilt","Inverser l’inclinaison verticale","Invertir inclinación vertical","上下の傾きを反転"),
     T("gamecaptureexample", "Captured in game", "Captures en jeu", "Capturas del juego", "実際のゲーム画面"),
     T("currentgamecapture", "Current game · original console picture", "Jeu en cours · image originale de la console",
       "Juego actual · imagen original de la consola", "プレイ中のゲーム・元の画面"),
@@ -246,14 +268,14 @@ static const Text texts[] = {
       "Las coronas y biseles compatibles se detectan automáticamente. También hay zoom táctil.",
       "対応するクラウンや回転ベゼルを自動検出します。タッチでもズームできます。"),
     T("wearcontrolhelp",
-      "Rotate to zoom. Back opens options. Tap … to switch between game controls and zoom / map / "
-      "rewind. Movement and A/B/C support simultaneous fingers.",
-      "Tourner pour zoomer. Retour ouvre les options. … alterne entre commandes et zoom / carte / "
-      "rewind. Le déplacement et A/B/C acceptent plusieurs doigts.",
-      "Gira para ampliar. Atrás abre opciones. … alterna controles y zoom / mapa / rebobinado. "
-      "Movimiento y A/B/C admiten varios dedos.",
-      "回転でズーム。戻るで設定。…で操作とズーム・全体・巻き戻しを切替。移動とA/B/"
-      "Cは同時タッチに対応します。"),
+      "Rotate to zoom. … opens options. + switches to zoom / map / rewind. Jump and directions work together. "
+      "In Spinball, use L / R together or separately; the center pad steers Sonic.",
+      "Tourner pour zoomer. … ouvre les options. + affiche zoom / carte / rewind. Le saut et les directions "
+      "fonctionnent ensemble. Dans Spinball, utilise L / R ensemble ou séparément ; le pad central dirige Sonic.",
+      "Gira para ampliar. … abre opciones. + muestra zoom / mapa / rebobinado. Salto y dirección funcionan juntos. "
+      "En Spinball usa L / R juntos o separados; el pad central dirige a Sonic.",
+      "回転でズーム、…で設定、+でズーム・全体・巻き戻しです。ジャンプと方向は同時に使えます。"
+      "SpinballではL・Rを同時または別々に押し、中央のパッドでソニックを動かします。"),
     T("guidebadge", "?", "?", "?", "?"),
     T("fast", "Fast", "Rapide", "Rápido", "速い"),
     T("autoperformance", "Automatic performance / resolution",

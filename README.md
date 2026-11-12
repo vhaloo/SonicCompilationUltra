@@ -1,7 +1,7 @@
 <p align="center"><img src="assets/brand.svg" width="760" alt="Sonic Compilation Ultra — your cartridges, a much bigger view"></p>
 
 <p align="center">
-  <a href="https://github.com/vhaloo/SonicCompilationUltra/releases/tag/runtime-preview-0.12.3">Download preview</a> ·
+  <a href="https://github.com/vhaloo/SonicCompilationUltra/releases/tag/runtime-preview-0.13.0">Download preview</a> ·
   <a href="docs/QUICK_START.md">First steps</a> ·
   <a href="docs/ROMS.md">ROM guide</a> ·
   <a href="docs/FEATURES.md">All options</a>
@@ -11,21 +11,21 @@
 
 Windows and Linux · Android phones/tablets · **Meta Quest 3 VR/AR** · **Wear OS and macOS: experimental** · English, French, Spanish and Japanese · Keyboard, touch and gamepads
 
-The watch library now has larger colorful rows, swipe/crown scrolling and one compact navigation row. Menus share a dark palette with an original palm backdrop. The new [palm icon](assets/SCU.png) is original project artwork with a [CC0 dedication](assets/ICON_LICENSE.txt).
+The watch uses the round display to its rim, with discreet outlined controls. Regular Sonic games get one Jump button; Spinball gets L/R flippers. Optional wrist/device motion works alongside touch and gamepads: **Controls → Motion + touch**. [Touch and movement guide](docs/TOUCH_MOTION.md). The colorful menus share an original [palm icon and backdrop](assets/SCU.png), with a [CC0 dedication](assets/ICON_LICENSE.txt).
 
-**[Interface preview 0.12.3](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/runtime-preview-0.12.3)** opens in Simple mode. Pick Whole level, Original screen, Panorama, Voxel diorama or Retro TV. Quest also offers a transparent AR wall. Switch to **Advanced** for precise settings and three local profiles you can save and apply. On PC, tilt the voxel view with the right stick and press it to recenter. Use Voxel framing to switch between following the player and showing the whole stage. Pixel precise keeps the original colors and texel boundaries in the close view while automatic quality adjusts the depth geometry and output image separately.
+**[Interface preview 0.13.0](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/runtime-preview-0.13.0)** opens in Simple mode. Pick Whole level, Original screen, Panorama, Voxel diorama or Retro TV. Quest also offers a transparent AR wall. Switch to **Advanced** for precise settings and three local profiles you can save and apply. On PC, tilt the voxel view with the right stick and press it to recenter. Use Voxel framing to switch between following the player and showing the whole stage. Pixel precise keeps the original colors and texel boundaries in the close view while automatic quality adjusts the depth geometry and output image separately.
 
-**Downloads** [Meta Quest 3 standalone APK](https://github.com/vhaloo/SonicCompilationUltra/releases/download/runtime-preview-0.12.3/SonicCompilationUltra-0.12.3-Quest-ROM-free.apk) · [Android phone/tablet APK](https://github.com/vhaloo/SonicCompilationUltra/releases/download/runtime-preview-0.12.3/SonicCompilationUltra-0.12.3-Android-Mobile-ROM-free.apk) · [Wear OS APK — experimental](https://github.com/vhaloo/SonicCompilationUltra/releases/download/runtime-preview-0.12.3/SonicCompilationUltra-0.12.3-Android-Wear-ROM-free.apk). [Automatic quality](docs/AUTOMATIC_QUALITY.md) · [Watch guide](docs/WEAR.md) · [Android guide](docs/ANDROID.md) · [Quest guide](docs/QUEST.md).
+**Downloads** [Meta Quest 3 standalone APK](https://github.com/vhaloo/SonicCompilationUltra/releases/download/runtime-preview-0.13.0/SonicCompilationUltra-0.13.0-Quest-ROM-free.apk) · [Android phone/tablet APK](https://github.com/vhaloo/SonicCompilationUltra/releases/download/runtime-preview-0.13.0/SonicCompilationUltra-0.13.0-Android-Mobile-ROM-free.apk) · [Wear OS APK — experimental](https://github.com/vhaloo/SonicCompilationUltra/releases/download/runtime-preview-0.13.0/SonicCompilationUltra-0.13.0-Android-Wear-ROM-free.apk). [Automatic quality](docs/AUTOMATIC_QUALITY.md) · [Watch guide](docs/WEAR.md) · [Android guide](docs/ANDROID.md) · [Quest guide](docs/QUEST.md).
 
 ![Original demonstration stage made of layered pixels](docs/illustrations/voxel-layered.png)
 
 *Original fixture, rendered from the procedural mesh outside the app.* Voxel guide: [English](docs/VOXELS.md) · [Français](docs/VOXELS.fr.md) · [Español](docs/VOXELS.es.md) · [日本語](docs/VOXELS.ja.md). [Comparison and rendering design](docs/VOXEL_RESEARCH.md).
 
-**0.12.3 is a development preview.** The release notes distinguish actual game sessions from scripted checks, emulated devices and build-only coverage. **Meta Quest 3, macOS and Wear OS remain experimental.**
+**0.13.0 is a development preview.** The release notes distinguish actual game sessions from scripted checks, emulated devices and build-only coverage. **Meta Quest 3, macOS and Wear OS remain experimental.**
 
 ## Start playing
 
-1. **[Download your platform’s package](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/runtime-preview-0.12.3)** and extract it completely. On Windows, open `SonicCompilationUltra.exe`; on macOS, open the app; on Linux, run the included launcher. For phone, tablet or watch, install the matching APK.
+1. **[Download your platform’s package](https://github.com/vhaloo/SonicCompilationUltra/releases/tag/runtime-preview-0.13.0)** and extract it completely. On Windows, open `SonicCompilationUltra.exe`; on macOS, open the app; on Linux, run the included launcher. For phone, tablet or watch, install the matching APK.
 2. Choose **Choose ROM…** using a mouse or gamepad or drop your own `.bin`, `.md`, `.gen`, `.smd` or `.zip` into the window. The app checks the file’s contents. [Which edition do I need?](docs/ROMS.md)
 3. Choose **Play**. Use **Enter / gamepad Start** on the original title screen. Move with the arrows or left stick; jump with **Z, X, C / gamepad A, X, B**.
 4. Open the fullscreen options whenever you like: **Esc, F10 or gamepad Select / View**. Use **A / bottom face button** to confirm, **B / right face button** to go back, **LB/RB** to switch sections and **LT/RT** to scroll. Gameplay pauses in the menu.

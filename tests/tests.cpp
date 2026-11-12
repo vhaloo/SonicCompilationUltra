@@ -160,6 +160,7 @@ int main() {
             picture.span = true;
             picture.volume = 43;
             picture.enemyPreview = false;
+            picture.wearFisheye = false;
             picture.applyLook(from, defaults);
             picture.applyLook(to, defaults);
             require(picture.matchingLook(defaults, true) == to,
@@ -168,6 +169,7 @@ int main() {
                         picture.performanceHeadroom == 38 && !picture.vsync && picture.span &&
                         picture.volume == 43 && !picture.enemyPreview,
                     "appearance preset preserves explicit device, performance and overlay settings");
+            require(!picture.wearFisheye,"appearance preset changed the watch screen lens");
             picture.voxelYaw += 1;
             require(picture.matchingLook(defaults, true) == -1,
                     "edited appearance is shown as custom");

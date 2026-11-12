@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.13.0 Watch surface / touch and movement preview
+
+- The watch lens reaches the screen rim at every strength. Strength changes center magnification; presets preserve the lens choice. Native zoom no longer adds integer-scale margins.
+- Larger round menus use the palm backdrop without a rectangular frame. Watch resets move below the actual options; Simple Controls exposes motion and opacity first.
+- Thin neutral outlines and almost transparent interiors replace the opaque touch pads. Automatic layouts use one jump action in regular Sonic games, independent Spinball flippers, and two actions in 3D Blast / Mean Bean. Advanced users can restore full A/B/C.
+- Optional fused orientation, gravity and acceleration input complements touch/gamepads. Includes calibration, horizontal/all-direction tilt, optional flick actions, filtering, dead zone, sensitivity, axis reversal and direct-input priority. Sensor requests are 50 Hz and stop in the background.
+- Whole-stage watch statistics draw as a compact flat overlay after the lens.
+- New generated tests cover game-specific/circular touch targets and calibrated motion. Physical-device evidence and limits are documented separately; no all-level or sustained-frame-rate guarantee.
+
 ## 0.12.3 Wear interface preview
 
 - ARMv7 uses the core's byte-safe scanline path. This fixes the native alignment fault found when starting a game on Galaxy Watch8 Classic.

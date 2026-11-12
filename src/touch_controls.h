@@ -2,6 +2,7 @@
 #include <array>
 #include <cstdint>
 #include <vector>
+#include <string_view>
 
 namespace scu::touch {
 struct Point {
@@ -10,7 +11,10 @@ struct Point {
 struct Rect {
     float x = 0, y = 0, w = 0, h = 0;
     bool contains(Point p) const;
+    bool containsCircle(Point p) const;
 };
+enum class Profile { ABC, Jump, TwoActions, Pinball };
+Profile profileForGame(std::string_view id, int family = 0);
 enum class Action {
     None,
     Stick,
@@ -33,18 +37,23 @@ enum class Action {
 struct Button {
     Rect rect;
     Action action = Action::None;
+    bool circular = false;
+    bool contains(Point p) const { return circular ? rect.containsCircle(p) : rect.contains(p); }
 };
 struct Options {
     int layout = 0; // Auto, overlay, separate deck
     float scale = 1, margin = 8;
     bool leftHanded = false, controls = true, menu = false, pinball = false;
     bool watch = false, circular = false, utilityBank = false;
+    Profile profile = Profile::ABC;
     float stickX = 0, stickY = 0, buttonsX = 0, buttonsY = 0; // offsets in dp
 };
 struct Layout {
     Rect safe, canvas, stick;
     std::vector<Button> buttons;
     bool deck = false;
+    bool circularControls = false;
+    Profile profile = Profile::ABC;
 };
 Layout arrange(Rect safe, const Options &options);
 struct State {

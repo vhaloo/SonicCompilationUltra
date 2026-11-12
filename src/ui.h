@@ -140,7 +140,10 @@ class App {
 #endif
 #ifdef SCU_MOBILE
     MobilePresentation *mobile = nullptr;
+#endif
     uint16_t mobileButtons = 0;
+    uint16_t motionButtons = 0;
+#ifdef SCU_MOBILE
     bool mobileRewind = false;
 #endif
     static constexpr int sectionCount() {
@@ -205,6 +208,8 @@ class App {
     std::array<int, 2> voxelPictureSize() const {
         return volumeOnScreen ? volumeGpu.pictureSize() : std::array<int, 2>{};
     }
+    bool controlsMenu() const { return menu && tab == 5; }
+    SDL_Texture *nativeFrameTexture() const { return nativeTexture; }
     void showSection(int n) {
         tab = n >= 0 && n < sectionCount() ? n : 0;
         if (!visibleSection(tab)) {

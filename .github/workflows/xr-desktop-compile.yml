@@ -74,6 +74,9 @@ jobs:
           cmake -S tests/wear -B build-wear-math
           cmake --build build-wear-math --config Release
           ctest --test-dir build-wear-math -C Release --output-on-failure
+          cmake -S tests/motion -B build-motion-input
+          cmake --build build-motion-input --config Release
+          ctest --test-dir build-motion-input -C Release --output-on-failure
           cmake -S tests/rewind -B build-rewind-bytes
           cmake --build build-rewind-bytes --config Release --parallel 3
           ctest --test-dir build-rewind-bytes -C Release --output-on-failure

@@ -27,8 +27,12 @@ int main() {
                         check(v.x >= 0 && v.y >= 0 && v.x <= size && v.y <= size,
                               "lens clips a source edge");
                         if (round)
-                            check(std::hypot(v.x - size * .5, v.y - size * .5) <= size * .48001,
+                            check(std::hypot(v.x - size * .5, v.y - size * .5) <= size * .50001,
                                   "vertex outside round screen");
+                        if (round && blend == 1.f &&
+                            (v.u == 0 || v.u == 1 || v.v == 0 || v.v == 1))
+                            check(std::abs(std::hypot(v.x-size*.5f,v.y-size*.5f)-size*.5f)<.01f,
+                                  "full lens still leaves a rim margin");
                     }
                     for (size_t i = 0; i < mesh.indices.size(); i += 3) {
                         auto a = mesh.vertices[mesh.indices[i]],
@@ -70,20 +74,25 @@ int main() {
         for (bool left : {false, true})
             for (bool menu : {false, true})
                 for (bool bank : {false, true}) {
+                  for (auto profile : {touch::Profile::ABC,touch::Profile::Jump,touch::Profile::TwoActions,touch::Profile::Pinball}) {
                     touch::Options o;
                     o.watch = o.circular = true;
                     o.menu = menu;
                     o.leftHanded = left;
                     o.utilityBank = bank;
+                    o.profile = profile;
                     auto l = touch::arrange({0, 0, float(size), float(size)}, o);
                     if (menu)
                         check(l.canvas.w == size && l.canvas.h == size && l.buttons.empty(),
                               "watch menu still reserves space for the control dock");
                     for (auto b : l.buttons)
-                        for (float x : {b.rect.x, b.rect.x + b.rect.w})
-                            for (float y : {b.rect.y, b.rect.y + b.rect.h})
-                                check(std::hypot(x - size * .5, y - size * .5) <= size * .5001,
-                                      "touch target clipped by round bezel");
+                        for(int n=0;n<32;++n){
+                            float a=n*6.283185307f/32;
+                            float x=b.rect.x+b.rect.w*(.5f+.5f*std::cos(a));
+                            float y=b.rect.y+b.rect.h*(.5f+.5f*std::sin(a));
+                            check(std::hypot(x-size*.5f,y-size*.5f)<=size*.5001f,
+                                  "circular touch target clipped by bezel");
+                        }
                     touch::Input input;
                     if (!menu && !bank) {
                         input.down(1, {l.stick.x + l.stick.w * .9f, l.stick.y + l.stick.h * .5f},
@@ -97,6 +106,7 @@ int main() {
                               "simultaneous watch movement/action failed");
                     }
                     ++layouts;
+                  }
                 }
     std::printf("PASS %u generated lens variants, 1001 zoom positions, %u round layouts; no app, "
                 "ROM, emulator or device.\n",

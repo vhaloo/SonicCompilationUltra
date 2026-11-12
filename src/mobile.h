@@ -3,6 +3,7 @@
 #include "touch_controls.h"
 #include "performance.h"
 #include "wear_display.h"
+#include "motion_controls.h"
 #include <imgui.h>
 #include <memory>
 #include <SDL.h>
@@ -23,6 +24,9 @@ class MobilePresentation {
     bool pointerScrolling = false;
     touch::Point pointerStart{}, pointerLast{};
     int displayConfig = -1;
+    int motionConfig = -1, availableMotion = 0;
+    motion::Controller motionController;
+    motion::State motionState;
     uint64_t frameStart = 0;
     uint64_t metricsAt = 0;
     float safeLeft = 0, safeTop = 0, safeRight = 0, safeBottom = 0;
@@ -48,6 +52,7 @@ class MobilePresentation {
     void logicalSize(int &width, int &height) const;
     float topControlsBottom() const;
     void options();
+    void inputOptions();
     bool chooseRom();
     void poll();
     double refreshLimit() const;
@@ -55,6 +60,8 @@ class MobilePresentation {
         return appIsWatch;
     }
     bool appIsWatch = false;
+    int motionSource() const { return availableMotion; }
+    bool motionReady() const { return motionState.ready; }
     double lastSubmissionMs = 0;
     float scrollDirection() const {
         return float(scroll);

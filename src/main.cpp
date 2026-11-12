@@ -72,6 +72,14 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(wearZoom)
     SET(wearCrownSpeed)
     SET(wearLensStrength)
+    SET(mobileActions)
+    SET(motionMode)
+    SET(motionSensitivity)
+    SET(motionDeadzone)
+    SET(motionFlick)
+    SET(motionFlickThreshold)
+    SET(motionInvertX)
+    SET(motionInvertY)
     SET(panoramaHeight)
     SET(mapExtension)
     SET(smoothMap)
@@ -802,6 +810,13 @@ int main(int argc, char **argv) {
                 << ",\n  \"voxel_framing\":" << a.settings.voxelFraming
                 << ",\n  \"language\":" << a.language << ",\n  \"view\":" << a.settings.view
                 << ",\n  \"wear_zoom\":" << a.settings.wearZoom
+                << ",\n  \"wear_fisheye\":" << (a.settings.wearFisheye ? "true" : "false")
+                << ",\n  \"mobile_actions\":" << a.settings.mobileActions
+                << ",\n  \"motion_mode\":" << a.settings.motionMode
+#ifdef SCU_MOBILE
+                << ",\n  \"motion_sensor_source\":" << (a.mobile ? a.mobile->motionSource() : 0)
+                << ",\n  \"motion_sensor_ready\":" << (a.mobile && a.mobile->motionReady() ? "true" : "false")
+#endif
                 << ",\n  \"menu_open\":" << (a.menu ? "true" : "false")
                 << ",\n  \"stage_coverage\":[" << a.core.world.canvas.coverageW << ","
                 << a.core.world.canvas.coverageH << "]"
