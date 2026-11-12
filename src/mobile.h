@@ -15,6 +15,7 @@ class MobilePresentation {
     SDL_Texture *canvas = nullptr;
     touch::Layout layout;
     touch::Input input;
+    touch::SwipeJump swipeJump;
     int width = 0, height = 0, textureW = 0, textureH = 0;
     float density = 1;
     float displayHz = 60;
@@ -27,6 +28,7 @@ class MobilePresentation {
     int motionConfig = -1, availableMotion = 0;
     motion::Controller motionController;
     motion::State motionState;
+    uint64_t motionSequence=0, motionJumpUntil=0;
     uint64_t frameStart = 0;
     uint64_t metricsAt = 0;
     float safeLeft = 0, safeTop = 0, safeRight = 0, safeBottom = 0;

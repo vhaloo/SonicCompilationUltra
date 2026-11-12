@@ -29,7 +29,7 @@ Only local cartridge files up to 32 MB are accepted. The app neither downloads R
 
 The new installation targets 60 fps with automatic scene sampling, effects and a 30% work reserve. It uses a small scene ceiling, a retained lens mesh and a 24 MB rewind profile. The system and native simulation still set practical limits. [Performance choices](AUTOMATIC_QUALITY.md) explain the tradeoffs.
 
-**Controls → Motion + touch** optionally adds calibrated left/right or all-direction tilt and a flick action. Android fuses available motion sensors; gravity or filtered acceleration provides a fallback. Touch/gamepad directions take priority on the axis being used. Sampling stops in the background. Motion starts off; use **Center now** in a comfortable position before playing. [Touch and movement guide](TOUCH_MOTION.md).
+**Controls → Motion + touch** optionally adds calibrated left/right or all-direction tilt. In 0.13.1, **Jump gesture → Raise wrist** and **Swipe up to jump** are ready when motion mode is enabled. Lift briefly or swipe upward on a clear game area; return to rest or lift the finger before repeating. Quick flick and Off are available, with separate gesture sensitivity in Advanced. The corrected console A mapping also repairs ordinary Jump taps and Spinball's left flipper. Touch/gamepad directions take priority on the axis being used. Sampling stops in the background. Motion steering starts off; use **Center now** in a comfortable position before playing. [Touch and movement guide](TOUCH_MOTION.md).
 
 **Video → Depth and voxels** adds optional pixel volumes, including with the crown and round lens. Watch geometry and texture limits are smaller. For the lowest drawing cost, keep the default Flat mode. [Depth guide](VOXELS.md).
 

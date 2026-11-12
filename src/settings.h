@@ -23,8 +23,8 @@ struct Settings {
     bool wearFisheye = true, wearCrownReverse = false;
     bool wearFillMigrated = false;
     int mobileActions = 0, motionMode = 0, motionSensitivity = 100, motionDeadzone = 20,
-        motionFlickThreshold = 8;
-    bool motionFlick = false, motionInvertX = false, motionInvertY = false;
+        motionJump = 1, motionGestureSensitivity = 100;
+    bool motionSwipe = true, motionInvertX = false, motionInvertY = false;
     int language = -1, view = 2, zoom = 1, camera = 0, background = 0, blur = 7, brightness = 60;
     int hud = 0, hudScale = 0, nativeScale = 0, workers = 0, volume = 70, quality = 1, uiScale = 0;
     int slot = 1, region = 0, renderer = 0, scanlines = 0, panSpeed = 6, deadzone = 12000;

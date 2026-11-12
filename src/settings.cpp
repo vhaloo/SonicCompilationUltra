@@ -11,7 +11,7 @@ namespace scu {
     X(performanceHeadroom, 10, 45)                                                                               \
     X(wearZoom, 0, 1000)                                                                                         \
     X(mobileActions, 0, 1) X(motionMode, 0, 2) X(motionSensitivity, 40, 240) X(motionDeadzone, 5, 50) \
-    X(motionFlickThreshold, 3, 20) \
+    X(motionJump, 0, 2) X(motionGestureSensitivity, 40, 200) \
     X(wearCrownSpeed, 0, 2) X(wearLensStrength, 0, 100) X(questFoveation, 0, 4) X(                               \
         minimumRenderScale, 25, 100) X(maximumRenderScale, 25, 100) X(questShaderQuality, 0, 2)                  \
         X(mobileLayout, 0, 2) X(mobileOrientation, 0, 2) X(mobileTouch, 0, 2) X(                                 \
@@ -118,7 +118,7 @@ namespace scu {
     X(autoPerformance)                                                                             \
     X(adaptiveEffects)                                                                             \
     X(advancedOptions)                                                                             \
-    X(wearFisheye) X(wearCrownReverse) X(wearFillMigrated) X(motionFlick) X(motionInvertX) X(motionInvertY) X(performancePixelLock) X(thermalAware) X(mobileLeftHanded) \
+    X(wearFisheye) X(wearCrownReverse) X(wearFillMigrated) X(motionSwipe) X(motionInvertX) X(motionInvertY) X(performancePixelLock) X(thermalAware) X(mobileLeftHanded) \
         X(mobileImmersive) X(mobileHints) X(questTransparent) X(questRemote) X(questHandTracking)  \
             X(questInsetCrt) X(questCrtCoplanar) X(spinballTriggers) X(questMoveRotate)            \
                 X(questControlHints) X(objectPreview) X(objectOrigins) X(frozenPreviews)           \
@@ -139,6 +139,8 @@ namespace scu {
 void Settings::load(const fs::path &dir) {
     std::ifstream f(dir / "settings.ini");
     bool versionedXrDefaults = false, xrConfiguration = false;
+    bool explicitJump=false,explicitGestureSensitivity=false;
+    int legacyFlick=-1,legacyThreshold=0;
     std::string s;
     while (std::getline(f, s)) {
         if (!s.empty() && s.back() == '\r')
@@ -165,6 +167,10 @@ void Settings::load(const fs::path &dir) {
         } catch (...) {
             continue;
         }
+        if(k=="motionFlick"){legacyFlick=n;continue;}
+        if(k=="motionFlickThreshold"){legacyThreshold=n;continue;}
+        explicitJump |= k=="motionJump";
+        explicitGestureSensitivity |= k=="motionGestureSensitivity";
 #define LOAD_I(name, lo, hi)                                                                       \
     if (k == #name)                                                                                \
         name = std::clamp(n, lo, hi);
@@ -176,6 +182,9 @@ void Settings::load(const fs::path &dir) {
         BOOL_FIELDS(LOAD_B)
 #undef LOAD_B
     }
+    if(!explicitJump&&legacyFlick>0)motionJump=2;
+    if(!explicitGestureSensitivity&&legacyThreshold>0)
+        motionGestureSensitivity=std::clamp(800/legacyThreshold,40,200);
     // One migration, then retain the user's explicit refresh/transparency choices.
     if (xrConfiguration && (!versionedXrDefaults || questDefaultsRevision < 7)) {
         std::error_code ec;
@@ -319,7 +328,7 @@ void Settings::restoreDefaults(const Settings &defaults, int section) {
     case 5:
         reset(F(padLabels), F(spinballTriggers), F(jumpLayout), F(rewindButton), F(quickControls),
               F(deadzone),F(mobileActions),F(motionMode),F(motionSensitivity),F(motionDeadzone),
-              F(motionFlickThreshold),F(motionFlick),F(motionInvertX),F(motionInvertY));
+              F(motionJump),F(motionGestureSensitivity),F(motionSwipe),F(motionInvertX),F(motionInvertY));
         break;
     case 6:
         reset(F(lockon), F(spindash), F(fastBoot), F(noSpriteLimit), F(rewind), F(rewindAudio),
@@ -335,7 +344,7 @@ void Settings::restoreDefaults(const Settings &defaults, int section) {
               F(mobileRenderQuality), F(mobileStickX), F(mobileStickY), F(mobileButtonsX),
               F(mobileButtonsY), F(mobileLeftHanded), F(mobileImmersive), F(mobileHints),
               F(mobileActions),F(motionMode),F(motionSensitivity),F(motionDeadzone),
-              F(motionFlickThreshold),F(motionFlick),F(motionInvertX),F(motionInvertY));
+              F(motionJump),F(motionGestureSensitivity),F(motionSwipe),F(motionInvertX),F(motionInvertY));
         break;
     case 10: // Quest
         reset(F(questWidth), F(questDistance), F(questHeight), F(questTilt), F(questResolution),

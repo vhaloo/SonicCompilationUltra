@@ -16,14 +16,25 @@
 namespace {
 std::atomic<float> crownDelta{0};
 std::mutex motionMutex;
-scu::motion::Sample motionSample;
+std::array<scu::motion::Sample,32> motionSamples;
+size_t motionHead=0,motionCount=0;
+int64_t motionClockOffset=0;
+bool motionClockReady=false;
 }
 extern "C" JNIEXPORT void JNICALL
 Java_com_vhaloo_soniccompilationultra_mobile_MobileActivity_nativeMotion(
     JNIEnv *, jclass, jfloat x,jfloat y,jfloat z,jfloat w,jfloat gx,jfloat gy,jfloat gz,
-    jfloat ax,jfloat ay,jfloat az,jint source,jint rotation) {
+    jfloat ax,jfloat ay,jfloat az,jlong timestampNs,jint source,jint rotation) {
     std::lock_guard<std::mutex> lock(motionMutex);
-    motionSample={{x,y,z,w},{gx,gy,gz},{ax,ay,az},SDL_GetTicks64(),source,rotation};
+    const uint64_t now=SDL_GetTicks64();
+    if(!source){motionHead=motionCount=0;motionClockReady=false;}
+    const int64_t sensorMs=timestampNs/1000000;
+    if(source&&!motionClockReady){motionClockOffset=int64_t(now)-sensorMs;motionClockReady=true;}
+    const uint64_t sampleTime=source?uint64_t(std::clamp<int64_t>(sensorMs+motionClockOffset,1,std::max<uint64_t>(1,now))):now;
+    motionSamples[(motionHead+motionCount)%motionSamples.size()]=
+        {{x,y,z,w},{gx,gy,gz},{ax,ay,az},sampleTime,source,rotation};
+    if(motionCount<motionSamples.size())++motionCount;
+    else motionHead=(motionHead+1)%motionSamples.size();
 }
 extern "C" JNIEXPORT void JNICALL
 Java_com_vhaloo_soniccompilationultra_mobile_MobileActivity_nativeRotary(JNIEnv *, jclass,
@@ -101,9 +112,11 @@ MobilePresentation::~MobilePresentation() {
 }
 void MobilePresentation::clearInput() {
     input.clear();
+    swipeJump.clear();
     app.mobileButtons = 0;
     app.motionButtons = 0;
     motionController.recenter();
+    motionSequence=motionController.jumpSequence();motionJumpUntil=0;
     motionState = {};
     app.mobileRewind = false;
     scroll = 0;
@@ -188,13 +201,13 @@ void MobilePresentation::beginFrame() {
     }
     const bool sensorActive = s.motionMode && app.focused &&
         ((app.core.loaded && !app.menu) || app.controlsMenu());
-    const int sensorConfig = int(sensorActive) + 2 * int(s.motionFlick);
+    const int sensorConfig = int(sensorActive) + 2 * int(s.motionJump!=0);
     if (motionConfig != sensorConfig) {
         Activity a;
         if (a.type)
             a.env->CallVoidMethod(a.object,
                 a.env->GetMethodID(a.type, "configureMotion", "(ZZ)V"),
-                sensorActive ? JNI_TRUE : JNI_FALSE, s.motionFlick ? JNI_TRUE : JNI_FALSE);
+                sensorActive ? JNI_TRUE : JNI_FALSE, s.motionJump ? JNI_TRUE : JNI_FALSE);
         motionConfig = sensorConfig;
         motionController.recenter();
     }
@@ -406,9 +419,14 @@ bool MobilePresentation::event(const SDL_Event &e) {
     auto &io = ImGui::GetIO();
     if (e.type == SDL_FINGERDOWN) {
         app.padUsed = false;
-        auto a = input.down(id, p, layout);
+        auto a = input.down(id, p, layout, SDL_GetTicks64());
         if (a != touch::Action::None) {
             action(a);
+            return true;
+        }
+        if(!app.menu&&app.settings.motionMode&&app.settings.motionSwipe) {
+            swipeJump.down(id,p,SDL_GetTicks64(),
+                std::clamp(std::min(width,height)/density*.12f,18.f,40.f));
             return true;
         }
         if (app.menu && !pointerDown && layout.canvas.contains(p)) {
@@ -422,6 +440,7 @@ bool MobilePresentation::event(const SDL_Event &e) {
         }
     } else {
         input.move(id, p);
+        swipeJump.move(id,p,SDL_GetTicks64());
         if (pointerDown && id == pointer) {
             const float dx = p.x - pointerStart.x, dy = p.y - pointerStart.y;
             if (app.menu && app.settings.wearActive && !pointerScrolling &&
@@ -444,8 +463,10 @@ bool MobilePresentation::event(const SDL_Event &e) {
                 pointerScrolling = false;
             }
         }
-        if (e.type == SDL_FINGERUP)
+        if (e.type == SDL_FINGERUP) {
             input.up(id);
+            swipeJump.up(id);
+        }
     }
     return true;
 }
@@ -479,21 +500,32 @@ void MobilePresentation::poll() {
     zoomInitialised = true;
     zoomAt = now;
     app.settings.wearZoomValue = smoothedZoom;
-    auto s = input.state(layout, app.settings.mobileDeadzone / 100.f);
+    auto s = input.state(layout, app.settings.mobileDeadzone / 100.f, now);
     app.mobileButtons = s.buttons;
     app.mobileRewind = s.rewind;
     scroll = s.scroll;
     const auto &settings = app.settings;
     motionController.configure({settings.motionMode,settings.motionSensitivity,settings.motionDeadzone,
-        settings.motionFlickThreshold,settings.motionFlick,settings.motionInvertX,settings.motionInvertY});
-    motion::Sample sample;
-    { std::lock_guard<std::mutex> lock(motionMutex); sample=motionSample; }
+        settings.motionJump,settings.motionGestureSensitivity,settings.motionInvertX,settings.motionInvertY});
+    std::array<motion::Sample,32> samples;
+    size_t count=0;
+    { std::lock_guard<std::mutex> lock(motionMutex);
+      count=motionCount;
+      for(size_t i=0;i<count;++i)samples[i]=motionSamples[(motionHead+i)%motionSamples.size()];
+      motionHead=motionCount=0; }
     if (app.focused && ((!app.menu && app.core.loaded) || app.controlsMenu())) {
-        motionController.update(sample);
+        for(size_t i=0;i<count;++i)
+            if(now>=samples[i].milliseconds&&now-samples[i].milliseconds<=250)
+                motionController.update(samples[i]);
         motionState=motionController.state(SDL_GetTicks64());
+        if(motionController.jumpSequence()!=motionSequence) {
+            motionSequence=motionController.jumpSequence();
+            if(motionState.ready)motionJumpUntil=now+140;
+        }
         app.motionButtons=app.menu?0:motionState.directions;
-        if (!app.menu && motionState.flick)
-            app.motionButtons|=uint16_t(1u << (app.core.currentId=="spinball"?8:9));
+        if (!app.menu && ((settings.motionMode&&settings.motionJump&&now<motionJumpUntil)||
+            (settings.motionMode&&settings.motionSwipe&&swipeJump.pressed(now))))
+            app.motionButtons|=touch::actionMask(app.core.currentId=="spinball"?touch::Action::C:touch::Action::A);
     } else {
         motionController.recenter();motionState={};app.motionButtons=0;
     }
@@ -505,7 +537,7 @@ void MobilePresentation::drawControls() {
     draw._ResetForNewFrame();
     draw.PushTextureID(ImGui::GetIO().Fonts->TexID);
     draw.PushClipRect({0, 0}, {width / density, height / density});
-    auto state = input.state(layout, app.settings.mobileDeadzone / 100.f);
+    auto state = input.state(layout, app.settings.mobileDeadzone / 100.f,SDL_GetTicks64());
     const float opacity = app.menu ? 1.f : app.settings.mobileOpacity * .01f;
     const auto white = IM_COL32(248, 248, 248, int(216 * opacity));
     const auto shadow = IM_COL32(0, 0, 0, int(190 * opacity));
@@ -602,9 +634,11 @@ void MobilePresentation::drawControls() {
     }
     for (const auto &b : layout.buttons) {
         auto r = b.rect;
-        const int bit = b.action == touch::Action::A ? 9 : b.action == touch::Action::B ? 0 :
-                        b.action == touch::Action::C ? 8 : b.action == touch::Action::Start ? 3 : -1;
-        const bool pressed = bit >= 0 ? (state.buttons & (1u << bit)) != 0 :
+        const uint16_t mask=touch::actionMask(b.action);
+        const uint16_t effective=state.buttons|app.motionButtons;
+        const bool bothFlippers=layout.profile==touch::Profile::Pinball &&
+            (b.action==touch::Action::A||b.action==touch::Action::B) && (effective&touch::actionMask(touch::Action::C));
+        const bool pressed = mask ? (effective & mask) != 0 || bothFlippers :
                              b.action == touch::Action::Rewind && state.rewind;
         if (b.circular)
             ring({r.x + r.w * .5f, r.y + r.h * .5f}, std::min(r.w, r.h) * .5f - 1, pressed);
@@ -713,7 +747,9 @@ void MobilePresentation::inputOptions() {
     if(s.motionMode) {
         ImGui::TextWrapped("%s",tr(availableMotion==1?"motionfused":
             availableMotion==2?"motiongravity":availableMotion==3?"motionaccelerometer":"motionunavailable",app.language));
-        changed|=app.tick("motionflick",s.motionFlick);
+        changed|=app.choice("motionjump",s.motionJump,{"off","motionraise","motionflick"});
+        changed|=app.tick("motionswipe",s.motionSwipe);
+        ImGui::TextWrapped("%s",tr("motionjumphelp",app.language));
         if(app.button("motioncenter"))motionController.recenter();
         ImGui::TextWrapped("%s",tr("motioncenterhelp",app.language));
         const float side=std::min(94.f,ImGui::GetContentRegionAvail().x);
@@ -727,11 +763,13 @@ void MobilePresentation::inputOptions() {
         draw->AddLine(center,indicator,IM_COL32(123,218,213,220),2);
         draw->AddCircleFilled(indicator,4,IM_COL32(123,218,213,230),16);
         ImGui::Dummy({side,side});
+        if(SDL_GetTicks64()<motionJumpUntil)
+            ImGui::TextColored({.48f,.86f,.83f,1},"%s",tr("motiondetected",app.language));
         if(s.advancedOptions) {
             changed|=app.slider("motionsensitivity",s.motionSensitivity,40,240,"%d%%");
             changed|=app.slider("motiondeadzone",s.motionDeadzone,5,50,"%d%%");
-            if(s.motionFlick)
-                changed|=app.slider("motionflickthreshold",s.motionFlickThreshold,3,20,"%d m/s2");
+            if(s.motionJump)
+                changed|=app.slider("motiongesturesensitivity",s.motionGestureSensitivity,40,200,"%d%%");
             changed|=app.tick("motioninvertx",s.motionInvertX);
             changed|=app.tick("motioninverty",s.motionInvertY);
         }

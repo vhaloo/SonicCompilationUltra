@@ -4,7 +4,7 @@
 #include <cstring>
 // An original 68000 test program: writes a RAM marker, sets a red VDP backdrop,
 // then increments a counter. No commercial cartridge bytes or artwork are used.
-static std::vector<uint8_t> testProgram(bool sound = false) {
+static std::vector<uint8_t> testProgram(bool sound = false, bool controller = false) {
     std::vector<uint8_t> rom(256 * 1024);
     auto longword = [&](size_t offset, uint32_t n) {
         for (int i = 0; i < 4; ++i)
@@ -52,8 +52,21 @@ static std::vector<uint8_t> testProgram(bool sound = false) {
             address(0xC00011);
         }
     }
+    auto moveByte = [&](uint8_t value,uint32_t destination) {
+        word(0x13FC);word(value);address(destination);
+    };
+    if(controller)moveByte(0x40,0xA10009); // port 1 TH output, directions/buttons input
+    const size_t loop=pc;
+    if(controller) {
+        moveByte(0,0xA10003);
+        word(0x13F9);address(0xA10003);address(0xFF1236); // TH low: A/Start
+        moveByte(0x40,0xA10003);
+        word(0x13F9);address(0xA10003);address(0xFF1237); // TH high: B/C/directions
+        word(0x303C);word(2000); // let the six-button handshake return to its first phase
+        word(0x51C8);word(0xFFFE); // dbra d0, here
+    }
     word(0x5239);
     address(0xFF1235); // addq.b #1, absolute-long RAM counter
-    word(0x60F8);      // branch back to the counter
+    word(uint16_t(0x6000|uint8_t(int(loop)-int(pc+2))));
     return rom;
 }

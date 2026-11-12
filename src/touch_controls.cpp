@@ -144,7 +144,7 @@ Layout arrange(Rect safe, const Options &o) {
         {{cx, controls.y + controls.h - centerH * 2 - pad * 2, centerW, centerH}, Action::Rewind});
     return l;
 }
-Action Input::down(int64_t id, Point p, const Layout &l) {
+Action Input::down(int64_t id, Point p, const Layout &l, uint64_t now) {
     up(id);
     Action a = (l.circularControls ? l.stick.containsCircle(p) : l.stick.contains(p)) ? Action::Stick : Action::None;
     if (a == Action::None)
@@ -163,6 +163,9 @@ Action Input::down(int64_t id, Point p, const Layout &l) {
     for (auto &f : fingers)
         if (!f.used) {
             f = {true, id, a, p};
+            if (now)
+                for (unsigned bit=0;bit<16;++bit)
+                    if (actionMask(a)&(1u<<bit)) pulseUntil[bit]=now+90;
             return a;
         }
     return Action::None;
@@ -180,23 +183,23 @@ void Input::up(int64_t id) {
 void Input::clear() {
     for (auto &f : fingers)
         f.used = false;
+    pulseUntil.fill(0);
 }
-State Input::state(const Layout &l, float deadzone) const {
+State Input::state(const Layout &l, float deadzone, uint64_t now) const {
     State s;
+    if (now)
+        for (unsigned bit=0;bit<16;++bit)
+            if (now<pulseUntil[bit]) s.buttons|=uint16_t(1u<<bit);
     for (const auto &f : fingers)
         if (f.used) {
-            // Match libretro's stable joypad ABI without bringing an emulator into layout tests.
-            int bit = f.action == Action::A       ? 9
-                      : f.action == Action::B     ? 0
-                      : f.action == Action::C     ? 8
-                      : f.action == Action::Start ? 3
-                                                  : -1;
             bool inside = false;
             for (const auto &b : l.buttons)
                 if (b.action == f.action && b.contains(f.p))
                     inside = true;
-            if (bit >= 0 && inside)
-                s.buttons |= uint16_t(1u << bit);
+            // Jump keeps its pointer capture when a thumb drifts off the small
+            // drawing. Flippers and utility controls still support slide-off.
+            if (inside || (l.profile==Profile::Jump && f.action==Action::A))
+                s.buttons |= actionMask(f.action);
             if (f.action == Action::Rewind && inside)
                 s.rewind = true;
             if (inside && f.action == Action::ScrollUp)
@@ -221,4 +224,19 @@ State Input::state(const Layout &l, float deadzone) const {
         }
     return s;
 }
+void SwipeJump::down(int64_t id, Point p, uint64_t now, float threshold) {
+    up(id);distance=std::clamp(threshold,16.f,48.f);
+    for(auto &f:fingers)if(!f.active){f={id,p,now,true,false};return;}
+}
+void SwipeJump::move(int64_t id, Point p, uint64_t now) {
+    for(auto &f:fingers)if(f.active&&f.id==id&&!f.fired){
+        if(now<f.started||now-f.started>650){f.fired=true;return;}
+        const float up=f.origin.y-p.y,side=std::abs(p.x-f.origin.x);
+        if(now-f.started>=20&&up>=distance&&side<=up*.8f){
+            pulseUntil=now+140;f.fired=true;
+        }
+    }
+}
+void SwipeJump::up(int64_t id) { for(auto &f:fingers)if(f.id==id)f.active=false; }
+void SwipeJump::clear() { fingers={};pulseUntil=0; }
 } // namespace scu::touch

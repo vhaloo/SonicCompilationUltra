@@ -1,4 +1,5 @@
 #include "core.h"
+#include "touch_controls.h"
 #include <SDL.h>
 #include <memory>
 #include <iostream>
@@ -7,6 +8,9 @@
 #include <algorithm>
 
 using namespace scu;
+static_assert(touch::actionMask(touch::Action::A)==(1u<<RETRO_DEVICE_ID_JOYPAD_Y));
+static_assert(touch::actionMask(touch::Action::B)==(1u<<RETRO_DEVICE_ID_JOYPAD_B));
+static_assert(touch::actionMask(touch::Action::C)==(1u<<RETRO_DEVICE_ID_JOYPAD_A));
 static void require(bool value, const char *message) {
     if (!value)
         throw std::runtime_error(message);
@@ -38,6 +42,23 @@ int main() {
         require(portable.bytes(portable.entries.front()) == testProgram(true),
                 "A portable cartridge path must resolve from the package folder");
         Settings defaults;
+        require(defaults.motionMode==0&&defaults.motionJump==1&&defaults.motionSwipe,
+                "Motion must remain opt-in with lift and swipe ready when enabled");
+        const auto legacyMotion=dir/"legacy-motion";
+        fs::create_directory(legacyMotion);
+        const std::string legacy="motionMode=1\nmotionFlick=1\nmotionFlickThreshold=4\n";
+        writeBytesAtomic(legacyMotion/"settings.ini",{legacy.begin(),legacy.end()});
+        Settings migrated;migrated.load(legacyMotion);
+        require(migrated.motionMode==1&&migrated.motionJump==2&&migrated.motionGestureSensitivity==200,
+                "Legacy enabled flick did not migrate");
+        const std::string explicitMotion="motionJump=0\nmotionGestureSensitivity=80\nmotionSwipe=0\n"+legacy;
+        writeBytesAtomic(legacyMotion/"settings.ini",{explicitMotion.begin(),explicitMotion.end()});
+        migrated=Settings{};migrated.load(legacyMotion);
+        require(migrated.motionJump==0&&migrated.motionGestureSensitivity==80&&!migrated.motionSwipe,
+                "Legacy settings overwrote an explicit new gesture preference");
+        migrated.save(legacyMotion);Settings restoredMotion;restoredMotion.load(legacyMotion);
+        require(restoredMotion.motionJump==0&&restoredMotion.motionGestureSensitivity==80&&!restoredMotion.motionSwipe,
+                "New gesture options did not survive a save/load");
         require(defaults.rewind && defaults.rewindAudio && defaults.rewindButton == 0,
                 "New installs must default to L2/LT with reverse sound");
         defaults.rewind = false;
@@ -232,6 +253,46 @@ int main() {
                 "PAL sound duration does not match native frame timing");
         for (int n = 49; n >= 0; --n)
             require(core->rewind() && core->frame == uint64_t(n), "PAL rewind skipped frames");
+        core->unload(false);
+        const auto controllerRom=dir/"controller.bin";
+        writeBytesAtomic(controllerRom,testProgram(false,true));
+        require(library.importFile(controllerRom)==1,"controller probe import");
+        core->settings.region=1;core->settings.rewind=false;
+        const auto inputEntry=std::find_if(library.entries.begin(),library.entries.end(),[&](auto &e){return library.bytes(e)==testProgram(false,true);});
+        require(inputEntry!=library.entries.end()&&core->load(inputEntry->id),"controller probe load");
+        for(int n=0;n<3;++n)core->tick();
+        auto consoleProbe=[&](uint16_t buttons){
+            core->buttons[0]=buttons;
+            for(int n=0;n<3;++n)core->tick();
+            return std::pair<uint8_t,uint8_t>{core->snapshot.ram[0x1236],core->snapshot.ram[0x1237]};
+        };
+        const auto idle=consoleProbe(0);
+        require((idle.first&0x30)==0x30&&(idle.second&0x30)==0x30,"probe did not read released native port");
+        for(auto profile:{touch::Profile::Jump,touch::Profile::ABC,touch::Profile::TwoActions,touch::Profile::Pinball})
+          for(bool watch:{false,true}){
+            touch::Options o;o.profile=profile;o.watch=watch;o.circular=watch;
+            const auto l=touch::arrange({0,0,438,438},o);
+            touch::Input finger;
+            for(auto action:{touch::Action::A,touch::Action::B,touch::Action::C}) {
+                auto button=std::find_if(l.buttons.begin(),l.buttons.end(),[&](auto b){return b.action==action;});
+                if(button==l.buttons.end())continue;
+                finger.clear();finger.down(1,{button->rect.x+button->rect.w*.5f,button->rect.y+button->rect.h*.5f},l,1000);
+                finger.up(1); // a complete Android tap can arrive between native ticks
+                const auto sampled=finger.state(l,.25f,1030).buttons;
+                const auto actual=consoleProbe(sampled);
+                require((actual.first&0x10)==(action==touch::Action::A?0:0x10),"touch A did not reach the native Genesis A pin");
+                require((actual.second&0x10)==(action==touch::Action::B?0:0x10),"touch B did not reach the native Genesis B pin");
+                require((actual.second&0x20)==(action==touch::Action::C?0:0x20),"touch C did not reach the native Genesis C pin");
+                require(finger.state(l,.25f,1100).buttons==0,"short tap remained stuck");
+            }
+          }
+        // This exact old mask was internally consistent in 0.13.0 but never
+        // pressed the three-button controller's A pin. Keep the negative control.
+        require((consoleProbe(1u<<RETRO_DEVICE_ID_JOYPAD_X).first&0x10)!=0,"negative control unexpectedly presses A");
+        const auto both=consoleProbe(touch::actionMask(touch::Action::A)|touch::actionMask(touch::Action::B));
+        require(!(both.first&0x10)&&!(both.second&0x10),"simultaneous native A/B flippers failed");
+        const auto released=consoleProbe(0);
+        require((released.first&0x30)==0x30&&(released.second&0x30)==0x30,"native input did not release");
         core.reset();
         // This path was created exclusively above; it is never supplied by a user.
         require(dir.parent_path() == tempRoot &&

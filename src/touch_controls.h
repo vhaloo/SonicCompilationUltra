@@ -34,6 +34,14 @@ enum class Action {
     ScrollDown,
     Utility
 };
+// Genesis Plus GX maps console A/B/C to libretro Y/B/A. libretro X (9)
+// is the console's six-button Y and is ignored by three-button games.
+constexpr uint16_t actionMask(Action action) {
+    return action == Action::A ? uint16_t(1u << 1) :
+           action == Action::B ? uint16_t(1u << 0) :
+           action == Action::C ? uint16_t(1u << 8) :
+           action == Action::Start ? uint16_t(1u << 3) : 0;
+}
 struct Button {
     Rect rect;
     Action action = Action::None;
@@ -70,12 +78,25 @@ class Input {
         Point p;
     };
     std::array<Finger, 16> fingers{};
+    std::array<uint64_t, 16> pulseUntil{};
 
   public:
-    Action down(int64_t id, Point p, const Layout &layout);
+    Action down(int64_t id, Point p, const Layout &layout, uint64_t now = 0);
     void move(int64_t id, Point p);
     void up(int64_t id);
     void clear();
-    State state(const Layout &layout, float deadzone) const;
+    State state(const Layout &layout, float deadzone, uint64_t now = 0) const;
+};
+class SwipeJump {
+    struct Finger { int64_t id=0; Point origin{}; uint64_t started=0; bool active=false, fired=false; };
+    std::array<Finger, 8> fingers{};
+    uint64_t pulseUntil=0;
+    float distance=24;
+  public:
+    void down(int64_t id, Point p, uint64_t now, float threshold=24);
+    void move(int64_t id, Point p, uint64_t now);
+    void up(int64_t id);
+    void clear();
+    bool pressed(uint64_t now) const { return now && now < pulseUntil; }
 };
 } // namespace scu::touch

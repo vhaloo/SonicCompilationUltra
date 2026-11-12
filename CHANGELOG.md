@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.13.1 Jump and wrist gesture repair
+
+- Correct the shared console A mapping for touch Jump, Spinball's left flipper, 3D Blast / Mean Bean's first action and motion jumping. The previous mask sent an extra six-button action instead of console A.
+- Retain quick touch taps across frames and keep Jump captured until the finger lifts. Add upward swipe jumping on a clear game area while motion controls are enabled.
+- Raise wrist becomes the default motion jump, with a stronger Quick flick alternative, separate sensitivity and an Off choice. Upward movement uses orientation-compensated linear acceleration or a quick upward tilt, with rest/cooldown and descent rejection. Motion steering itself remains off by default.
+- Queue sensor events between display frames with original timestamps; late callbacks no longer reset calibration repeatedly. Retain triggered gestures long enough to reach the simulation.
+- Native-controller regression cartridge reads actual A/B/C port pins, including a negative test of the old wrong mask. Android checks verify actual Sonic jumps after injected touch, swipe and sensor events; generated sensor tests remain separate from human wrist qualification.
+
 ## 0.13.0 Watch surface / touch and movement preview
 
 - The watch lens reaches the screen rim at every strength. Strength changes center magnification; presets preserve the lens choice. Native zoom no longer adds integer-scale margins.

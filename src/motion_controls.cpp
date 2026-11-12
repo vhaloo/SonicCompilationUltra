@@ -17,13 +17,15 @@ void Controller::configure(Options value) {
     value.mode=std::clamp(value.mode,0,2);
     value.sensitivity=std::clamp(value.sensitivity,40,240);
     value.deadzone=std::clamp(value.deadzone,5,50);
-    value.flickThreshold=std::clamp(value.flickThreshold,3,20);
-    if (value.mode != options.mode) recenter();
+    value.jumpGesture=std::clamp(value.jumpGesture,0,2);
+    value.gestureSensitivity=std::clamp(value.gestureSensitivity,40,200);
+    if (value.mode != options.mode || value.jumpGesture != options.jumpGesture) recenter();
     options=value;
 }
 void Controller::recenter() {
-    calibrated=false; lastSample=calibratedAt=lastFlick=pulseUntil=0;
+    calibrated=false; lastSample=calibratedAt=lastJump=pulseUntil=lastLowering=0;
     filteredX=filteredY=0; gestureArmed=true; current={};
+    vertical=velocity=quietTime=previousLift=0;
 }
 void Controller::update(const Sample &s) {
     if (!options.mode || !s.source || !s.milliseconds) { recenter(); return; }
@@ -32,8 +34,10 @@ void Controller::update(const Sample &s) {
     if ((s.source==1 && !normalize(q)) || (s.source!=1 && !normalize(g))) {
         recenter(); return;
     }
-    if (s.milliseconds==lastSample) return;
-    if (s.milliseconds<lastSample || (lastSample && s.milliseconds-lastSample>250) ||
+    // Fused posture and linear acceleration arrive from separate Android
+    // streams. An older callback must not repeatedly recalibrate the wrist.
+    if(s.milliseconds<lastSample)return;
+    if ((lastSample && s.milliseconds-lastSample>250) ||
         s.source!=source || s.rotation!=rotation) recenter();
     if (!calibrated) {
         neutral=q; neutralGravity=g; source=s.source; rotation=s.rotation;
@@ -57,11 +61,12 @@ void Controller::update(const Sample &s) {
         y=std::atan2(g.y*neutralGravity.z-g.z*neutralGravity.y,alignment);
     }
     for (int i=0;i<(rotation&3);++i) { const float old=x; x=-y; y=old; }
+    const float lift=options.invertY ? y : -y;
     const float gain=options.sensitivity/100.f/.436332313f;
     x=std::clamp(x*gain,-1.f,1.f); y=std::clamp(y*gain,-1.f,1.f);
     if(options.invertX)x=-x;
     if(options.invertY)y=-y;
-    const float dt=lastSample?std::clamp(float(s.milliseconds-lastSample)*.001f,.001f,.1f):.02f;
+    const float dt=lastSample?std::clamp(float(s.milliseconds-lastSample)*.001f,0.f,.1f):.02f;
     const float blend=1-std::exp(-dt/.045f);
     filteredX+=(x-filteredX)*blend; filteredY+=(y-filteredY)*blend;
     auto axis=[&](float v){const float dead=options.deadzone*.01f;
@@ -71,19 +76,38 @@ void Controller::update(const Sample &s) {
     auto direction=[&](float v,int negative,int positive){
         if(std::abs(v)>.05f)current.directions|=uint16_t(1u<<(v<0?negative:positive));};
     direction(current.x,6,7); direction(current.y,4,5);
+    // Use world-up acceleration, not the magnitude of an arbitrary shake.
+    // No displacement is integrated: the short velocity estimate resets at rest.
+    Vec up=s.source==1 ? Vec{2*(q.x*q.z-q.w*q.y),2*(q.y*q.z+q.w*q.x),1-2*(q.x*q.x+q.y*q.y)} : g;
     const float force=std::sqrt(dot(s.acceleration,s.acceleration));
-    if(std::isfinite(force)) {
-        if(force<options.flickThreshold*.5f)gestureArmed=true;
-        if(options.flick && gestureArmed && force>options.flickThreshold &&
-           s.milliseconds-calibratedAt>300 && (!lastFlick || s.milliseconds-lastFlick>450)) {
-            pulseUntil=s.milliseconds+120;lastFlick=s.milliseconds;gestureArmed=false;
+    const float upward=dot(s.acceleration,up);
+    if(std::isfinite(force)&&std::isfinite(upward)) {
+        const float effort=100.f/options.gestureSensitivity;
+        vertical+=(upward-vertical)*(1-std::exp(-dt/.035f));
+        velocity=std::clamp(velocity*std::exp(-dt/.35f)+upward*dt,-.8f,.8f);
+        if(vertical < -1.2f*effort)lastLowering=s.milliseconds;
+        quietTime=std::abs(vertical)<.45f ? quietTime+dt : 0;
+        if(quietTime>.12f)velocity=0;
+        if(options.jumpGesture==2) {
+            if(force<3.f*effort)gestureArmed=true;
+        } else if(quietTime>.10f && lift<.07f)gestureArmed=true;
+        const bool upwardStart=vertical>1.2f*effort&&velocity>.075f*effort&&
+            (!lastLowering||s.milliseconds-lastLowering>450);
+        const bool wristRaise=dt>0 && lift>.17f*effort && (lift-previousLift)/dt>.65f*effort;
+        const bool trigger=options.jumpGesture==2 ? force>8.f*effort :
+                           options.jumpGesture==1 && (upwardStart||wristRaise);
+        if(trigger&&gestureArmed&&s.milliseconds-calibratedAt>350&&
+           (!lastJump||s.milliseconds-lastJump>450)) {
+            pulseUntil=s.milliseconds+140;lastJump=s.milliseconds;gestureArmed=false;++sequence;
         }
     }
+    previousLift=lift;
     current.ready=true; lastSample=s.milliseconds;
 }
 State Controller::state(uint64_t now) const {
     if(!options.mode || !lastSample || now<lastSample || now-lastSample>250)return {};
-    State result=current; result.flick=options.flick && now<pulseUntil; return result;
+    State result=current; result.jump=options.jumpGesture && now<pulseUntil;
+    result.jumpSequence=sequence;return result;
 }
 uint16_t combine(uint16_t sensor,uint16_t direct) {
     constexpr uint16_t horizontal=(1u<<6)|(1u<<7),vertical=(1u<<4)|(1u<<5);

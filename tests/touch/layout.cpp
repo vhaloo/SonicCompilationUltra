@@ -84,7 +84,7 @@ int main() {
     require(s.buttons == 0 && !s.rewind, "rotation/focus clear stuck input");
     in.down(5, button(l, Action::A), l);
     in.down(6, button(l, Action::B), l);
-    require((in.state(l, .25f).buttons & 513) == 513, "Spinball left+right");
+    require((in.state(l, .25f).buttons & 3) == 3, "Spinball left+right");
     in.up(5);
     require(in.state(l, .25f).buttons == 1, "left release affected right flipper");
     Options menu;
@@ -115,14 +115,37 @@ int main() {
         Input controls;
         require(controls.down(10,button(layout,Action::A),layout)==Action::A,"left flipper obscured");
         require(controls.down(11,button(layout,Action::B),layout)==Action::B,"right flipper obscured");
-        require((controls.state(layout,.25f).buttons&513)==513,"simultaneous flippers failed");
+        require((controls.state(layout,.25f).buttons&3)==3,"simultaneous flippers failed");
         controls.up(10);require(controls.state(layout,.25f).buttons==1,"left release affected right");
         controls.move(11,{0,0});require(controls.state(layout,.25f).buttons==0,"flipper stuck outside circle");
         auto target=std::find_if(layout.buttons.begin(),layout.buttons.end(),[](auto b){return b.action==Action::B;});
         require(controls.down(12,{target->rect.x,target->rect.y},layout)==Action::None,
                 "invisible circular-button corner captures touches");
     }
-    std::printf("PASS %d adaptive layouts plus multitouch ownership, simultaneous flippers, "
+    Options jump;jump.watch=jump.circular=true;jump.profile=Profile::Jump;
+    auto jumpLayout=arrange({0,0,438,438},jump);
+    Input quick;
+    quick.down(50,button(jumpLayout,Action::A),jumpLayout,1000);quick.up(50);
+    require(quick.state(jumpLayout,.25f,1033).buttons==(1u<<1),"between-frame Jump tap was dropped or maps to six-button Y");
+    require(quick.state(jumpLayout,.25f,1100).buttons==0,"minimum tap pulse did not release");
+    quick.down(51,button(jumpLayout,Action::A),jumpLayout,1200);
+    quick.move(51,{0,0});
+    require(quick.state(jumpLayout,.25f,1400).buttons==(1u<<1),"Jump lost pointer capture on thumb drift");
+    quick.up(51);require(quick.state(jumpLayout,.25f,1401).buttons==0,"captured Jump did not release");
+    quick.down(52,button(jumpLayout,Action::A),jumpLayout,1500);quick.clear();
+    require(quick.state(jumpLayout,.25f,1501).buttons==0,"focus/menu clear retained a tap");
+    SwipeJump swipe;
+    swipe.down(1,{100,100},1000,24);swipe.move(1,{102,70},1060);
+    require(swipe.pressed(1090),"upward swipe failed");
+    swipe.move(1,{103,20},1200);require(!swipe.pressed(1210),"same finger retriggered swipe");
+    swipe.up(1);swipe.down(1,{100,100},1300);swipe.move(1,{100,70},1360);
+    require(swipe.pressed(1370),"new swipe did not rearm");
+    swipe.clear();swipe.down(2,{100,100},2000);swipe.move(2,{140,101},2060);
+    require(!swipe.pressed(2061),"horizontal drag triggered Jump");
+    swipe.move(2,{100,130},2100);require(!swipe.pressed(2101),"downward drag triggered Jump");
+    swipe.clear();swipe.down(3,{100,100},3000);swipe.move(3,{100,50},3800);
+    require(!swipe.pressed(3801),"slow drift triggered Jump");
+    std::printf("PASS %d adaptive layouts plus multitouch ownership, native A/B/C mapping, quick-tap retention, swipe Jump, simultaneous flippers, "
                 "rewind, release and scrolling. No game linked or executed.\n",
                 cases);
 }

@@ -76,8 +76,9 @@ static void option(Settings &s, const std::string &key, const std::string &value
     SET(motionMode)
     SET(motionSensitivity)
     SET(motionDeadzone)
-    SET(motionFlick)
-    SET(motionFlickThreshold)
+    SET(motionJump)
+    SET(motionGestureSensitivity)
+    SET(motionSwipe)
     SET(motionInvertX)
     SET(motionInvertY)
     SET(panoramaHeight)
@@ -337,7 +338,7 @@ int main(int argc, char **argv) {
             if (k == "--fullscreen" || k == "--mute" || k == "--software" || k == "--headless" ||
                 k == "--realtime" || k == "--menu" || k == "--no-autoresume" ||
                 k == "--no-fast-boot" || k == "--resume-last" || k == "--menu-only" ||
-                k == "--xr-options") {
+                k == "--xr-options" || k == "--script-live-input") {
                 args[k] = "1";
                 continue;
             }
@@ -591,6 +592,11 @@ int main(int argc, char **argv) {
         uint16_t mask = 0;
         bool rewindMask = false;
         bool scripted = args.count("--script");
+        const bool scriptLiveInput=args.count("--script-live-input");
+        uint16_t observedInputMask=0;
+        unsigned jumpInputFrames=0,airborneAfterJump=0;
+        int minJumpVelocity=0;
+        double firstJumpSeconds=-1;
         double freq = (double)SDL_GetPerformanceFrequency(),
                previous = SDL_GetPerformanceCounter() / freq, start = previous,
                measureStart = previous;
@@ -631,8 +637,18 @@ int main(int argc, char **argv) {
             }
             a.pollInput();
             if (scripted) {
-                a.core.buttons[0] = mask;
-                a.rewindHeld = rewindMask;
+                if(scriptLiveInput){a.core.buttons[0]|=mask;a.rewindHeld|=rewindMask;}
+                else {a.core.buttons[0]=mask;a.rewindHeld=rewindMask;}
+            }
+            if(!a.menu&&a.core.loaded){
+                observedInputMask|=a.core.buttons[0];
+                if(a.core.buttons[0]&(1u<<RETRO_DEVICE_ID_JOYPAD_Y)){
+                    ++jumpInputFrames;if(firstJumpSeconds<0)firstJumpSeconds=now-start;
+                }
+                if(jumpInputFrames&&a.core.currentId=="sonic1"&&(a.core.snapshot.ram[0xF600]&127)==12){
+                    minJumpVelocity=std::min(minJumpVelocity,int(int16_t(be16(a.core.snapshot.ram,0xD012))));
+                    airborneAfterJump+=(a.core.snapshot.ram[0xD022]&2)!=0;
+                }
             }
             double targetHz = a.settings.performanceTarget;
 #ifdef SCU_QUEST
@@ -813,6 +829,13 @@ int main(int argc, char **argv) {
                 << ",\n  \"wear_fisheye\":" << (a.settings.wearFisheye ? "true" : "false")
                 << ",\n  \"mobile_actions\":" << a.settings.mobileActions
                 << ",\n  \"motion_mode\":" << a.settings.motionMode
+                << ",\n  \"observed_input_mask\":" << observedInputMask
+                << ",\n  \"jump_input_frames\":" << jumpInputFrames
+                << ",\n  \"first_jump_seconds\":" << firstJumpSeconds
+                << ",\n  \"script_live_input\":" << (scriptLiveInput?"true":"false")
+                << ",\n  \"min_jump_velocity\":" << minJumpVelocity
+                << ",\n  \"airborne_after_jump\":" << airborneAfterJump
+                << ",\n  \"native_controller_probe\":[" << unsigned(a.core.snapshot.ram[0x1236]) << "," << unsigned(a.core.snapshot.ram[0x1237]) << "]"
 #ifdef SCU_MOBILE
                 << ",\n  \"motion_sensor_source\":" << (a.mobile ? a.mobile->motionSource() : 0)
                 << ",\n  \"motion_sensor_ready\":" << (a.mobile && a.mobile->motionReady() ? "true" : "false")

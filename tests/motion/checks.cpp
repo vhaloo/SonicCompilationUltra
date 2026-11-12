@@ -33,17 +33,47 @@ int main(){
         s.gravity.x=std::numeric_limits<float>::quiet_NaN();s.milliseconds+=20;c.update(s);
         check(!c.state(s.milliseconds).ready,"invalid gravity remained active");++cases;
     }
-    Controller c;Options o;o.mode=1;o.flick=true;c.configure(o);Sample s;s.source=1;s.milliseconds=1000;c.update(s);
+    Controller c;Options o;o.mode=1;o.jumpGesture=2;c.configure(o);Sample s;s.source=1;s.milliseconds=1000;c.update(s);
     for(int i=0;i<20;++i){s.milliseconds+=20;c.update(s);}
     s.acceleration={0,0,12};s.milliseconds+=20;c.update(s);
-    check(c.state(s.milliseconds).flick,"flick not detected");
+    check(c.state(s.milliseconds).jump,"flick not detected");
     for(int i=0;i<20;++i){s.milliseconds+=20;c.update(s);}
-    check(!c.state(s.milliseconds).flick,"long shake retriggered");
+    check(!c.state(s.milliseconds).jump,"long shake retriggered");
     s.acceleration={};s.milliseconds+=20;c.update(s);s.milliseconds+=20;c.update(s);
     s.acceleration={12,0,0};s.milliseconds+=20;c.update(s);
-    check(c.state(s.milliseconds).flick,"released gesture did not rearm");
-    o.mode=0;c.configure(o);check(!c.state(s.milliseconds).flick,"off did not release gesture");
-    constexpr uint16_t left=1u<<6,right=1u<<7,up=1u<<4,down=1u<<5,jump=1u<<9;
+    check(c.state(s.milliseconds).jump,"released gesture did not rearm");
+    o.mode=0;c.configure(o);check(!c.state(s.milliseconds).jump,"off did not release gesture");
+    // The same upward movement is expressed in each device posture's axes.
+    // A modest 2 m/s2 lift must work; a sideways shake or braking a descent must not.
+    for(int rotation=0;rotation<4;++rotation)for(auto orientation:{pose(0,0),pose(40,25),pose(-30,-50)}) {
+        Controller lift;Options options;options.mode=1;options.jumpGesture=1;lift.configure(options);
+        Sample sample;sample.source=1;sample.orientation=orientation;sample.rotation=rotation;sample.milliseconds=1000;
+        for(int i=0;i<25;++i){sample.milliseconds+=20;lift.update(sample);}
+        const Vec upVector{2*(orientation.x*orientation.z-orientation.w*orientation.y),
+            2*(orientation.y*orientation.z+orientation.w*orientation.x),1-2*(orientation.x*orientation.x+orientation.y*orientation.y)};
+        for(int i=0;i<6;++i){sample.milliseconds+=20;sample.acceleration={2*upVector.x,2*upVector.y,2*upVector.z};lift.update(sample);}
+        check(lift.jumpSequence()==1,"gentle world-up wrist lift missed");
+        for(int i=0;i<30;++i){sample.milliseconds+=20;sample.acceleration={};lift.update(sample);}
+        check(lift.jumpSequence()==1,"resting raised wrist repeated Jump");
+        for(int i=0;i<6;++i){sample.milliseconds+=20;sample.acceleration={2*upVector.x,2*upVector.y,2*upVector.z};lift.update(sample);}
+        check(lift.jumpSequence()==2,"second wrist lift did not rearm");
+        lift.recenter();sample.acceleration={};
+        for(int i=0;i<25;++i){sample.milliseconds+=20;lift.update(sample);}
+        const auto before=lift.jumpSequence();
+        for(int sign:{-1,1})for(int i=0;i<8;++i){sample.milliseconds+=20;sample.acceleration={sign*2*upVector.x,sign*2*upVector.y,sign*2*upVector.z};lift.update(sample);}
+        check(lift.jumpSequence()==before,"braking a lowered wrist triggered Jump");
+    }
+    Controller angular;Options angularOptions;angularOptions.mode=1;angular.configure(angularOptions);
+    Sample poseSample;poseSample.source=1;poseSample.milliseconds=1000;
+    for(int i=0;i<25;++i){poseSample.milliseconds+=20;angular.update(poseSample);}
+    for(int i=0;i<8;++i){poseSample.milliseconds+=20;poseSample.orientation=pose(-i*2.f,0);angular.update(poseSample);}
+    check(angular.jumpSequence()==1,"quick upward wrist tilt missed");
+    Controller delayed;Options delayedOptions;delayedOptions.mode=1;delayed.configure(delayedOptions);
+    Sample stream;stream.source=1;stream.milliseconds=1000;
+    for(int i=0;i<25;++i){stream.milliseconds+=20;delayed.update(stream);auto old=stream;old.milliseconds-=2;delayed.update(old);}
+    for(int i=0;i<6;++i){stream.milliseconds+=20;stream.acceleration={0,0,2};delayed.update(stream);auto old=stream;old.milliseconds-=2;delayed.update(old);}
+    check(delayed.jumpSequence()==1,"out-of-order sensor callbacks repeatedly recalibrated the lift");
+    constexpr uint16_t left=1u<<6,right=1u<<7,up=1u<<4,down=1u<<5,jump=1u<<1;
     check(combine(left|down,right|jump)==(right|down|jump),"touch horizontal priority lost other axis");
     check(combine(left|down,up)==(left|up),"gamepad vertical priority failed");
     std::printf("PASS %u rotation/sensitivity/deadzone and fallback cases; calibration, stale/invalid input, flick rearm and direct-control priority. No hardware gesture claim.\n",cases);

@@ -340,20 +340,25 @@ static const SettingHelp entries[] = {
       "Les petits mouvements dans cette zone n’agissent pas. Agrandis-la pour ignorer les tremblements. Le point montre l’inclinaison filtrée.",
       "Los movimientos pequeños dentro de esta zona no actúan. Auméntala para ignorar temblores. El punto muestra la inclinación filtrada.",
       "中央の小さな動きは入力しません。手の揺れを無視するには範囲を広げます。点で平滑化した傾きを確認できます。"),
-    H("motionflick",Controller,
-      "A short acceleration gesture presses Jump, or both flippers in Spinball. Tilt remains available. "
-      "A cooldown and release threshold prevent one long shake from repeating. Off by default.",
-      "Un geste bref déclenche le saut, ou les deux flippers dans Spinball. L’inclinaison reste active. "
-      "Un délai et un seuil de relâchement empêchent les répétitions d’un même geste. Désactivé par défaut.",
-      "Un gesto breve pulsa Salto, o ambas paletas en Spinball. La inclinación sigue activa. "
-      "Un intervalo y un umbral de reposo evitan repetir una sola sacudida. Desactivado de inicio.",
-      "短く振るとジャンプ、Spinballでは両フリッパーを押します。傾き操作も続けられます。"
-      "待ち時間と静止確認で同じ振りの連続入力を防ぎます。初期設定は無効です。"),
-    H("motionflickthreshold",Controller,
-      "Acceleration needed for the gesture, with gravity removed. Higher values need a firmer flick. Tune it after centering.",
-      "Accélération nécessaire au geste, sans la gravité. Une valeur haute demande un geste plus net. Ajuste après le centrage.",
-      "Aceleración necesaria sin gravedad. Un valor alto requiere un gesto más firme. Ajusta después de centrar.",
-      "重力を除いた加速度のしきい値です。上げると強く振る必要があります。中央を設定してから調整します。"),
+    H("motionjump",Controller,
+      "Raise wrist detects a short upward movement or quick upward tilt from the centered pose. It does not track absolute hand height. "
+      "Quick flick accepts a stronger movement in any direction. Both press console A, or both flippers in Spinball. Return to rest before repeating. Motion must be enabled.",
+      "Lever le poignet détecte un mouvement bref vers le haut ou une inclinaison rapide vers le haut depuis la pose centrée. La hauteur absolue de la main n’est pas suivie. "
+      "Secousse brève accepte un mouvement plus fort dans toute direction. Cela presse A, ou les deux flippers dans Spinball. Reviens au repos avant de répéter. Le mode mouvement doit être actif.",
+      "Elevar la muñeca detecta un movimiento breve hacia arriba o una inclinación rápida desde la postura centrada; no mide la altura absoluta. "
+      "La sacudida acepta un movimiento más fuerte en cualquier dirección. Pulsa A, o ambas paletas de Spinball. Vuelve al reposo antes de repetir. Requiere el modo de movimiento.",
+      "中央の姿勢から手首を短く上げるか、上方向に素早く傾けます。手の絶対的な高さは追跡しません。"
+      "短く振る設定では全方向の強い動きに反応します。A、またはSpinballの両フリッパーを押します。静止してから繰り返します。動き操作を有効にしてください。"),
+    H("motionswipe",Controller,
+      "With motion controls enabled, swipe upward on an area without a button or directional pad to jump. Each finger gesture triggers once; lift the finger to repeat. Menus and utility controls never trigger it.",
+      "Quand le mouvement est actif, glisse vers le haut dans une zone sans bouton ni croix pour sauter. Un geste ne déclenche qu’un saut ; lève le doigt pour recommencer. Les menus et les commandes utilitaires ne déclenchent pas ce geste.",
+      "Con movimiento activo, desliza arriba en una zona sin botones ni cruceta para saltar. Cada gesto activa un salto; levanta el dedo para repetir. No se activa en menús ni controles auxiliares.",
+      "動き操作中に、ボタンや方向パッドのない場所を上にスワイプするとジャンプします。1回の指の動きで1回入力し、指を離すと繰り返せます。メニューや補助ボタンでは動作しません。"),
+    H("motiongesturesensitivity",Controller,
+      "Higher values need a smaller wrist movement. Start at 100%, center in a comfortable pose and test the live preview. Filtering, a resting threshold and cooldown reject small tremors and repeated holds.",
+      "Une valeur haute demande un plus petit mouvement du poignet. Commence à 100 %, centre dans une pose confortable et essaie l’aperçu. Le filtrage, le seuil de repos et le délai évitent les tremblements et les répétitions.",
+      "Un valor alto necesita menos movimiento. Empieza al 100%, centra en una postura cómoda y prueba la vista previa. El filtrado, reposo e intervalo evitan temblores y repeticiones.",
+      "高い値ほど小さな動きで反応します。100%から始め、楽な姿勢で中央を設定してプレビューで確認します。平滑化、静止確認、待ち時間で小さな揺れや連続入力を抑えます。"),
     H("motioninvertx",Controller,
       "Reverse left/right tilt. Useful for the other wrist or a different grip. Touch and gamepad directions are unchanged.",
       "Inverse gauche/droite pour l’autre poignet ou une autre prise. Le tactile et la manette gardent leurs directions.",

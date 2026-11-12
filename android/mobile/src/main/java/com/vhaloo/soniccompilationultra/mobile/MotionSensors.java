@@ -12,7 +12,7 @@ import java.util.function.IntSupplier;
 final class MotionSensors implements SensorEventListener {
     interface Sink {
         void sample(float x,float y,float z,float w,float gx,float gy,float gz,
-                    float ax,float ay,float az,int source,int rotation);
+                    float ax,float ay,float az,long timestampNs,int source,int rotation);
     }
     private final SensorManager manager;
     private final Sensor posture,linear,accelerometer;
@@ -20,7 +20,7 @@ final class MotionSensors implements SensorEventListener {
     private final IntSupplier rotation;
     private final int source;
     private final float[] quaternion=new float[]{1,0,0,0},gravity=new float[3],force=new float[3];
-    private boolean running=false,gestures=false,poseReady=false,gravityReady=false;
+    private boolean running=false,gestures=false,poseReady=false,gravityReady=false,linearActive=false;
     MotionSensors(Context context,Sink sink,IntSupplier rotation) {
         this.sink=sink;this.rotation=rotation;
         manager=(SensorManager)context.getSystemService(Context.SENSOR_SERVICE);
@@ -42,17 +42,17 @@ final class MotionSensors implements SensorEventListener {
         try {
             running=manager.registerListener(this,posture,20000,0);
             if(running&&flick) {
-                if(linear!=null)manager.registerListener(this,linear,20000,0);
-                else if(accelerometer!=null&&accelerometer!=posture)
+                linearActive=linear!=null&&manager.registerListener(this,linear,20000,0);
+                if(!linearActive&&accelerometer!=null&&accelerometer!=posture)
                     manager.registerListener(this,accelerometer,20000,0);
             }
         } catch(SecurityException unavailable){stop();}
     }
     void stop() {
         if(manager!=null)manager.unregisterListener(this);
-        running=poseReady=gravityReady=false;
+        running=poseReady=gravityReady=linearActive=false;
         for(int i=0;i<3;i++){gravity[i]=0;force[i]=0;}
-        sink.sample(0,0,0,1,0,0,0,0,0,0,0,rotation.getAsInt());
+        sink.sample(0,0,0,1,0,0,0,0,0,0,0,0,rotation.getAsInt());
     }
     @Override public void onSensorChanged(SensorEvent event) {
         if(!running||event.values.length<3)return;
@@ -67,13 +67,14 @@ final class MotionSensors implements SensorEventListener {
         } else if(type==Sensor.TYPE_ACCELEROMETER) {
             for(int i=0;i<3;i++) {
                 gravity[i]=gravityReady?gravity[i]*.9f+event.values[i]*.1f:event.values[i];
-                if(linear==null)force[i]=event.values[i]-gravity[i];
+                if(!linearActive)force[i]=event.values[i]-gravity[i];
             }
             gravityReady=true;if(posture==accelerometer)poseReady=true;
         }
         if(poseReady)sink.sample(quaternion[1],quaternion[2],quaternion[3],quaternion[0],
             gravity[0],gravity[1],gravity[2],gestures?force[0]:0,gestures?force[1]:0,
-            gestures?force[2]:0,source,rotation.getAsInt());
+            gestures?force[2]:0,event.timestamp,
+            source,rotation.getAsInt());
     }
     @Override public void onAccuracyChanged(Sensor sensor,int accuracy) {}
 }

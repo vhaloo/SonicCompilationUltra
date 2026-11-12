@@ -335,6 +335,9 @@ static void testCompactOverlays(Harness &h) {
 }
 int main() {
     try {
+        // Restrict this process to our generated controllers. A real Xbox pad
+        // connected to the development PC must not become test player 1.
+        SDL_SetHint(SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT,"0x0000/0x0000");
         SDL_SetMainReady();
         SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
         require(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER |
@@ -381,14 +384,18 @@ int main() {
             require(a.core.loaded && !a.menu, "gamepad game launch");
             a.core.tick();
             a.motionButtons=uint16_t(1u<<6);
-            a.mobileButtons=uint16_t(1u<<9);
+            a.mobileButtons=uint16_t(1u<<RETRO_DEVICE_ID_JOYPAD_Y);
             h.frame(2);
-            require((a.core.buttons[0]&((1u<<6)|(1u<<9)))==((1u<<6)|(1u<<9)),
+            require((a.core.buttons[0]&((1u<<6)|(1u<<RETRO_DEVICE_ID_JOYPAD_Y)))==((1u<<6)|(1u<<RETRO_DEVICE_ID_JOYPAD_Y)),
                     "motion and touch did not reach the game together");
             SDL_JoystickSetVirtualAxis(h.joystick,SDL_CONTROLLER_AXIS_LEFTX,24000);
             h.frame(2);
+            std::cerr<<"Motion routing probe: mask="<<a.core.buttons[0]
+                     <<" pad0="<<(a.pads[0]?SDL_GameControllerName(a.pads[0]):"none")
+                     <<" axis="<<(a.pads[0]?SDL_GameControllerGetAxis(a.pads[0],SDL_CONTROLLER_AXIS_LEFTX):0)
+                     <<" expected-instance="<<SDL_JoystickInstanceID(h.joystick)<<'\n';
             require((a.core.buttons[0]&(1u<<7))&&!(a.core.buttons[0]&(1u<<6))&&
-                    (a.core.buttons[0]&(1u<<9)),"gamepad direction did not override motion");
+                    (a.core.buttons[0]&(1u<<RETRO_DEVICE_ID_JOYPAD_Y)),"gamepad direction did not override motion");
             SDL_JoystickSetVirtualAxis(h.joystick,SDL_CONTROLLER_AXIS_LEFTX,0);
             a.motionButtons=a.mobileButtons=0;
             h.frame(2);

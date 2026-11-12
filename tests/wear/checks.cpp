@@ -102,7 +102,7 @@ int main() {
                                 input.down(
                                     2, {b.rect.x + b.rect.w * .5f, b.rect.y + b.rect.h * .5f}, l);
                         auto s = input.state(l, .25f);
-                        check((s.buttons & (1 << 9)) && (s.buttons & (1 << 7)),
+                        check((s.buttons & (1 << 1)) && (s.buttons & (1 << 7)),
                               "simultaneous watch movement/action failed");
                     }
                     ++layouts;

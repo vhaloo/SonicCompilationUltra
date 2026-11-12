@@ -16,13 +16,13 @@ public final class MobileActivity extends SDLActivity {
     private final java.util.concurrent.atomic.AtomicBoolean importingInbox=new java.util.concurrent.atomic.AtomicBoolean();
     public static native void nativeRotary(float value);
     public static native void nativeMotion(float x,float y,float z,float w,float gx,float gy,float gz,
-                                          float ax,float ay,float az,int source,int rotation);
+                                          float ax,float ay,float az,long timestampNs,int source,int rotation);
     private MotionSensors motionSensors;
     private boolean activityResumed=false,motionRequested=false,motionGestures=false;
     private synchronized MotionSensors motionSensors() {
         if(motionSensors==null)motionSensors=new MotionSensors(this,
-            (x,y,z,w,gx,gy,gz,ax,ay,az,source,rotation)->{
-                if(nativeReady)nativeMotion(x,y,z,w,gx,gy,gz,ax,ay,az,source,rotation);
+            (x,y,z,w,gx,gy,gz,ax,ay,az,timestampNs,source,rotation)->{
+                if(nativeReady)nativeMotion(x,y,z,w,gx,gy,gz,ax,ay,az,timestampNs,source,rotation);
             },()->getWindow().getDecorView().getDisplay()==null?0:
                    getWindow().getDecorView().getDisplay().getRotation());
         return motionSensors;
@@ -239,6 +239,7 @@ public final class MobileActivity extends SDLActivity {
                 java.util.Collections.addAll(args, "--no-autoresume", "--mute", "--frames",
                         Integer.toString(frames), "--render-every", realtime ? "1" : "120", "--script",
                         timeline.getAbsolutePath(), "--report", new File(dataDir, "qa.json").getAbsolutePath());
+                if(getIntent().getBooleanExtra("scu_qa_live_input",false))args.add("--script-live-input");
                 if (realtime) {
                     args.add("--realtime");
                     int seconds = getIntent().getIntExtra("scu_qa_seconds", 0);

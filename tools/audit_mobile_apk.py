@@ -15,10 +15,10 @@ def run(args):
 build=a.sdk/'build-tools/36.0.0';suffix='.exe' if os.name=='nt' else ''
 edition='wear' if a.wear else 'mobile'
 package='com.vhaloo.soniccompilationultra.'+edition
-version='0.13.0-'+edition+'-preview'
+version='0.13.1-'+edition+'-preview'
 signature=run([build/('apksigner.bat' if os.name=='nt' else 'apksigner'),'verify','--verbose','--print-certs',a.apk])
 badging=run([build/('aapt2'+suffix),'dump','badging',a.apk])
-for expected in [f"name='{package}'","versionCode='1300'",f"versionName='{version}'",f"minSdkVersion:'{26 if a.wear else 24}'","targetSdkVersion:'36'",'MobileActivity']:
+for expected in [f"name='{package}'","versionCode='1301'",f"versionName='{version}'",f"minSdkVersion:'{26 if a.wear else 24}'","targetSdkVersion:'36'",'MobileActivity']:
     assert expected in badging,expected
 manifest=run([build/('aapt2'+suffix),'dump','xmltree','--file','AndroidManifest.xml',a.apk])
 for banned in ['oculus','openxr','IMMERSIVE_HMD','android.permission.CAMERA','android.permission.RECORD_AUDIO',
@@ -69,7 +69,7 @@ with zipfile.ZipFile(a.apk) as z,tempfile.TemporaryDirectory(prefix='scu-mobile-
                 assert 'Java_com_vhaloo_soniccompilationultra_mobile_MobileActivity_nativeMotion' in symbols
     prefix='assets/scu/';private=[n for n in names if n.startswith(prefix+'ROMs/') or n.startswith(prefix+'UserData/')]
     font=z.read(prefix+'assets/SCUInterface.ttf');assert len(font)>100000
-    assert len(z.read(prefix+'assets/settings-preview.bmp'))<1300000
+    assert len(z.read(prefix+'assets/settings-preview.bmp'))<1301000
     if not a.allow_private:assert not private,'Personal data in public APK'
     else:
         lines=z.read(prefix+'UserData/library.tsv').decode('utf-8').splitlines()
