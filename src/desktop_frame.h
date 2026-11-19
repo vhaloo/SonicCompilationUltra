@@ -8,6 +8,8 @@ class DesktopFrame {
     std::array<int, 7> effectKey{};
 
   public:
+    static void configureCrtSurround(Settings &settings, const Scene &scene, int width, int height,
+                                     int nativeWidth, int nativeHeight);
     void draw(SDL_Renderer *renderer, SDL_Texture *level, SDL_Texture *native, int nativeWidth,
               int nativeHeight, const Scene &scene, const Canvas &canvas, const Settings &settings,
               int width, int height);

@@ -1,3 +1,4 @@
+#include "texture_sampling.h"
 #include "voxel_gpu.h"
 #include "voxel_shaders.h"
 #include <algorithm>
@@ -423,7 +424,7 @@ struct VoxelGpu::Impl {
             SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD);
         if (SDL_SetTextureBlendMode(picture, premul))
             throw std::runtime_error(SDL_GetError());
-        SDL_SetTextureScaleMode(picture, SDL_ScaleModeLinear);
+        setTextureSampling(renderer, picture, SDL_ScaleModeLinear);
         I active = 0;
         g.GetIntegerv(0x84E0, &active);
         g.ActiveTexture(texture0);
@@ -531,7 +532,7 @@ struct VoxelGpu::Impl {
             return picture;
         SDL_RenderFlush(renderer);
         resize(w, h);
-        SDL_SetTextureScaleMode(picture, precise ? SDL_ScaleModeNearest : SDL_ScaleModeLinear);
+        setTextureSampling(renderer, picture, precise ? SDL_ScaleModeNearest : SDL_ScaleModeLinear);
         State state(g);
         upload(f, mesh, texelsChanged);
         g.BindFramebuffer(framebuffer, fbo);

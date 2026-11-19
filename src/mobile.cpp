@@ -1,3 +1,4 @@
+#include "texture_sampling.h"
 #include "mobile.h"
 #ifdef SCU_MOBILE
 #include "ui.h"
@@ -288,7 +289,7 @@ void MobilePresentation::beginFrame() {
         textureW = tw;
         textureH = th;
         SDL_SetTextureBlendMode(canvas, SDL_BLENDMODE_NONE);
-        SDL_SetTextureScaleMode(canvas, SDL_ScaleModeNearest);
+        setTextureSampling(app.renderer, canvas, SDL_ScaleModeNearest);
     }
     int config = s.mobileOrientation + 4 * s.mobileRefresh + 32 * int(s.mobileImmersive) +
                  s.performanceTarget * 64;
@@ -721,7 +722,8 @@ void MobilePresentation::endFrame() {
         SDL_RenderSetViewport(app.renderer, &dest);
         SDL_Color white{255, 255, 255, 255};
         auto &v = lens.vertices;
-        SDL_SetTextureScaleMode(canvas, blend > .01f ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
+        setTextureSampling(app.renderer, canvas,
+                           blend > .01f ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
         SDL_RenderGeometryRaw(app.renderer, canvas, &v[0].x, sizeof(wear::Vertex), &white, 0,
                               &v[0].u, sizeof(wear::Vertex), int(v.size()), lens.indices.data(),
                               int(lens.indices.size()), sizeof(int));

@@ -21,6 +21,10 @@ void image(SDL_Renderer *r, SDL_Texture *t, float x, float y, float w, float h) 
     if (t)
         SDL_RenderCopyF(r, t, nullptr, &dst);
 }
+float crtPixelScale(const Settings &s, int width, int height, int nw, int nh) {
+    return std::min(width * .68f / std::max(1, nw), height * .73f / std::max(1, nh)) *
+           (s.desktopFrameScale * .01f);
+}
 void effectRect(std::vector<SDL_Vertex> &v, float x, float y, float w, float h, SDL_Color color) {
     SDL_Vertex q[4]{{{x, y}, color, {}},
                     {{x + w, y}, color, {}},
@@ -30,6 +34,18 @@ void effectRect(std::vector<SDL_Vertex> &v, float x, float y, float w, float h, 
         v.push_back(q[i]);
 }
 } // namespace
+void DesktopFrame::configureCrtSurround(Settings &s, const Scene &scene, int width, int height,
+                                        int nw, int nh) {
+    // Sample the part of the stage that actually surrounds the glass. Upscaling
+    // a whole-stage thumbnail here turns one source tile into a large square.
+    const auto scale = std::max(.001f, crtPixelScale(s, width, height, nw, nh));
+    s.panoramaHeight = std::clamp(int(std::ceil(height / scale)), 224, 4096);
+    const double coverageWidth = double(width) * s.panoramaHeight / std::max(1, height);
+    s.view = 1;
+    s.camera = 2;
+    s.left = int(std::floor(scene.cameraX + (nw - coverageWidth) * .5));
+    s.top = int(std::floor(scene.cameraY + (nh - s.panoramaHeight) * .5));
+}
 void DesktopFrame::draw(SDL_Renderer *r, SDL_Texture *level, SDL_Texture *native, int nw, int nh,
                         const Scene &scene, const Canvas &canvas, const Settings &s, int width,
                         int height) {
@@ -74,9 +90,8 @@ void DesktopFrame::draw(SDL_Renderer *r, SDL_Texture *level, SDL_Texture *native
         rect(r, cx - back, top - trim, back * 2, trim * .3f, cyan);
         image(r, native, cx - bw / 2, top - H * .16f, bw, bh);
     } else {
-        float w = std::min(W * .68f, H * .73f * nw / std::max(1, nh)) * scale,
-              h = w * nh / std::max(1, nw);
-        float x = (W - w) / 2, y = (H - h) / 2, unit = w / std::max(1, nw);
+        float unit = crtPixelScale(s, width, height, nw, nh), w = unit * nw, h = unit * nh;
+        float x = (W - w) / 2, y = (H - h) / 2;
         if (s.desktopSurround && scene.ready && level) {
             Uint8 oldR, oldG, oldB;
             SDL_GetTextureColorMod(level, &oldR, &oldG, &oldB);

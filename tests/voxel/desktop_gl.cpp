@@ -1,4 +1,5 @@
 #include "voxel_gpu.h"
+#include "texture_sampling.h"
 #include <SDL.h>
 #include <algorithm>
 #include <array>
@@ -10,6 +11,29 @@ using namespace scu;
 static void require(bool ok, const char *message) {
     if (!ok)
         throw std::runtime_error(std::string(message) + " " + SDL_GetError());
+}
+static void checkSamplerSwitch(SDL_Renderer *renderer) {
+    auto texture = [&](uint32_t color) {
+        auto *t =
+            SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, 1, 1);
+        require(t && SDL_UpdateTexture(t, nullptr, &color, sizeof color) == 0, "solid texture");
+        return t;
+    };
+    auto *level = texture(0xff1188cc), *native = texture(0xffff6622);
+    SDL_Rect pixel{0, 0, 1, 1};
+    for (auto filter : {SDL_ScaleModeNearest, SDL_ScaleModeLinear, SDL_ScaleModeNearest}) {
+        require(SDL_RenderCopy(renderer, level, nullptr, nullptr) == 0, "draw surround");
+        SDL_RenderFlush(renderer);
+        setTextureSampling(renderer, native, filter);
+        require(SDL_RenderCopy(renderer, level, nullptr, nullptr) == 0, "redraw surround");
+        uint32_t value = 0;
+        require(SDL_RenderReadPixels(renderer, &pixel, SDL_PIXELFORMAT_ARGB8888, &value,
+                                     sizeof value) == 0 &&
+                    (value & 0xffffff) == 0x1188cc,
+                "native filter cannot replace bound surround");
+    }
+    SDL_DestroyTexture(native);
+    SDL_DestroyTexture(level);
 }
 int main() {
     SDL_SetMainReady();
@@ -28,6 +52,7 @@ int main() {
         SDL_RendererInfo info{};
         SDL_GetRendererInfo(renderer, &info);
         require(std::string(info.name) == "opengl", "OpenGL backend");
+        checkSamplerSwitch(renderer);
         voxel::Frame f;
         f.configure(48, 32, 0, 0, 48, 32);
         f.planes = voxel::Frame::allPlanes;

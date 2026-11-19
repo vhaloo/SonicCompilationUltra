@@ -1,5 +1,7 @@
 # Validation report
 
+The 0.15.0 OpenGL regression also draws the surround immediately after changing the native picture filter. With the previous code the first frame could sample the wrong texture. Both macOS jobs and Linux run the texture-switch and full-orbit tests.
+
 ## 0.15.0 rewind scenery and volume rendering
 
 - In a Sonic 2 checkpoint, rewinding 45 console frames in a fixed overview changed 6,887 pixels in 0.14.0. The corrected Windows rendering returned the exact forward image. The same check matched in all 11 sampled games and variants. The compositor tests also revisit a previous act during a blank transition and restore an unrendered hardware scanline.

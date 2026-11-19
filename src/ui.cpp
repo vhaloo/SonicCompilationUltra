@@ -1,3 +1,4 @@
+#include "texture_sampling.h"
 #include "ui.h"
 #include "quest.h"
 #include "mobile.h"
@@ -107,7 +108,7 @@ bool App::drawGameExample(HelpPicture picture) {
                     guideCapture = SDL_CreateTextureFromSurface(renderer, surface);
                 SDL_FreeSurface(surface);
                 if (guideCapture)
-                    SDL_SetTextureScaleMode(guideCapture, SDL_ScaleModeLinear);
+                    setTextureSampling(renderer, guideCapture, SDL_ScaleModeLinear);
             }
         }
     }
@@ -783,7 +784,7 @@ void App::loadSettingsPreview() {
         menuBackdrop = SDL_CreateTextureFromSurface(renderer, surface);
         SDL_FreeSurface(surface);
         if (menuBackdrop)
-            SDL_SetTextureScaleMode(menuBackdrop, SDL_ScaleModeLinear);
+            setTextureSampling(renderer, menuBackdrop, SDL_ScaleModeLinear);
     }
     if (guideCapture)
         SDL_DestroyTexture(guideCapture);
@@ -795,7 +796,7 @@ void App::loadSettingsPreview() {
         settingsPreview = SDL_CreateTextureFromSurface(renderer, surface);
         SDL_FreeSurface(surface);
         if (settingsPreview)
-            SDL_SetTextureScaleMode(settingsPreview, SDL_ScaleModeLinear);
+            setTextureSampling(renderer, settingsPreview, SDL_ScaleModeLinear);
     }
 }
 void App::refreshControllers() {
@@ -1810,6 +1811,10 @@ void App::present(bool capture) {
                                  : settings.mobileRenderQuality == 2 ? 8000000
                                                                      : 2500000;
 #endif
+    SDL_GetRendererOutputSize(renderer, &drawableW, &drawableH);
+    if (drawableW <= 0 || drawableH <= 0)
+        return;
+    const Scene scene = core.world.inspect(core.snapshot, core.game);
     Settings transientSettings = settings;
     auto *projectionSettings = &transientSettings;
 #ifdef SCU_QUEST
@@ -1824,11 +1829,13 @@ void App::present(bool capture) {
         transientSettings.camera = 4;
         transientSettings.mapExtension = true;
         transientSettings.fitSpawns = false;
+        if (settings.desktopPresentation == 2)
+            DesktopFrame::configureCrtSurround(transientSettings, scene, drawableW, drawableH,
+                                               core.nativeW, core.nativeH);
         projectionSettings = &transientSettings;
     }
 #endif
     auto &renderSettings = *projectionSettings;
-    const Scene scene = core.world.inspect(core.snapshot, core.game);
     const bool followVolume = voxelFollows(scene);
     std::array<int, 2> viewOffset{};
     if (followVolume) {
@@ -1876,9 +1883,6 @@ void App::present(bool capture) {
         renderSettings.compositionPixels = std::min(renderSettings.compositionPixels, 300000);
     }
 #endif
-    SDL_GetRendererOutputSize(renderer, &drawableW, &drawableH);
-    if (drawableW <= 0 || drawableH <= 0)
-        return;
     prepareOverlays();
     nativeBounds = insetBounds = {};
     bool transparentCanvas = renderSettings.background == 6 || renderSettings.projectionTransparent;
@@ -1971,7 +1975,7 @@ void App::present(bool capture) {
             if (!bgTexture || uploadedBackdrop == ~uint64_t(0)) {
                 // The clear colour is also the texture-allocation fallback.
             } else if (renderSettings.background == 0) {
-                SDL_SetTextureScaleMode(bgTexture, SDL_ScaleModeLinear);
+                setTextureSampling(renderer, bgTexture, SDL_ScaleModeLinear);
                 const int width = std::max(1, (drawableH * 320 + 112) / 224);
                 const int center = (drawableW - width) / 2;
                 int first = center, tile = 0;
@@ -1985,7 +1989,7 @@ void App::present(bool capture) {
                                      tile % 2 ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
                 }
             } else if (renderSettings.background == 2 && expanded) {
-                SDL_SetTextureScaleMode(bgTexture, SDL_ScaleModeNearest);
+                setTextureSampling(renderer, bgTexture, SDL_ScaleModeNearest);
                 int scale = std::max(1, (int)core.world.canvas.scale), tw = 320 * scale,
                     th = 224 * scale;
                 for (int y = 0; y < drawableH; y += th)
@@ -1994,8 +1998,9 @@ void App::present(bool capture) {
                         SDL_RenderCopy(renderer, bgTexture, nullptr, &d);
                     }
             } else {
-                SDL_SetTextureScaleMode(bgTexture, renderSettings.background == 1
-                                                      ? SDL_ScaleModeNearest : SDL_ScaleModeLinear);
+                setTextureSampling(renderer, bgTexture,
+                                   renderSettings.background == 1 ? SDL_ScaleModeNearest
+                                                                  : SDL_ScaleModeLinear);
                 SDL_RenderCopy(renderer, bgTexture, nullptr, nullptr);
             }
         }
@@ -2024,9 +2029,10 @@ void App::present(bool capture) {
                         SDL_SetTextureBlendMode(worldTexture, SDL_BLENDMODE_BLEND);
                 }
                 if (worldTexture)
-                    SDL_SetTextureScaleMode(worldTexture,
-                                            renderSettings.smoothMap && c.coverageW > c.width * 1.01
-                                                ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
+                    setTextureSampling(renderer, worldTexture,
+                                       renderSettings.smoothMap && c.coverageW > c.width * 1.01
+                                           ? SDL_ScaleModeLinear
+                                           : SDL_ScaleModeNearest);
                 if (worldTextureStale) {
                     if (worldTexture &&
                         SDL_UpdateTexture(worldTexture, nullptr, c.pixels.data(), c.width * 4) == 0) {
@@ -2052,7 +2058,7 @@ void App::present(bool capture) {
                 expanded = false;
             if (expanded && !renderSettings.projectionCleanScene && renderSettings.view == 2 &&
                 renderSettings.playerInset && updateNativeTexture()) {
-                SDL_SetTextureScaleMode(nativeTexture, SDL_ScaleModeNearest);
+                setTextureSampling(renderer, nativeTexture, SDL_ScaleModeNearest);
                 int safeW = std::min(drawableW, int(drawableH * 16.0 / 9)),
                     w = int(std::min(safeW * 0.28, drawableH * 0.26 * core.nativeW / core.nativeH)),
                     h = w * core.nativeH / core.nativeW, x = (drawableW + safeW) / 2 - w - 16,
@@ -2066,9 +2072,9 @@ void App::present(bool capture) {
             }
         }
         if (!expanded && updateNativeTexture()) {
-            SDL_SetTextureScaleMode(nativeTexture, renderSettings.integerScale
-                                                       ? SDL_ScaleModeNearest
-                                                       : SDL_ScaleModeLinear);
+            setTextureSampling(renderer, nativeTexture,
+                               renderSettings.integerScale ? SDL_ScaleModeNearest
+                                                           : SDL_ScaleModeLinear);
             int availableH = drawableH, safeW = std::min(drawableW, (int)(drawableH * 16.0 / 9));
             float scale =
                 renderSettings.wearActive
@@ -2111,12 +2117,13 @@ void App::present(bool capture) {
 #ifndef SCU_QUEST
     if (settings.desktopPresentation && !settings.wearActive && core.loaded &&
         updateNativeTexture()) {
-        SDL_SetTextureScaleMode(nativeTexture,
-                                settings.integerScale ? SDL_ScaleModeNearest : SDL_ScaleModeLinear);
+        setTextureSampling(renderer, nativeTexture,
+                           settings.integerScale ? SDL_ScaleModeNearest : SDL_ScaleModeLinear);
         desktopFrame.draw(renderer,
-                          volumeTexture ? volumeTexture
-                          : expanded    ? worldTexture
-                                        : nativeTexture,
+                          volumeTexture                       ? volumeTexture
+                          : expanded                          ? worldTexture
+                          : settings.desktopPresentation == 1 ? nativeTexture
+                                                              : nullptr,
                           nativeTexture, core.nativeW, core.nativeH, scene, core.world.canvas,
                           renderSettings, drawableW, drawableH);
     }
