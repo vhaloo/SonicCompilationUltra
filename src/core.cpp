@@ -283,6 +283,7 @@ bool Core::load(const std::string &id) {
         native.clear();
         ++imageVersion;
         std::memset(&snapshot, 0, sizeof snapshot);
+        scu_restore_raster(nullptr);
         world.setRom(completeImage);
         history.clear();
         rewinding = false;
@@ -389,6 +390,9 @@ void Core::reset() {
     if (!loaded)
         return;
     retro_reset();
+    scu_restore_raster(nullptr);
+    scu_snapshot(&snapshot);
+    native.clear();
     world.reset();
     ++imageVersion;
     frame = 0;
@@ -546,15 +550,18 @@ bool Core::restoreState(const std::vector<uint8_t> &b, bool rewindFrame) {
     spinCharge = std::min(8, (int)get32(b, 20));
     spinFacing = (int32_t)get32(b, 24) < 0 ? -1 : 1;
     lastButtons = (uint16_t)get32(b, 28);
-    scu_snapshot(&snapshot);
     native.clear();
     if (raster) {
         std::memcpy(&snapshot, body + n, sizeof snapshot);
+        scu_restore_raster(&snapshot);
         nativeW = width;
         nativeH = height;
         native.resize(pixels);
         if (pixels)
             std::memcpy(native.data(), body + n + sizeof snapshot, pixels * sizeof(uint32_t));
+    } else {
+        scu_restore_raster(nullptr);
+        scu_snapshot(&snapshot);
     }
     ++imageVersion;
     if (!rewindFrame) {
@@ -592,7 +599,7 @@ void Core::setRewinding(bool on) {
     // discard reverse sound before the device could play it.
     clearAudio();
     if (on)
-        world.reset();
+        world.enemies.reset();
 }
 size_t Core::rewindLimit() const {
     static const size_t budgets[] = {24, 96, 192};

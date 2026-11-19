@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.15.0 Rewind scenery and a full voxel orbit
+
+- Fixed the change in stationary scenery when rewind starts. Recent stage backdrops survive a return across an act boundary. Restoring a checkpoint synchronizes the scanline observer with the restored frame.
+- Orbit a diorama all the way around and tilt up or down to 85°. Front, diorama, side and rear viewpoints work with the gamepad. Drag with the right mouse button or drag an open touch area to turn. Upward motion-jump gestures keep their usual action.
+- Hardware sprites gain stepped, double-sided silhouettes. Compatible native screens also separate the observed rear plane and matching sprite pixels. In XR the scene pivots about its own centre while the wall, TV or cabinet stays in place.
+- The local comparison gallery adds genuine cartridge captures of the same frame from four angles and before and after rewind.
+
 ## 0.14.0 Rendering and controls
 
 - Decode each distinct terrain chunk once across a level. The same geometry cache serves flat and voxel views on all platforms. Fixed scenery can now recover from a solid loading frame, and a failed terrain texture update falls back to the cartridge picture while the upload retries.

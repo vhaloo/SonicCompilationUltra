@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <limits>
+#include <set>
 
 using namespace scu::voxel;
 static void require(bool value, const char *message) {
@@ -43,8 +44,8 @@ static void validate(const Frame &frame, const Mesher &mesh) {
         }
     for (auto size :
          {std::array<int, 2>{320, 180}, {1920, 1080}, {5760, 1080}, {438, 438}, {128, 96}})
-        for (float yaw : {-60.f, 0.f, 37.f, 60.f})
-            for (float pitch : {-60.f, 0.f, 41.f, 60.f}) {
+        for (float yaw : {-180.f, -91.f, -60.f, 0.f, 37.f, 90.f, 179.f, 360.f})
+            for (float pitch : {-85.f, -60.f, 0.f, 41.f, 85.f}) {
                 auto camera = pictureCamera(mesh.bounds(), size[0], size[1], yaw, pitch);
                 for (int i = 0; i < 8; ++i) {
                     const auto &b = mesh.bounds();
@@ -58,6 +59,32 @@ static void validate(const Frame &frame, const Mesher &mesh) {
             }
 }
 int main() {
+    {
+        Frame f;
+        f.configure(7, 7, 0, 0, 7, 7);
+        f.planes = 1u << unsigned(Plane::ActorsHigh);
+        for (int y = 0; y < 7; ++y)
+            for (int x = 0; x < 7; ++x)
+                f.at(Plane::ActorsHigh, x, y) = 0xffe02030;
+        Mesher mesh;
+        require(mesh.update(f, Options{}), "solid sprite builds");
+        std::set<float> front, back;
+        for (const auto &v : mesh.layers()[size_t(Plane::ActorsHigh)].opaque) {
+            if (v.normal.z == 1)
+                front.insert(v.position.z);
+            if (v.normal.z == -1)
+                back.insert(v.position.z);
+        }
+        require(front.size() == 3 && back.size() == 3 && *back.rbegin() < *front.begin(),
+                "sprite builds three closed contour depths on its front and rear");
+        const auto &bounds = mesh.bounds();
+        auto point = Vec3{bounds.max.x, bounds.min.y, bounds.min.z};
+        auto forward = transform(pictureCamera(bounds, 320, 224, 0, 0), point);
+        auto rear = transform(pictureCamera(bounds, 320, 224, 180, 0), point);
+        auto wrapped = transform(pictureCamera(bounds, 320, 224, 360, 0), point);
+        require(forward.x > 0 && rear.x < 0 && std::abs(wrapped.x - forward.x) < .0001f,
+                "camera reaches the actual rear and returns after a full turn");
+    }
     size_t scenes = 0;
     for (int mode : {1, 2, 3})
         for (int width : {1, 7, 32, 65})
@@ -89,9 +116,11 @@ int main() {
                     options.faceLimit = 100000;
                     require(mesh.update(f, options), "generated scene fits budget");
                     validate(f, mesh);
-                    if (pattern == 0)
-                        require(mesh.faces() == 6,
-                                "solid black merges to six faces, never disappears");
+                    if (pattern == 0) {
+                        const bool stepped = mode == 3 && width >= 3 && height >= 3;
+                        require(stepped ? mesh.faces() > 6 : mesh.faces() == 6,
+                                "solid black retains flat faces or its sculpted terrain contour");
+                    }
                     if (pattern == 3 && mode != 3)
                         require(mesh.faces() == 6, "transparent volume has no internal faces");
                     if (pattern == 4)

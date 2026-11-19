@@ -69,5 +69,5 @@ for item in provenance['files']:
     data=(root/'docs/illustrations'/item['file']).read_bytes()
     assert hashlib.sha256(data).hexdigest()==item['sha256']
     assert data[:8]==b'\x89PNG\r\n\x1a\n' and struct.unpack_from('>II',data,16)==(960,540)
-print(f'PASS static voxel guide audit: {len(new)} new four-language labels, {len(controls)} explained controls, {len(required)} font characters and three original mesh-fixture images.')
+print(f'PASS static voxel guide audit: {len(new)} four-language labels, {len(controls)} explained controls, {len(required)} font characters and {len(provenance["files"])} original mesh-fixture images.')
 print('Language/provenance inspection only. Geometry, platform compilation and actual-device performance are separate checks.')

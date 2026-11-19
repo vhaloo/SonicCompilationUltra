@@ -6,7 +6,7 @@
 namespace scu {
 #define INT_FIELDS(X)                                                                                            \
     X(voxelMode, 0, 3) X(voxelDetail, 0, 3) X(voxelFraming, 0, 1) X(voxelThickness, 1, 32) X(voxelSpacing, 0, 64) \
-    X(voxelRelief, 0, 12) X(voxelLight, 0, 100) X(voxelYaw, -60, 60) X(voxelPitch, -60, 60)                      \
+    X(voxelRelief, 0, 12) X(voxelLight, 0, 100) X(voxelYaw, -180, 180) X(voxelPitch, -85, 85)                    \
     X(performanceTarget, 30, 120)                                                                                \
     X(performanceHeadroom, 10, 45)                                                                               \
     X(wearZoom, 0, 1000)                                                                                         \

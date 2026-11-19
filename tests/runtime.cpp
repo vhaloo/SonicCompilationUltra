@@ -135,6 +135,20 @@ int main() {
                 "State failed to restore native RAM and host time");
         require(core->native == savedVideo && core->snapshot.background[0][0] == savedBackdrop,
                 "State failed to restore the paused presentation raster");
+        auto observed = std::make_unique<SCUSnapshot>(core->snapshot);
+        observed->background[239][319] ^= 0x4321;
+        observed->palettes[239][7] ^= 0x7654;
+        observed->scroll_b[239] ^= 123;
+        scu_restore_raster(observed.get());
+        require(core->restore(state), "Reload actual checkpoint after a different raster");
+        scu_snapshot(observed.get());
+        require(!std::memcmp(observed->background, core->snapshot.background,
+                             sizeof observed->background) &&
+                    !std::memcmp(observed->palettes, core->snapshot.palettes,
+                                 sizeof observed->palettes) &&
+                    !std::memcmp(observed->scroll_b, core->snapshot.scroll_b,
+                                 sizeof observed->scroll_b),
+                "observer resumes from restored scanlines, including unrendered rows");
         require(core->rewindSeconds() == 0, "External restore retained a different timeline");
         auto damaged = state;
         damaged.back() ^= 1;

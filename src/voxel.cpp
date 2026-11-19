@@ -206,21 +206,52 @@ bool Mesher::buildLayer(const Frame &f, size_t plane, const Options &o, LayerMes
         const auto sample = shapeTexels[size_t(y) * w + x];
         return texel(sample % f.width + .5f, sample / f.width + .5f);
     };
+    // Thin outlines and a thicker core give sprite silhouettes a closed,
+    // stepped cross-section on both sides of their original pixel plane.
+    const bool sculpt = (o.mode >= 2 && (p == Plane::ActorsLow || p == Plane::ActorsHigh)) ||
+                        (o.mode == 3 && (p == Plane::TerrainLow || p == Plane::TerrainHigh));
+    visited.assign(size_t(w) * h, 0);
+    if (sculpt) {
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x) {
+                if (!occupied(colorAt(x, y)))
+                    continue;
+                auto &cell = visited[size_t(y) * w + x];
+                for (int ring = 1; ring <= 2; ++ring) {
+                    if (!occupied(colorAt(x - ring, y)) || !occupied(colorAt(x + ring, y)) ||
+                        !occupied(colorAt(x, y - ring)) || !occupied(colorAt(x, y + ring)))
+                        break;
+                    cell += 16;
+                }
+            }
+    }
+    auto shapeKey = [&](uint32_t color, int x, int y) {
+        return alphaClass(color) | (reliefStep(color, o) << 2) |
+               unsigned(visited[size_t(y) * w + x] & 0x30);
+    };
+    auto extentFor = [&](uint32_t color, unsigned key) {
+        auto extent = column(p, color, o);
+        if (sculpt) {
+            float inset = (2 - int(key >> 4)) * .16f * (extent[1] - extent[0]);
+            extent[0] += inset;
+            extent[1] -= inset;
+        }
+        return extent;
+    };
     // Rectangles merge only identical height/alpha classes. The texture retains
     // every colour and texel boundary, so palette cycling never rebuilds faces.
-    visited.assign(size_t(w) * h, 0);
     for (int y = 0; y < h; ++y)
         for (int x = 0; x < w; ++x) {
             size_t at = size_t(y) * w + x;
             uint32_t color = colorAt(x, y);
-            if (visited[at] || !occupied(color))
+            if ((visited[at] & 1) || !occupied(color))
                 continue;
-            auto extent = column(p, color, o);
-            unsigned key = alphaClass(color) | (reliefStep(color, o) << 2);
+            unsigned key = shapeKey(color, x, y);
+            auto extent = extentFor(color, key);
             auto same = [&](int xx, int yy) {
                 auto c = colorAt(xx, yy);
-                return !visited[size_t(yy) * w + xx] && occupied(c) &&
-                       (alphaClass(c) | (reliefStep(c, o) << 2)) == key;
+                return !(visited[size_t(yy) * w + xx] & 1) && occupied(c) &&
+                       shapeKey(c, xx, yy) == key;
             };
             int rw = 1, rh = 1;
             while (x + rw < w && same(x + rw, y))
@@ -237,7 +268,8 @@ bool Mesher::buildLayer(const Frame &f, size_t plane, const Options &o, LayerMes
                 ++rh;
             }
             for (int yy = 0; yy < rh; ++yy)
-                std::fill_n(visited.data() + size_t(y + yy) * w + x, rw, uint8_t(1));
+                for (int xx = 0; xx < rw; ++xx)
+                    visited[size_t(y + yy) * w + x + xx] |= 1;
             float x0 = left + sourceX(float(x)) * dx, x1 = left + sourceX(float(x + rw)) * dx,
                   y0 = top + sourceY(float(y)) * dy, y1 = top + sourceY(float(y + rh)) * dy;
             auto a = tex(float(x), float(y)), b = tex(float(x + rw), float(y)),
@@ -249,8 +281,7 @@ bool Mesher::buildLayer(const Frame &f, size_t plane, const Options &o, LayerMes
                       {x0, y0, extent[0]}, {0, 0, -1}, d, c, b, a, alpha))
                 return false;
         }
-    // Only exposed boundary intervals are emitted. Equal neighbours have no
-    // interior face; stepped neighbours expose just the taller interval.
+    // Neighbours can expose a step on the front, the back, or both.
     for (int direction = 0; direction < 4; ++direction) {
         const bool vertical = direction < 2;
         const int outer = vertical ? w : h, inner = vertical ? h : w;
@@ -262,36 +293,29 @@ bool Mesher::buildLayer(const Frame &f, size_t plane, const Options &o, LayerMes
                     ++j;
                     continue;
                 }
-                auto extent = column(p, color, o);
-                const int nx = x + (direction == 0   ? -1
-                                    : direction == 1 ? 1
-                                                     : 0),
-                          ny = y + (direction == 2   ? -1
-                                    : direction == 3 ? 1
-                                                     : 0);
-                auto neighbor = colorAt(nx, ny);
-                float lower = occupied(neighbor) ? column(p, neighbor, o)[1] : extent[0];
-                lower = std::max(lower, extent[0]);
-                if (lower >= extent[1] - .0001f) {
+                const unsigned key = shapeKey(color, x, y);
+                const auto extent = extentFor(color, key);
+                auto sideIntervals = [&](int xx, int yy) {
+                    xx += (direction == 1) - (direction == 0);
+                    yy += (direction == 3) - (direction == 2);
+                    auto neighbour = colorAt(xx, yy);
+                    if (!occupied(neighbour))
+                        return std::array<float, 4>{extent[0], extent[1], extent[0], extent[0]};
+                    auto other = extentFor(neighbour, shapeKey(neighbour, xx, yy));
+                    return std::array<float, 4>{std::max(extent[0], other[1]), extent[1], extent[0],
+                                                std::min(extent[1], other[0])};
+                };
+                auto spans = sideIntervals(x, y);
+                if (spans[1] <= spans[0] && spans[3] <= spans[2]) {
                     ++j;
                     continue;
                 }
-                const unsigned key = alphaClass(color) | (reliefStep(color, o) << 2);
                 int run = 1;
                 while (step == 1 && j + run < inner) {
                     int xx = vertical ? i : j + run, yy = vertical ? j + run : i;
                     uint32_t c = colorAt(xx, yy);
-                    auto n = colorAt(
-                                  xx + (direction == 0   ? -1
-                                        : direction == 1 ? 1
-                                                         : 0),
-                                  yy + (direction == 2   ? -1
-                                        : direction == 3 ? 1
-                                                         : 0));
-                    if (!occupied(c) || (alphaClass(c) | (reliefStep(c, o) << 2)) != key)
-                        break;
-                    float low = occupied(n) ? std::max(extent[0], column(p, n, o)[1]) : extent[0];
-                    if (std::abs(low - lower) > .0001f)
+                    if (!occupied(c) || shapeKey(c, xx, yy) != key ||
+                        sideIntervals(xx, yy) != spans)
                         break;
                     ++run;
                 }
@@ -299,32 +323,36 @@ bool Mesher::buildLayer(const Frame &f, size_t plane, const Options &o, LayerMes
                       x1 = left + sourceX(float(x + (vertical ? 1 : run))) * dx,
                       y0 = top + sourceY(float(y)) * dy,
                       y1 = top + sourceY(float(y + (vertical ? run : 1))) * dy;
-                const float z0 = lower, z1 = extent[1];
                 bool alpha = alphaClass(color) == 1;
-                if (vertical) {
-                    float u = x + .5f, xx = direction == 0 ? x0 : x1;
-                    auto a = tex(u, float(y)), b = tex(u, float(y + run));
-                    if (step > 1)
-                        a = b = sideTexel(x, y);
-                    if (direction == 0) {
-                        if (!emit({xx, y0, z0}, {xx, y0, z1}, {xx, y1, z1}, {xx, y1, z0},
-                                  {-1, 0, 0}, a, a, b, b, alpha))
+                for (int interval = 0; interval < 4; interval += 2) {
+                    const float z0 = spans[interval], z1 = spans[interval + 1];
+                    if (z0 >= z1)
+                        continue;
+                    if (vertical) {
+                        float u = x + .5f, xx = direction == 0 ? x0 : x1;
+                        auto a = tex(u, float(y)), b = tex(u, float(y + run));
+                        if (step > 1)
+                            a = b = sideTexel(x, y);
+                        if (direction == 0) {
+                            if (!emit({xx, y0, z0}, {xx, y0, z1}, {xx, y1, z1}, {xx, y1, z0},
+                                      {-1, 0, 0}, a, a, b, b, alpha))
+                                return false;
+                        } else if (!emit({xx, y1, z0}, {xx, y1, z1}, {xx, y0, z1}, {xx, y0, z0},
+                                         {1, 0, 0}, b, b, a, a, alpha))
                             return false;
-                    } else if (!emit({xx, y1, z0}, {xx, y1, z1}, {xx, y0, z1}, {xx, y0, z0},
-                                     {1, 0, 0}, b, b, a, a, alpha))
-                        return false;
-                } else {
-                    float v = y + .5f, yy = direction == 2 ? y0 : y1;
-                    auto a = tex(float(x), v), b = tex(float(x + run), v);
-                    if (step > 1)
-                        a = b = sideTexel(x, y);
-                    if (direction == 2) {
-                        if (!emit({x1, yy, z0}, {x1, yy, z1}, {x0, yy, z1}, {x0, yy, z0},
-                                  {0, -1, 0}, b, b, a, a, alpha))
+                    } else {
+                        float v = y + .5f, yy = direction == 2 ? y0 : y1;
+                        auto a = tex(float(x), v), b = tex(float(x + run), v);
+                        if (step > 1)
+                            a = b = sideTexel(x, y);
+                        if (direction == 2) {
+                            if (!emit({x1, yy, z0}, {x1, yy, z1}, {x0, yy, z1}, {x0, yy, z0},
+                                      {0, -1, 0}, b, b, a, a, alpha))
+                                return false;
+                        } else if (!emit({x0, yy, z0}, {x0, yy, z1}, {x1, yy, z1}, {x1, yy, z0},
+                                         {0, 1, 0}, a, a, b, b, alpha))
                             return false;
-                    } else if (!emit({x0, yy, z0}, {x0, yy, z1}, {x1, yy, z1}, {x1, yy, z0},
-                                     {0, 1, 0}, a, a, b, b, alpha))
-                        return false;
+                    }
                 }
                 j += run;
             }
@@ -370,10 +398,12 @@ bool Mesher::update(const Frame &f, const Options &o) {
     }
     faces_ = faces;
     // Reserve the same depth as sprites and previews enter or leave the frame.
-    const auto firstPlane = !f.nativeOnly && o.mode > 1 &&
-                                    (f.planes & (1u << unsigned(Plane::Background)))
-                                ? Plane::Background : Plane::TerrainLow;
-    const auto lastPlane = f.nativeOnly ? Plane::TerrainLow : Plane::Preview;
+    const auto firstPlane = o.mode > 1 && (f.planes & (1u << unsigned(Plane::Background)))
+                                ? Plane::Background
+                                : Plane::TerrainLow;
+    const auto lastPlane = !f.nativeOnly                     ? Plane::Preview
+                           : firstPlane == Plane::Background ? Plane::ActorsHigh
+                                                             : Plane::TerrainLow;
     const float z0 = column(firstPlane, 0xFFFFFFFF, o)[0];
     const float z1 = column(lastPlane, 0xFFFFFFFF, o)[1];
     bounds_ = {{float(f.left), float(f.top), z0},
@@ -482,8 +512,8 @@ Vec3 transform(const Matrix &m, Vec3 p) {
 }
 Matrix pictureCamera(const Bounds &b, int width, int height, float yaw, float pitch) {
     const float rad = 3.14159265358979323846f / 180;
-    yaw = std::clamp(yaw, -65.f, 65.f) * rad;
-    pitch = std::clamp(pitch, -65.f, 65.f) * rad;
+    yaw = std::remainder(yaw, 360.f) * rad;
+    pitch = std::clamp(pitch, -85.f, 85.f) * rad;
     Matrix y = Matrix::identity(), x = Matrix::identity(), t = Matrix::identity();
     y.v[0] = y.v[10] = std::cos(yaw);
     y.v[8] = std::sin(yaw);
@@ -495,8 +525,10 @@ Matrix pictureCamera(const Bounds &b, int width, int height, float yaw, float pi
     t.v[12] = -(b.min.x + b.max.x) * .5f;
     t.v[13] = (b.min.y + b.max.y) * .5f;
     t.v[14] = -(b.min.z + b.max.z) * .5f;
-    Matrix model = multiply(multiply(y, x), t);
-    float ex = .5f, ey = .5f, ez = .5f;
+    Matrix model = multiply(multiply(x, y), t);
+    // Turning edge-on should not magnify a thin slice to fill an ultrawide display.
+    float ex = std::max(.5f, (b.max.x - b.min.x) * .5f);
+    float ey = std::max(.5f, (b.max.y - b.min.y) * .5f), ez = .5f;
     for (int i = 0; i < 8; ++i) {
         auto p = transform(model, {i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y,
                                    i & 4 ? b.max.z : b.min.z});

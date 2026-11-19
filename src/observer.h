@@ -12,6 +12,7 @@ typedef struct {
 } SCUSnapshot;
 void scu_capture_line(int line, const uint16_t *pixels);
 void scu_snapshot(SCUSnapshot *out);
+void scu_restore_raster(const SCUSnapshot *completed_frame);
 void scu_ram_write8(unsigned address, uint8_t value);
 void scu_ram_write16(unsigned address, uint16_t value);
 #ifdef __cplusplus

@@ -21,10 +21,10 @@ static const SettingHelp entries[] = {
       "Suis le joueur et vois davantage de terrain autour de la caméra d’origine.",
       "Sigue al jugador y muestra más terreno alrededor de la cámara original.",
       "プレイヤーを追いながら、元のカメラより広い範囲を表示します。"),
-    H("lookvoxel", Depth, "Turn the game into layers of thick pixels. Tilt with the right stick and press it to recenter.",
-      "Transforme le jeu en couches de pixels épais. Incline la vue avec le stick droit et clique pour la recentrer.",
+    H("lookvoxel", Depth, "Turn the game into layers of thick pixels. Orbit with the right stick and press it to recenter.",
+      "Transforme le jeu en couches de pixels épais. Fais le tour avec le stick droit et clique pour recentrer.",
       "Convierte el juego en capas de píxeles gruesos. Inclina la vista con la palanca derecha y pulsa para recentrar.",
-      "ゲームを厚みのあるピクセルの層にします。右スティックで傾け、押し込むと視点が戻ります。"),
+      "ゲームを厚みのあるピクセルの層にします。右スティックで一周し、押し込むと視点が戻ります。"),
     H("lookcrt", Crt, "Frame the original screen in a retro television.",
       "Place l’écran d’origine dans un téléviseur rétro.",
       "Coloca la pantalla original en un televisor retro.",
@@ -175,28 +175,15 @@ static const SettingHelp entries[] = {
       "Afina el estilo actual. El grosor cambia cada píxel, el espacio separa las capas y el relieve añade escalones a los vóxeles esculpidos.",
       "現在のスタイルを微調整します。ピクセルの厚み、レイヤーの間隔、段差のあるボクセルの凹凸を調整できます。"),
     H("voxelyaw", Depth,
-      "Orbit the desktop/mobile picture to reveal thickness. Front view restores straight-on "
-      "alignment; Diorama chooses a gentle angle. The camera fits the complete volume without "
-      "cropping it. VR uses your tracked head and scene-placement grips instead.",
-      "Oriente l’image PC ou mobile pour découvrir l’épaisseur. Vue de face retrouve l’alignement "
-      "droit ; Vue diorama choisit un angle doux. Le cadrage contient le volume entier sans le "
-      "couper. En VR, utilise ta tête et les poignées de placement.",
-      "Gira la vista de PC o móvil para ver el grosor. Frontal recupera la alineación recta; "
-      "Diorama elige un ángulo suave. El encuadre contiene el volumen entero sin recortarlo. En VR "
-      "se usan la cabeza y los agarres de colocación.",
-      "PCやモバイルの画像を見る角度を変えて厚みを確認します。正面ボタンは直線的な配置に戻し、ジオラ"
-      "マは緩やかな角度を選びます。全体を切らずに収めます。VRでは頭の動きと配置用グリップを使います"
-      "。"),
+      "Turn through a full circle to see the front, sides and back. Choose Viewpoint for an exact angle. The right stick also works in VR.",
+      "Fais un tour complet pour examiner la face, les côtés et le dos. Point de vue donne un angle précis. Le stick droit fonctionne aussi en VR.",
+      "Gira una vuelta completa para ver el frente, los lados y el dorso. Punto de vista fija un ángulo exacto. La palanca derecha también funciona en RV.",
+      "一周回して正面、側面、背面を確認できます。「視点」で決まった角度を選べます。VRでも右スティックで回転します。"),
     H("voxelpitch", Depth,
-      "Tilt the desktop/mobile view up or down. Zero looks straight at the game. It changes the "
-      "viewing angle only; crown zoom, touch controls and the original simulation are unchanged.",
-      "Incline la vue PC ou mobile vers le haut ou le bas. Zéro regarde le jeu de face. Seul "
-      "l’angle change ; zoom à la couronne, commandes tactiles et simulation d’origine sont "
-      "conservés.",
-      "Inclina la vista de PC o móvil arriba o abajo. Cero mira de frente. Solo cambia el ángulo; "
-      "el zoom con corona, los controles táctiles y la simulación original se conservan.",
-      "PCやモバイルで上下から見る角度を変えます。ゼロは正面です。クラウンのズーム、タッチ操作、元の"
-      "ゲーム処理は変わりません。"),
+      "Tilt the model to see it from above or below. Zero keeps the horizon level.",
+      "Incline le modèle pour le regarder par-dessus ou par-dessous. À zéro, l’horizon reste horizontal.",
+      "Inclina el modelo para verlo desde arriba o desde abajo. El valor cero mantiene el horizonte horizontal.",
+      "上下から見る角度を変えます。ゼロは正面です。"),
     H("voxelcrt", Depth,
       "In the VR CRT room, replace the flat CRT image with pixel volumes too. Off keeps the "
       "precise native picture and CRT shader on the glass while the surrounding level gains depth. "
@@ -2277,7 +2264,7 @@ static const SettingHelp entries[] = {
 };
 #undef H
 const SettingHelp *settingHelp(const char *key) {
-    for (auto alias : {"voxelfront", "voxelangle"})
+    for (auto alias : {"voxelfront", "voxelangle", "voxelside", "voxelrear", "voxelviewpoint"})
         if (!std::strcmp(key, alias))
             return settingHelp("voxelyaw");
     for (auto alias : {"desktopframescale", "desktopcabinetangle", "desktopcrtstrength",

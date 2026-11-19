@@ -113,6 +113,7 @@ MobilePresentation::~MobilePresentation() {
 void MobilePresentation::clearInput() {
     input.clear();
     swipeJump.clear();
+    orbitDown = orbitDragging = false;
     crownFraction = 0;
     app.mobileButtons = 0;
     app.motionButtons = 0;
@@ -424,6 +425,13 @@ bool MobilePresentation::event(const SDL_Event &e) {
             action(a);
             return true;
         }
+        if (!app.menu && app.settings.voxelMode && !orbitDown && layout.canvas.contains(p) &&
+            layout.actionAt(p) == touch::Action::None) {
+            orbitDown = true;
+            orbitDragging = false;
+            orbitFinger = id;
+            orbitStart = orbitLast = p;
+        }
         if (!app.menu && app.settings.motionMode && app.settings.motionSwipe &&
             layout.actionAt(p) == touch::Action::None) {
             swipeJump.down(id, p, eventTime,
@@ -441,6 +449,26 @@ bool MobilePresentation::event(const SDL_Event &e) {
         }
     } else {
         input.move(id, p);
+        if (orbitDown && id == orbitFinger) {
+            const float dx = p.x - orbitStart.x, dy = p.y - orbitStart.y;
+            if (!orbitDragging && std::max(std::abs(dx), std::abs(dy)) >= 6.f) {
+                if (app.settings.motionMode && app.settings.motionSwipe &&
+                    std::abs(dy) > std::abs(dx))
+                    orbitDown = false;
+                else {
+                    orbitDragging = true;
+                    swipeJump.up(id);
+                }
+            }
+            if (orbitDragging) {
+                const float degrees =
+                    280.f / std::max(96.f, std::min(layout.canvas.w, layout.canvas.h));
+                app.turnVoxel((p.x - orbitLast.x) * degrees, (p.y - orbitLast.y) * degrees);
+                orbitLast = p;
+            }
+            if (e.type == SDL_FINGERUP)
+                orbitDown = orbitDragging = false;
+        }
         swipeJump.move(id, p, eventTime, now);
         if (pointerDown && id == pointer) {
             const float dx = p.x - pointerStart.x, dy = p.y - pointerStart.y;

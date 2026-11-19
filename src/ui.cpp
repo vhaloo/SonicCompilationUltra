@@ -68,7 +68,13 @@ bool App::drawGameExample(HelpPicture picture) {
                                          [&](const auto &item) { return item.key == guideKey; });
     const char *file = nullptr;
     int variant = 0;
-    if (comparison != std::end(comparisons)) {
+    const bool orbitGuide = guideKey == "voxelviewpoint" || guideKey == "voxelyaw" ||
+                            guideKey == "voxelpitch" || guideKey == "voxelfront" ||
+                            guideKey == "voxelangle" || guideKey == "voxelside" ||
+                            guideKey == "voxelrear";
+    if (orbitGuide) {
+        file = "voxel-orbit.bmp";
+    } else if (comparison != std::end(comparisons)) {
         file = comparison->file;
     } else if (picture == HelpPicture::View || picture == HelpPicture::Camera ||
                picture == HelpPicture::Zoom) {
@@ -109,13 +115,18 @@ bool App::drawGameExample(HelpPicture picture) {
         const char *views[] = {"guideoriginal", "guideoverview", "lookpanorama", "guideexamplecrt"};
         const char *depth[] = {"voxelflat", "voxelthick", "voxellayers", "voxelsculpt"};
         const char *background[] = {"guideoriginal", "guidebackgroundoff"};
-        const bool custom = comparison != std::end(comparisons);
+        const bool custom = !orbitGuide && comparison != std::end(comparisons);
         const bool wide = custom && comparison->wide;
         const bool relief = !custom && picture == HelpPicture::Depth;
         const bool backdrop = !custom && picture == HelpPicture::Background;
         const char *customNames[] = {custom ? comparison->first : "", custom ? comparison->second : ""};
-        const char *const *names = custom ? customNames : relief ? depth : backdrop ? background : views;
-        const int count = relief ? 4 : 2;
+        const char *orbitAngles[] = {"voxelfront", "voxelangle", "voxelside", "voxelrear"};
+        const char *const *names = orbitGuide ? orbitAngles
+                                   : custom   ? customNames
+                                   : relief   ? depth
+                                   : backdrop ? background
+                                              : views;
+        const int count = relief || orbitGuide ? 4 : 2;
         const int columns = wide ? 1 : 2;
         const int rows = wide || !(custom || backdrop) ? 2 : 1;
         ImGui::TextWrapped("%s · %s", tr("gamecaptureexample", language), game->name);
@@ -139,6 +150,14 @@ bool App::drawGameExample(HelpPicture picture) {
     }
     if (!core.loaded || core.native.empty())
         return false;
+    if (orbitGuide && volumeOnScreen && volumeGpu.picture()) {
+        const auto size = volumeGpu.pictureSize();
+        ImGui::TextWrapped("%s", tr("currentgamecapture", language));
+        float width = std::max(1.f, ImGui::GetContentRegionAvail().x);
+        ImGui::Image(reinterpret_cast<ImTextureID>(volumeGpu.picture()),
+                     {width, width * size[1] / std::max(1, size[0])});
+        return true;
+    }
     if (!guideNative || guideNativeW != core.nativeW || guideNativeH != core.nativeH) {
         if (guideNative)
             retiredGuideTextures.push_back(guideNative);
@@ -165,7 +184,7 @@ void App::settingGuide(bool compact) {
     if (!help)
         help = settingHelp("view");
     ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.35f, 0.9f, 0.94f, 1));
-    ImGui::TextWrapped("%s", tr(help->key, language));
+    ImGui::TextWrapped("%s", tr(guideKey == "voxelviewpoint" ? guideKey.c_str() : help->key, language));
     ImGui::PopStyleColor();
     if (drawGameExample(help->picture)) {
         ImGui::TextWrapped("%s", help->text[std::clamp(language, 0, 3)]);
@@ -1029,6 +1048,11 @@ void App::event(const SDL_Event &e) {
         return;
 #endif
     ImGui_ImplSDL2_ProcessEvent(&e);
+    if (e.type == SDL_MOUSEMOTION && !menu && settings.voxelMode &&
+        e.motion.which != SDL_TOUCH_MOUSEID && (e.motion.state & SDL_BUTTON_RMASK)) {
+        turnVoxel(e.motion.xrel * .35f, e.motion.yrel * .35f);
+        return;
+    }
     if (e.type == SDL_QUIT) {
         if (settings.confirmQuit && core.loaded) {
             requestAction(1);
@@ -1426,6 +1450,24 @@ void App::resetVoxelOrbit() {
     voxelPanX = voxelPanY = 0;
     dirty = true;
 }
+void App::turnVoxel(float yawDegrees, float pitchDegrees) {
+    auto step = [](float &remainder, float delta) {
+        remainder += delta;
+        int whole = int(remainder);
+        remainder -= whole;
+        return whole;
+    };
+    int yaw = (settings.voxelYaw + step(orbitYawRemainder, yawDegrees)) % 360;
+    if (yaw > 180)
+        yaw -= 360;
+    if (yaw < -180)
+        yaw += 360;
+    const int pitch =
+        std::clamp(settings.voxelPitch + step(orbitPitchRemainder, pitchDegrees), -85, 85);
+    dirty |= settings.voxelYaw != yaw || settings.voxelPitch != pitch;
+    settings.voxelYaw = yaw;
+    settings.voxelPitch = pitch;
+}
 bool App::voxelFollows(const Scene &scene) const {
 #ifdef SCU_QUEST
     (void)scene;
@@ -1504,22 +1546,10 @@ void App::pan(double elapsed) {
                     return;
                 }
             }
-            auto turn = [&](int &angle, float &remainder, float movement, int low, int high) {
-                remainder += movement;
-                const int step = int(remainder);
-                remainder -= step;
-                const int next = std::clamp(angle + step, low, high);
-                if (next != angle) {
-                    angle = next;
-                    dirty = true;
-                }
-            };
 #ifdef SCU_QUEST
-            turn(settings.voxelYaw, orbitYawRemainder, dx * 65.f * dt, -57, 33);
-            turn(settings.voxelPitch, orbitPitchRemainder, dy * 48.f * dt, -13, 37);
+            turnVoxel(dx * 65.f * dt, dy * 48.f * dt);
 #else
-            turn(settings.voxelYaw, orbitYawRemainder, dx * 115.f * dt, -60, 60);
-            turn(settings.voxelPitch, orbitPitchRemainder, dy * 90.f * dt, -60, 60);
+            turnVoxel(dx * 115.f * dt, dy * 90.f * dt);
 #endif
             dx = dy = 0;
         }
@@ -3230,6 +3260,8 @@ void App::voxelOptions() {
     ImGui::TextWrapped("%s", tr("voxelintro", language));
 #ifdef SCU_QUEST
     ImGui::TextWrapped("%s", tr("voxelstickxr", language));
+#elif defined(SCU_MOBILE)
+    ImGui::TextWrapped("%s", tr("voxeltouchorbit", language));
 #else
     ImGui::TextWrapped("%s", tr("voxelstickhint", language));
 #endif
@@ -3264,6 +3296,21 @@ void App::voxelOptions() {
             changed |= choice("voxelframing", settings.voxelFraming,
                               {"voxelfollow", "voxelselectedview"});
 #endif
+        const std::array<int, 4> yawStops{0, Settings{}.voxelYaw, 90, 180};
+        const std::array<int, 4> pitchStops{0, Settings{}.voxelPitch, 0, 0};
+        int angle = 4;
+        for (int i = 0; i < 4; ++i)
+            if ((settings.voxelYaw == yawStops[i] || (i == 3 && settings.voxelYaw == -180)) &&
+                settings.voxelPitch == pitchStops[i])
+                angle = i;
+        if (choice("voxelviewpoint", angle,
+                   {"voxelfront", "voxelangle", "voxelside", "voxelrear", "customprofile"}) &&
+            angle < 4) {
+            settings.voxelYaw = yawStops[angle];
+            settings.voxelPitch = pitchStops[angle];
+            orbitYawRemainder = orbitPitchRemainder = 0;
+            changed = true;
+        }
         tick("voxeladjustments", voxelFineTuning);
         if (voxelFineTuning) {
             changed |= slider("voxelthickness", settings.voxelThickness, 1, 32, "%d px");
@@ -3275,19 +3322,9 @@ void App::voxelOptions() {
             changed |= tick("voxelbackground", settings.voxelBackground);
 #ifdef SCU_QUEST
             changed |= tick("voxelcrt", settings.voxelCrt);
-#else
-            changed |= slider("voxelyaw", settings.voxelYaw, -60, 60, "%d°");
-            changed |= slider("voxelpitch", settings.voxelPitch, -60, 60, "%d°");
-            if (button("voxelfront")) {
-                resetVoxelOrbit();
-                settings.voxelYaw = settings.voxelPitch = 0;
-                changed = true;
-            }
-            if (button("voxelangle")) {
-                resetVoxelOrbit();
-                changed = true;
-            }
 #endif
+            changed |= slider("voxelyaw", settings.voxelYaw, -180, 180, "%d°");
+            changed |= slider("voxelpitch", settings.voxelPitch, -85, 85, "%d°");
         }
 #ifdef SCU_QUEST
         ImGui::TextWrapped("%s", tr("voxelvrhint", language));

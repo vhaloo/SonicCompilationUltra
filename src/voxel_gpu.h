@@ -18,6 +18,7 @@ class VoxelGpu {
                         const Settings &, int width, int height);
     voxel::Vec3 project(voxel::Vec3 point) const;
     std::array<int, 2> pictureSize() const;
+    SDL_Texture *picture() const;
     void release();
     void invalidate();
     const char *status() const;

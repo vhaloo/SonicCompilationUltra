@@ -49,6 +49,14 @@ class World {
     std::array<int, 3> backdropStyle{{-1, -1, -1}};
     int backdropFamily = -1, backdropStage = -1;
     bool backdropFixed = false, backdropHasDetail = false;
+    struct StationaryBackdrop {
+        int family = -1, stage = -1;
+        std::vector<uint32_t> pixels;
+    };
+    // Two adjacent acts can be revisited in either direction without putting a
+    // second full screenshot in every rewind checkpoint.
+    std::array<StationaryBackdrop, 2> stationaryBackdrops;
+    unsigned nextStationaryBackdrop = 0;
     std::vector<uint8_t> priority;
     std::vector<Sprite> sprites, satSprites;
     std::vector<uint8_t> rom;
@@ -60,6 +68,7 @@ class World {
     void mapping(unsigned addr, unsigned frame, unsigned gfx, unsigned flags, int x, int y,
                  bool direct = false);
     void captureActors(const Scene &scene, const Game *game);
+    void captureSpriteTable(const SCUSnapshot &s, const Scene &scene, bool omitHud);
 
   public:
     voxel::Frame volume;
@@ -89,12 +98,15 @@ class World {
         priority.clear();
         volume.discard();
         volumeMesh.discard();
-        backdropFamily = -1;
-        backdropHasDetail = false;
-        backdropStyle = {{-1, -1, -1}};
         reset();
     }
     void reset() {
+        for (auto &entry : stationaryBackdrops)
+            entry = {};
+        nextStationaryBackdrop = 0;
+        backdropFamily = -1;
+        backdropHasDetail = false;
+        backdropStyle = {{-1, -1, -1}};
         invalidateBackdrop();
         enemies.reset();
     }

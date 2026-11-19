@@ -1,5 +1,11 @@
 # Validation report
 
+## 0.15.0 rewind scenery and volume rendering
+
+- In a Sonic 2 checkpoint, rewinding 45 console frames in a fixed overview changed 6,887 pixels in 0.14.0. The corrected Windows rendering returned the exact forward image. The same check matched in all 11 sampled games and variants. The compositor tests also revisit a previous act during a blank transition and restore an unrendered hardware scanline.
+- An original GL fixture exercises thick, layered and sculpted meshes at three aspect ratios, seven viewpoints, and after a GPU resource reset. The rear reverses the horizontal axis. Silhouette tests verify three front and back depths, outward-facing triangles, occlusion and intact original colours.
+- The private cartridge gallery compares four views at a single simulation instant per game. The Windows matrix also tests three volume modes, seven horizontal angles and three vertical angles for each of the 11 titles and variants. These are sampled states and viewpoints. Physical Quest tracking, passthrough and sustained frame rate require separate hardware qualification.
+
 ## 0.14.0 rendering and controls
 
 - The Windows OpenGL replay covers 251 saved states across 11 games and variants. It compares pixels and cartridge RAM when reapplying the visual presets, including all four Spinball boards. The 1,475 comparisons passed. These are bounded replays with the owner's cartridges.

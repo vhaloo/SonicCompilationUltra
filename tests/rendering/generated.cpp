@@ -77,6 +77,17 @@ int main() {
         world->makeBackdrop(*snapshot, scene, options);
         require(world->backdropVersion == detailedVersion && world->backdrop.back() == 0xff924820,
                 "fixed panorama locks the first detailed stage backdrop");
+        auto firstAct = scene.stage;
+        scene.stage++;
+        snapshot->background[223][319] = 0xff297451;
+        world->makeBackdrop(*snapshot, scene, options);
+        require(world->backdrop.back() == 0xff297451,
+                "next act captures separate stationary scenery");
+        scene.stage = firstAct;
+        std::memset(snapshot->background, 0, sizeof snapshot->background);
+        world->makeBackdrop(*snapshot, scene, options);
+        require(world->backdrop.back() == 0xff924820,
+                "returning across a blank frame restores the earlier act");
         options.projectionTransparent = true;
         world->makeBackdrop(*snapshot, scene, options);
         require(world->backdrop.front() == 0, "passthrough alpha remains clear");
@@ -307,9 +318,16 @@ int main() {
         require(world->volume.width == 320 && world->volume.height == 224,
                 "fine native detail preserves every source pixel");
         for (int y = 0; y < 224; ++y)
-            for (int x = 0; x < 320; ++x)
-                require(world->volume.at(voxel::Plane::TerrainLow, x, y) == pixels[y * 320 + x],
-                        "native voxel texture changed original pixels");
+            for (int x = 0; x < 320; ++x) {
+                uint32_t front = 0;
+                for (size_t p = 0; p < voxel::planeCount; ++p) {
+                    auto color = world->volume.at(voxel::Plane(p), x, y);
+                    if (color >> 24)
+                        front = color;
+                }
+                require(front == pixels[y * 320 + x],
+                        "reassembled native planes preserve every front texel");
+            }
         require(pixels == original &&
                     std::memcmp(before.get(), snapshot.get(), sizeof *before) == 0,
                 "volume generation changed snapshot or native source");
@@ -323,6 +341,40 @@ int main() {
         require(world->prepareVolume(*snapshot, nullptr, cfg, pixels, 320, 224, false) &&
                     world->volume.revision > epoch,
                 "new volume cannot reuse an old texture cache key");
+    }
+    {
+        auto s = generated();
+        Settings cfg;
+        cfg.voxelMode = 2;
+        cfg.voxelDetail = 3;
+        auto world = std::make_unique<World>();
+        const uint32_t sky = 0xff102030, actor = 0xffe09040;
+        std::vector<uint32_t> image(320 * 224, sky);
+        s->regs[5] = 0x70;
+        s->regs[12] = 1;
+        auto word = [&](int address, int value) {
+            s->vram[address] = uint8_t(value >> 8);
+            s->vram[address + 1] = uint8_t(value);
+        };
+        word(0xe000, 128 + 36);
+        word(0xe002, 0);
+        word(0xe004, 0x8005);
+        word(0xe006, 128 + 24);
+        std::fill_n(s->vram + 5 * 32, 32, 0x11);
+        for (int y = 36; y < 44; ++y) {
+            s->palettes[y][1] = actor;
+            std::fill_n(&image[y * 320 + 24], 8, actor);
+        }
+        image[39 * 320 + 27] = 0xff006020;
+        require(world->prepareVolume(*s, nullptr, cfg, image, 320, 224, false),
+                "native layered fixture");
+        require(
+            world->volume.at(voxel::Plane::Background, 0, 0) == sky &&
+                world->volume.at(voxel::Plane::ActorsHigh, 24, 36) == actor &&
+                world->volume.at(voxel::Plane::TerrainLow, 24, 36) == 0 &&
+                world->volume.at(voxel::Plane::ActorsHigh, 27, 39) == 0 &&
+                world->volume.at(voxel::Plane::TerrainLow, 27, 39) == image[39 * 320 + 27],
+            "visible native actors separate while an occluding foreground pixel stays in place");
     }
     std::puts("No cartridge, emulator, SDL, window, app or device execution; presentation-only "
               "code with generated RAM/VRAM/palette data.");

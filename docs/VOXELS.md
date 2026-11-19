@@ -1,5 +1,10 @@
 # Pixels with depth
 
+The right stick turns the scene through 360° and tilts it up or down to 85°. Click the stick to restore the diorama angle. On a desktop, drag with the right mouse button. On touchscreens, drag an empty game area. Start the drag sideways when swipe-to-jump is enabled. **Viewpoint** offers front, diorama, side and rear views on every platform. In Quest the model rotates independently of the room and furniture.
+
+The mesh keeps original pixel colours on front faces. A sprite's silhouette controls how thick it becomes toward its centre, including the rear face. For native 256/320-pixel screens, the renderer can also place matching background and sprite samples on separate planes. Details hidden by the original game remain inferred only where the hardware supplies observable pixels.
+
+
 [Français](VOXELS.fr.md) · [Español](VOXELS.es.md) · [日本語](VOXELS.ja.md)
 
 Open **Video → Depth and voxels → Pixel volume**. On Quest, the **Depth** page of the movable remote has direct buttons. The complete settings are also in the Quest options. Click or touch a setting's cube icon for its illustrated explanation; controller focus and F1/Y work too.
@@ -9,15 +14,17 @@ Open **Video → Depth and voxels → Pixel volume**. On Quest, the **Depth** pa
 | Original flat picture | The existing 2D presentation, including literal-pixel choices |
 | Thick pixels | The visible artwork gains solid sides and backs |
 | Layered voxels | Observed terrain and actors occupy separate priority planes |
-| Sculpted voxels | The same planes gain four small, brightness-based surface steps |
+| Sculpted voxels | Terrain gains a shaped contour and up to four brightness-based surface steps |
 
 Choose **Subtle**, **Diorama** or **Bold** as a starting point. **Pixel precise** retains each source texel in close views within the device's budget. Automatic quality can simplify the depth geometry and lower the size of the rendered image independently. Whole-level framing samples the larger map to fit. Open **Fine-tune depth and angle** to adjust the style.
+
+![Front, diorama, side and rear views of a single original model, in reading order](illustrations/voxel-orbit.png)
 
 ![Original generated fixture, flat](illustrations/voxel-flat.png)
 ![The same original fixture, layered volumes](illustrations/voxel-layered.png)
 ![The same original fixture, stepped surfaces](illustrations/voxel-sculpted.png)
 
-These three pictures use original fixture art and the actual procedural mesh, rendered by an offline CPU reference helper. **They are not game screenshots or captures from a phone, watch, PC application or headset.** [Provenance](illustrations/voxel-provenance.json).
+These four illustrations show original test art rendered from the procedural mesh. The personal edition shows four in-game captures of each title in its Viewpoint guide. [Provenance](illustrations/voxel-provenance.json).
 
 ## Choose a comfortable view
 

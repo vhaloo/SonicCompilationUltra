@@ -971,15 +971,19 @@ struct XrStageRenderer::Impl {
         }
         return true;
     }
-    void drawVolume(const Matrix &m, bool clip) {
+    void drawVolume(const Matrix &m, bool clip, V3 eye) {
         glUniform1i(clipUniform, clip);
         glEnable(GL_CULL_FACE);
         glFrontFace(GL_CCW);
         glCullFace(GL_BACK);
         for (size_t alpha = 0; alpha < 2; ++alpha) {
             glDepthMask(alpha ? GL_FALSE : GL_TRUE);
-            for (auto &layer : volumeMeshes)
-                draw(layer[alpha], m, alpha ? 7 : 8, volumeAtlas);
+            const bool rear = (eye.x - m.v[12]) * m.v[8] + (eye.y - m.v[13]) * m.v[9] +
+                                  (eye.z - m.v[14]) * m.v[10] <
+                              0;
+            for (size_t p = 0; p < volumeMeshes.size(); ++p)
+                draw(volumeMeshes[alpha && rear ? volumeMeshes.size() - 1 - p : p][alpha], m,
+                     alpha ? 7 : 8, volumeAtlas);
         }
         glDepthMask(GL_TRUE);
         glDisable(GL_CULL_FACE);
@@ -1130,13 +1134,12 @@ struct XrStageRenderer::Impl {
         glUniform1i(clipUniform, 0);
         Matrix orbit = Matrix::identity();
         if (volumeReady) {
-            const Settings defaults;
-            const float yaw = std::clamp(s.voxelYaw - defaults.voxelYaw, -45, 45) * pi / 360.f;
-            const float pitch = std::clamp(s.voxelPitch - defaults.voxelPitch, -25, 25) * pi / 360.f;
+            const float yaw = s.voxelYaw * pi / 360.f;
+            const float pitch = s.voxelPitch * pi / 360.f;
             const float sy = std::sin(yaw), cy = std::cos(yaw), sx = std::sin(pitch), cx = std::cos(pitch);
             orbit = poseMatrix({{cy * sx, sy * cx, -sy * sx, cy * cx}, {0, 0, 0}});
         }
-        Matrix root = product(poseMatrix(origin, s.questScale * .01f), orbit);
+        Matrix root = poseMatrix(origin, s.questScale * .01f);
         Matrix volumeModel = Matrix::identity();
         if (volumeReady) {
             const auto &f = *content.volume;
@@ -1145,7 +1148,7 @@ struct XrStageRenderer::Impl {
                 const float w =
                     std::min(content.surfaceSize.width, content.surfaceSize.height * sourceRatio);
                 volumeModel =
-                    product(product(poseMatrix(origin), orbit), placement({0, 0, 0}, {w, w / sourceRatio, w}));
+                    product(poseMatrix(origin), placement({0, 0, 0}, {w, w / sourceRatio, w}));
             } else if (mode == 4) {
                 const float boardRatio = std::clamp(ratio, .25f, 2.f);
                 const float sx = std::min(1.f, sourceRatio / boardRatio),
@@ -1176,6 +1179,27 @@ struct XrStageRenderer::Impl {
                                                             float(f.coverageHeight) * unit,
                                                             float(f.coverageWidth) * unit}));
             }
+        }
+        const bool turned = volumeReady && (s.voxelYaw != 0 || s.voxelPitch != 0);
+        if (turned) {
+            // Rotate the mesh in metres about its own centre. Scale after the
+            // rotation would squash the sides of a wide wall or move the TV.
+            const float pivot = mode == 6 ? .5f : 0.f;
+            Matrix axes = volumeModel;
+            std::array<float, 3> scales{};
+            for (int col = 0; col < 3; ++col) {
+                float *axis = &axes.v[col * 4];
+                scales[col] = std::sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]);
+                if (scales[col] > 0)
+                    for (int row = 0; row < 3; ++row)
+                        axis[row] /= scales[col];
+            }
+            auto centre = point(volumeModel, {0, pivot, 0});
+            axes.v[12] = centre.x;
+            axes.v[13] = centre.y;
+            axes.v[14] = centre.z;
+            Matrix size = placement({0, -pivot * scales[1], 0}, {scales[0], scales[1], scales[2]});
+            volumeModel = product(axes, product(orbit, size));
         }
         bool alphaLayer = ar || mode < 4;
         for (int i = 0; i < 2; ++i) {
@@ -1254,7 +1278,9 @@ struct XrStageRenderer::Impl {
             }
             glUniform1i(clipUniform, 0);
             if (volumeReady)
-                drawVolume(volumeModel, mode == 5 && s.questCrtCoplanar && !s.voxelCrt);
+                drawVolume(
+                    volumeModel, mode == 5 && !turned && s.questCrtCoplanar && !s.voxelCrt,
+                    {views[i].pose.position.x, views[i].pose.position.y, views[i].pose.position.z});
             if (mode >= 4) {
                 draw(furniture, root, 0);
                 if (!volumeReady || (mode == 5 && !s.voxelCrt))

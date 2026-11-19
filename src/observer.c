@@ -6,6 +6,19 @@
 static uint32_t line_palettes[240][64];
 static uint32_t line_background[240][320];
 static int16_t line_a[240], line_b[240];
+void scu_restore_raster(const SCUSnapshot *frame) {
+    if (frame) {
+        memcpy(line_palettes, frame->palettes, sizeof line_palettes);
+        memcpy(line_background, frame->background, sizeof line_background);
+        memcpy(line_a, frame->scroll_a, sizeof line_a);
+        memcpy(line_b, frame->scroll_b, sizeof line_b);
+    } else {
+        memset(line_palettes, 0, sizeof line_palettes);
+        memset(line_background, 0, sizeof line_background);
+        memset(line_a, 0, sizeof line_a);
+        memset(line_b, 0, sizeof line_b);
+    }
+}
 void scu_capture_line(int line, const uint16_t *pixels) {
     unsigned i, scroll, mode, width, height, base, x;
     if (line < 0 || line >= 240)
@@ -24,6 +37,12 @@ void scu_capture_line(int line, const uint16_t *pixels) {
         scroll += (line & ~7) * 4;
     line_a[line] = (int16_t)*(uint16_t *)(vram + (scroll & 65535));
     line_b[line] = (int16_t)*(uint16_t *)(vram + ((scroll + 2) & 65535));
+    if (!(reg[1] & 0x40)) {
+        /* VRAM can contain partially uploaded scenery while the VDP is blanked. */
+        for (x = 0; x < 320; ++x)
+            line_background[line][x] = line_palettes[line][0];
+        return;
+    }
     /* Sample only Plane B at its real raster state. Sprite/foreground pixels
      * never enter the stretched backdrop. Keep native column scrolling. */
     width = (reg[16] & 3) == 1 ? 64 : (reg[16] & 3) == 3 ? 128 : 32;

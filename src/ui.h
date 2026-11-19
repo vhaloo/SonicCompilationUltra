@@ -191,6 +191,7 @@ class App {
     unsigned advanceGame(double elapsed, bool unpaced = false);
     void pan(double elapsed);
     void resetVoxelOrbit();
+    void turnVoxel(float yawDegrees, float pitchDegrees);
     void present(bool capture = false);
 #ifdef SCU_PRIVATE_QA
     uint32_t presentationChecksum();

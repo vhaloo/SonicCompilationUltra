@@ -572,8 +572,9 @@ struct VoxelGpu::Impl {
                 g.BlendEquationSeparate(0x8006, 0x8006);
                 g.DepthMask(0);
             }
-            for (auto &layer : buffers) {
-                auto &b = layer[alpha];
+            for (size_t p = 0; p < buffers.size(); ++p) {
+                const bool reverse = alpha && std::abs(s.voxelYaw) > 90;
+                auto &b = buffers[reverse ? buffers.size() - 1 - p : p][alpha];
                 if (!b.count)
                     continue;
                 g.BindBuffer(arrayBuffer, b.id);
@@ -630,6 +631,9 @@ voxel::Vec3 VoxelGpu::project(voxel::Vec3 point) const {
 }
 std::array<int, 2> VoxelGpu::pictureSize() const {
     return {impl->width, impl->height};
+}
+SDL_Texture *VoxelGpu::picture() const {
+    return impl->picture;
 }
 const char *VoxelGpu::status() const {
     return impl->status;

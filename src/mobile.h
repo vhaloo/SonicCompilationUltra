@@ -23,6 +23,9 @@ class MobilePresentation {
     int64_t pointer = 0;
     bool pointerDown = false;
     bool pointerScrolling = false;
+    bool orbitDown = false, orbitDragging = false;
+    SDL_FingerID orbitFinger = 0;
+    touch::Point orbitStart{}, orbitLast{};
     touch::Point pointerStart{}, pointerLast{};
     int displayConfig = -1;
     int motionConfig = -1, availableMotion = 0;

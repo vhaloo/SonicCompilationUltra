@@ -274,15 +274,65 @@ bool World::prepareVolume(const SCUSnapshot &s, const Game *game, const Settings
         } else {
             // Unprofiled scenes still support exact screen-pixel relief. Do not
             // invent missing object coordinates or advertise artist-made models.
+            const bool nativeLayers =
+                cfg.voxelMode >= 2 && (nw == 256 || nw == 320) && (nh == 224 || nh == 240);
             for (int y = 0; y < h; ++y) {
                 auto *row = volume.row(Plane::TerrainLow, y);
                 const int sy = exact ? y : bound(int((y + .5) * nh / h), nh);
                 const auto *source = native.data() + size_t(sy) * nw;
-                if (exact)
+                if (nativeLayers) {
+                    auto *rear = volume.row(Plane::Background, y);
+                    for (int x = 0; x < w; ++x) {
+                        const int sx = exact ? x : bound(int((x + .5) * nw / w), nw);
+                        const auto color = source[sx], bg = s.background[sy][sx];
+                        const bool matches = (bg >> 24) && color == bg;
+                        rear[x] = matches || backdrop ? bg : 0;
+                        row[x] = matches ? 0 : color;
+                    }
+                } else if (exact)
                     std::copy_n(source, w, row);
                 else
                     for (int x = 0; x < w; ++x)
                         row[x] = source[bound(int((x + .5) * nw / w), nw)];
+            }
+            if (nativeLayers) {
+                volume.planes |= planeBit(Plane::Background);
+                // The SAT and the completed scanline must agree before assigning
+                // an original viewport pixel to a sprite. This also works for
+                // puzzle games and for screens without a world-coordinate map.
+                captureSpriteTable(s, {}, false);
+                for (auto it = satSprites.rbegin(); it != satSprites.rend(); ++it) {
+                    const auto &sprite = *it;
+                    const int sw = ((sprite.size >> 2) + 1) * 8, sh = ((sprite.size & 3) + 1) * 8;
+                    const auto p = sprite.attr & 0x8000 ? Plane::ActorsHigh : Plane::ActorsLow;
+                    const auto behind =
+                        p == Plane::ActorsHigh ? Plane::ActorsLow : Plane::ActorsHigh;
+                    const int endY = std::min(h, int(std::ceil((sprite.y + sh) * h / double(nh))));
+                    const int endX = std::min(w, int(std::ceil((sprite.x + sw) * w / double(nw))));
+                    for (int y = std::max(0, sprite.y * h / nh); y < endY; ++y) {
+                        const int sy = int((y + .5) * nh / h), py = sy - sprite.y;
+                        if (py < 0 || py >= sh)
+                            continue;
+                        const int iy = sprite.attr & 0x1000 ? sh - 1 - py : py;
+                        for (int x = std::max(0, sprite.x * w / nw); x < endX; ++x) {
+                            const int sx = int((x + .5) * nw / w), px = sx - sprite.x;
+                            if (px < 0 || px >= sw)
+                                continue;
+                            const int ix = sprite.attr & 0x800 ? sw - 1 - px : px;
+                            const unsigned tile =
+                                ((sprite.attr & 2047) + (ix / 8) * (sh / 8) + iy / 8) & 2047;
+                            const auto pair = s.vram[tile * 32 + (iy & 7) * 4 + (ix & 7) / 2];
+                            const unsigned index = ix & 1 ? pair & 15 : pair >> 4;
+                            const auto color = native[size_t(sy) * nw + sx];
+                            if (!index || color == s.background[sy][sx] ||
+                                s.palettes[sy][((sprite.attr >> 9) & 48) | index] != color)
+                                continue;
+                            volume.at(p, x, y) = color;
+                            volume.at(behind, x, y) = volume.at(Plane::TerrainLow, x, y) = 0;
+                            volume.planes |= planeBit(p);
+                        }
+                    }
+                }
             }
         }
         if (cfg.voxelMode == 1 && expanded) {

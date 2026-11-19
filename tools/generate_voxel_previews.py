@@ -18,7 +18,14 @@ for name in ['flat','layered','sculpted']:
     assert image.size==(960,540)
     path=target/('voxel-'+name+'.png');image.save(path,optimize=True)
     manifest.append({'file':path.name,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
+orbit=Image.new('RGB',(960,540))
+for i,name in enumerate(['front','layered','side','rear']):
+    with Image.open(temporary/(name+'.ppm')) as image:
+        orbit.paste(image.resize((480,270),Image.Resampling.LANCZOS),((i%2)*480,(i//2)*270))
+path=target/'voxel-orbit.png'
+orbit.save(path,optimize=True)
+manifest.append({'file':path.name,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
 proof={'provenance':'Original fixture pixels and actual procedural mesh; CPU reference rasterizer, not an application or device capture.',
        'rom_or_emulator_input':False,'gpu_or_application_executed':False,'files':manifest}
 (target/'voxel-provenance.json').write_text(json.dumps(proof,indent=2)+'\n',encoding='utf-8')
-print('Saved three original mesh-fixture views and their provenance. No game assets.')
+print('Saved original mesh views and a four-angle contact sheet with their provenance.')

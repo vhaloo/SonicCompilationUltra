@@ -238,29 +238,34 @@ void World::mapping(unsigned addr, unsigned frame, unsigned gfx, unsigned flags,
         sprites.push_back({x + dx, y + dy, attr, (uint8_t)sz});
     }
 }
-void World::captureActors(const Scene &v, const Game *g) {
-    sprites.clear();
-    auto r = snap->ram;
+void World::captureSpriteTable(const SCUSnapshot &s, const Scene &v, bool omitHud) {
     // BuildSprites empties the game queues before the completed-frame snapshot.
     // The published hardware SAT is the authoritative visible actor list.
-    unsigned satBase = (snap->regs[5] & ((snap->regs[12] & 1) ? 0x7E : 0x7F)) * 512u, index = 0;
+    unsigned satBase = (s.regs[5] & ((s.regs[12] & 1) ? 0x7E : 0x7F)) * 512u, index = 0;
     satSprites.clear();
-    for (unsigned n = 0; n < 80; n++) {
+    std::array<bool, 80> seen{};
+    while (index < seen.size() && !seen[index]) {
+        seen[index] = true;
         unsigned p = (satBase + index * 8) & 65535;
-        int y = (be16(snap->vram, p) & 511) - 128;
-        uint16_t shape = be16(snap->vram, p + 2), a = be16(snap->vram, p + 4);
-        int x = (be16(snap->vram, p + 6) & 511) - 128;
+        int y = (be16(s.vram, p) & 511) - 128;
+        uint16_t shape = be16(s.vram, p + 2), a = be16(s.vram, p + 4);
+        int x = (be16(s.vram, p + 6) & 511) - 128;
         unsigned tile = a & 2047;
         bool hud = v.family == 4   ? y < 16
                    : v.family == 5 ? y < 32 || y >= 196
                                    : (tile >= 0x6CA && tile < 0x704) ||
                                          (x < 100 && y >= 192 && tile >= 0x7D4 && tile < 0x7E8);
-        if (!hud)
+        if (!omitHud || !hud)
             satSprites.push_back({x + v.cameraX, y + v.cameraY, a, (uint8_t)((shape >> 8) & 15)});
         index = shape & 127;
         if (!index)
             break;
     }
+}
+void World::captureActors(const Scene &v, const Game *g) {
+    sprites.clear();
+    auto r = snap->ram;
+    captureSpriteTable(*snap, v, true);
     for (auto it = satSprites.rbegin(); it != satSprites.rend(); ++it)
         sprites.push_back(*it);
     if (v.family >= 4 || !g->family)
@@ -940,29 +945,50 @@ void World::makeBackdrop(const SCUSnapshot &s, const Scene &v, const Settings &c
         invalidateBackdrop();
     backdropFixed = fixed;
     bool sourceChanged = false;
-    if (mode < 4 && v.ready &&
-        (!fixed || !backdropHasDetail || backdropFamily != v.family || backdropStage != v.stage)) {
-        // Ignore a blank or nearly black hardware plane while the cartridge
-        // changes palettes, loads a stage, or runs a title card. The actual
-        // cartridge viewport still shows its own transitions.
-        int visibleSamples = 0;
+    const bool sameScene = backdropFamily == v.family && backdropStage == v.stage;
+    if (mode < 4 && v.ready && (!fixed || !backdropHasDetail || !sameScene)) {
+        const auto saved =
+            fixed ? std::find_if(stationaryBackdrops.begin(), stationaryBackdrops.end(),
+                                 [&](const StationaryBackdrop &entry) {
+                                     return entry.family == v.family && entry.stage == v.stage;
+                                 })
+                  : stationaryBackdrops.end();
+        const uint32_t *source = nullptr;
         bool detailed = false;
-        const uint32_t first = s.background[0][0] & 0x00F0F0F0u;
-        for (size_t i = 0; i < backdrop.size() && (visibleSamples < 12 || !detailed); i += 97) {
-            const auto color = s.background[i / 320][i % 320] & 0x00F0F0F0u;
-            visibleSamples += color != 0;
-            detailed |= color != first;
+        if (saved != stationaryBackdrops.end()) {
+            source = saved->pixels.data();
+            detailed = true;
+        } else {
+            // Ignore a blank or nearly black hardware plane while the cartridge
+            // changes palettes, loads a stage, or runs a title card. The actual
+            // cartridge viewport still shows its own transitions.
+            int visibleSamples = 0;
+            const uint32_t first = s.background[0][0] & 0x00F0F0F0u;
+            for (size_t i = 0; i < backdrop.size() && (visibleSamples < 12 || !detailed); i += 97) {
+                const auto color = s.background[i / 320][i % 320] & 0x00F0F0F0u;
+                visibleSamples += color != 0;
+                detailed |= color != first;
+            }
+            if (visibleSamples >= 12 && (detailed || !sameScene || !backdropHasDetail))
+                source = &s.background[0][0];
         }
-        if (visibleSamples >= 12) {
+        if (source) {
             const size_t bytes = backdrop.size() * sizeof(uint32_t);
-            sourceChanged = backdropFamily < 0 ||
-                            std::memcmp(backdropSource.data(), s.background, bytes) != 0;
+            sourceChanged =
+                backdropFamily < 0 || std::memcmp(backdropSource.data(), source, bytes) != 0;
             if (sourceChanged) {
                 backdropSource.resize(backdrop.size());
-                std::memcpy(backdropSource.data(), s.background, bytes);
+                std::memcpy(backdropSource.data(), source, bytes);
             }
             backdropFamily = v.family;
             backdropStage = v.stage;
+            if (fixed && detailed && saved == stationaryBackdrops.end()) {
+                auto &entry =
+                    stationaryBackdrops[nextStationaryBackdrop++ % stationaryBackdrops.size()];
+                entry.pixels = backdropSource;
+                entry.family = v.family;
+                entry.stage = v.stage;
+            }
             // A flat loading colour can be shown immediately. Keep looking
             // for scenery before locking an overview for the rest of the act.
             backdropHasDetail = detailed;

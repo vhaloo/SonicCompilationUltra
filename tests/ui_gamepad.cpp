@@ -398,6 +398,38 @@ int main() {
             a.motionButtons=a.mobileButtons=0;
             h.frame(2);
             a.settings.voxelMode = 2;
+            {
+                const auto previous = a.settings;
+                a.settings.voxelYaw = 175;
+                a.turnVoxel(20.f, 120.f);
+                require(a.settings.voxelYaw == -165 && a.settings.voxelPitch == 85,
+                        "right-stick orbit crosses the rear seam");
+                SDL_Event drag{};
+                drag.type = SDL_MOUSEMOTION;
+                drag.motion.state = SDL_BUTTON_RMASK;
+                drag.motion.xrel = -100;
+                a.event(drag);
+                require(a.settings.voxelYaw == 160,
+                        "right-button drag orbits back across the rear");
+                a.settings = previous;
+                for (int look = 0; look < 5; ++look)
+                    for (int background = 0; background <= 6; ++background) {
+                        a.settings.applyLook(look, Settings{});
+                        a.settings.background = background;
+                        a.settings.rewind = true;
+                        a.core.tick();
+                        auto image = a.core.native;
+                        auto frame = a.core.frame;
+                        a.present();
+                        a.core.tick();
+                        require(a.core.rewind() && a.core.frame == frame && a.core.native == image,
+                                "cartridge rewind in every look and background");
+                        a.present();
+                    }
+                a.core.setRewinding(false);
+                a.settings = previous;
+                a.resetVoxelOrbit();
+            }
             const int secondaryIndex = SDL_JoystickAttachVirtual(SDL_JOYSTICK_TYPE_GAMECONTROLLER,
                                                                 SDL_CONTROLLER_AXIS_MAX,
                                                                 SDL_CONTROLLER_BUTTON_MAX, 0);

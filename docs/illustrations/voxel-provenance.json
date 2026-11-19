@@ -9,11 +9,15 @@
     },
     {
       "file": "voxel-layered.png",
-      "sha256": "4a5f3208ad96a4ed284f41d64af0f2f3443d29ccf074af030a0e774a9df42c16"
+      "sha256": "47866008faa3854adc9a1e1f8f20502166629aae2a24b1bfb922335afb7dec3f"
     },
     {
       "file": "voxel-sculpted.png",
-      "sha256": "ca3e6292e2affa57ef34388b189a942af7740bb7e6107429193efa9bdeb1bb1c"
+      "sha256": "f7c3c31e8a0215750abaf67727ed0a717bc982a4d2320fb5881f322a122935de"
+    },
+    {
+      "file": "voxel-orbit.png",
+      "sha256": "167528f694d87021bf12f603fba94c65dfc81a871c2adaccc8d76ba5c1bd295e"
     }
   ]
 }

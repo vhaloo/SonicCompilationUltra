@@ -204,6 +204,11 @@ int main(int argc, char **argv) {
             if (!mesh.update(frame, options))
                 return 3;
             render(frame, mesh, -20, 16, 70, out / (mode == 2 ? "layered.ppm" : "sculpted.ppm"));
+            if (mode == 2) {
+                render(frame, mesh, 0, 0, 70, out / "front.ppm");
+                render(frame, mesh, 90, 0, 70, out / "side.ppm");
+                render(frame, mesh, 180, 0, 70, out / "rear.ppm");
+            }
         }
         std::cout << "Generated original fixture views from the procedural mesh; no app, SDL, "
                      "emulator, ROM or device.\n";
