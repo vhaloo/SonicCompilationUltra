@@ -1,5 +1,7 @@
 # Touch and movement
 
+Version 0.14.0 recognizes a quick upward swipe even when several touch events reach the game in one frame. A second finger on an occupied control stays in that control area. Small crown movements on a watch accumulate for smooth, reversible zoom. [SDL touch event timestamps](https://wiki.libsdl.org/SDL2/SDL_TouchFingerEvent) · [Wear OS rotary input](https://developer.android.com/training/wearables/compose/rotary-input).
+
 On an Android phone, tablet or Wear OS watch, open **Controls** from the options menu. Touch and gamepad controls continue to work when movement controls are enabled.
 
 ## Just the actions your game needs

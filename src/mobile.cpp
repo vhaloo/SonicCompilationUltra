@@ -113,6 +113,7 @@ MobilePresentation::~MobilePresentation() {
 void MobilePresentation::clearInput() {
     input.clear();
     swipeJump.clear();
+    crownFraction = 0;
     app.mobileButtons = 0;
     app.motionButtons = 0;
     motionController.recenter();
@@ -258,11 +259,7 @@ void MobilePresentation::beginFrame() {
     if (nextKey != layoutKey) {
         auto next = touch::arrange(safe, options);
         // Moving system bars, safe areas or a changed setting must release old captures.
-        if (next.canvas.x != layout.canvas.x || next.canvas.y != layout.canvas.y ||
-            next.canvas.w != layout.canvas.w || next.canvas.h != layout.canvas.h ||
-            next.stick.x != layout.stick.x || next.stick.y != layout.stick.y ||
-            next.stick.w != layout.stick.w)
-            clearInput();
+        clearInput();
         layout = std::move(next);
         layoutKey = nextKey;
     }
@@ -345,7 +342,8 @@ void MobilePresentation::action(touch::Action a) {
         if (app.settings.wearActive)
             app.settings.wearZoom = 0;
         else
-            app.settings.view = app.settings.view == 2 ? 0 : 2;
+            app.selectView(app.settings.view == 2 && (!app.settings.voxelMode ||
+                           app.settings.voxelFraming == 1) ? 0 : 2);
         app.dirty = true;
     } else if (a == A::ZoomIn || a == A::ZoomOut) {
         if (app.settings.wearActive) {
@@ -356,7 +354,7 @@ void MobilePresentation::action(touch::Action a) {
             zoomHintUntil = SDL_GetTicks64() + 1400;
             return;
         }
-        app.settings.view = 0;
+        app.selectView(0);
         app.settings.stepZoom(a == A::ZoomIn ? 1 : -1);
         app.dirty = true;
     }
@@ -415,18 +413,21 @@ bool MobilePresentation::event(const SDL_Event &e) {
     if (e.type != SDL_FINGERDOWN && e.type != SDL_FINGERMOTION && e.type != SDL_FINGERUP)
         return false;
     auto id = e.tfinger.fingerId;
+    const auto now = SDL_GetTicks64();
+    const auto eventTime = touch::touchTime(e.tfinger.timestamp, now);
     touch::Point p{e.tfinger.x * width / density, e.tfinger.y * height / density};
     auto &io = ImGui::GetIO();
     if (e.type == SDL_FINGERDOWN) {
         app.padUsed = false;
-        auto a = input.down(id, p, layout, SDL_GetTicks64());
+        auto a = input.down(id, p, layout, now);
         if (a != touch::Action::None) {
             action(a);
             return true;
         }
-        if(!app.menu&&app.settings.motionMode&&app.settings.motionSwipe) {
-            swipeJump.down(id,p,SDL_GetTicks64(),
-                std::clamp(std::min(width,height)/density*.12f,18.f,40.f));
+        if (!app.menu && app.settings.motionMode && app.settings.motionSwipe &&
+            layout.actionAt(p) == touch::Action::None) {
+            swipeJump.down(id, p, eventTime,
+                           std::clamp(std::min(width, height) / density * .12f, 18.f, 40.f));
             return true;
         }
         if (app.menu && !pointerDown && layout.canvas.contains(p)) {
@@ -440,7 +441,7 @@ bool MobilePresentation::event(const SDL_Event &e) {
         }
     } else {
         input.move(id, p);
-        swipeJump.move(id,p,SDL_GetTicks64());
+        swipeJump.move(id, p, eventTime, now);
         if (pointerDown && id == pointer) {
             const float dx = p.x - pointerStart.x, dy = p.y - pointerStart.y;
             if (app.menu && app.settings.wearActive && !pointerScrolling &&
@@ -482,8 +483,8 @@ void MobilePresentation::poll() {
             ImGui::GetIO().AddMouseWheelEvent(0, rotary);
         } else {
             app.settings.wearZoom =
-                int(wear::crownZoom(app.settings.wearZoom, rotary, app.settings.wearCrownSpeed,
-                                    app.settings.wearCrownReverse));
+                wear::accumulateCrownZoom(app.settings.wearZoom, rotary, app.settings.wearCrownSpeed,
+                                          app.settings.wearCrownReverse, crownFraction);
             app.dirty = true;
             zoomHintUntil = SDL_GetTicks64() + 1400;
         }

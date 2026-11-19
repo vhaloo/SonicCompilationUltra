@@ -11,10 +11,11 @@ void PerformanceGovernor::configure(PerformancePolicy value) {
     value.reservePercent = std::clamp(value.reservePercent, 10, 45);
     value.targetHz = std::isfinite(value.targetHz) ? std::clamp(value.targetHz, 30., 240.) : 60.;
     value.targetHz = std::round(value.targetHz * 10.) / 10.;
-    if (policy.targetHz != value.targetHz || policy.enabled != value.enabled ||
-        policy.stereo != value.stereo)
-        reset();
+    const bool restart = policy.targetHz != value.targetHz || policy.enabled != value.enabled ||
+                         policy.stereo != value.stereo;
     policy = value;
+    if (restart)
+        reset();
     percentage = std::clamp(percentage, value.minimum, value.maximum);
     eyePercentage = std::clamp(eyePercentage, value.minimum, value.maximum);
 }
@@ -52,7 +53,9 @@ double PerformanceGovernor::availableHeadroom() const {
     return std::clamp(100. * (1. - pressure * policy.targetHz / 1000.), -100., 100.);
 }
 void PerformanceGovernor::observe(const PerformanceSample &s, double elapsed) {
-    if (!s.active || !std::isfinite(elapsed) || elapsed <= 0 || elapsed > .25) {
+    const double work = s.simulationMs + s.renderMs + s.presentationMs;
+    if (!s.active || !std::isfinite(elapsed) || elapsed <= 0 || elapsed > 2. ||
+        (elapsed > .25 && work < elapsed * 650.)) {
         samples = overloaded = spare = 0;
         peak = 0; // Preserve the last measured readout while the menu pauses play.
         scenePeak = gpuPeak = presentationPeak = 0;
@@ -63,10 +66,9 @@ void PerformanceGovernor::observe(const PerformanceSample &s, double elapsed) {
     clock += elapsed;
     if (!std::isfinite(s.simulationMs) || !std::isfinite(s.renderMs) ||
         !std::isfinite(s.presentationMs) || s.renderMs < 0 || s.presentationMs < 0 ||
-        s.simulationMs < 0 || s.simulationMs + s.renderMs + s.presentationMs > 250)
+        s.simulationMs < 0 || work > 2000.)
         return;
     const double a = samples ? .12 : 1.;
-    const double work = s.simulationMs + s.renderMs + s.presentationMs;
     const double decay = std::exp(-elapsed / .22);
     cpu += a * (work - cpu);
     peak = std::max(peak * decay, work);
@@ -96,7 +98,8 @@ void PerformanceGovernor::observe(const PerformanceSample &s, double elapsed) {
                       (!validGpu || gpu < budget * .8);
     pressure =
         std::max({cpu, peak * .94, percentile, validGpu ? std::max(gpu, gpuPeak * .94) : 0.});
-    if (!policy.enabled || ++samples < 8)
+    ++samples;
+    if (!policy.enabled || samples < 8)
         return;
     const double usable = usableBudgetMs();
     const double sceneLoad = policy.stereo ? scenePeak : pressure;

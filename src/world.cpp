@@ -161,39 +161,24 @@ Scene World::inspect(const SCUSnapshot &s, const Game *g) const {
         v.ready = false;
     return v;
 }
-uint16_t World::attribute(const SCUSnapshot &s, int family, int x, int y, bool bg) const {
-    if (family >= 4)
-        return atlas.sample(x, y) & 63;
-    auto r = s.ram;
-    if (x < 0 || x >= 32768 || y < 0 || y >= (family == 3 ? 4096 : 2048))
-        return 0;
-    uint16_t block = 0;
-    unsigned bank;
+static int layoutChunk(const uint8_t *r, int family, int x, int y, bool bg) {
+    if (unsigned(x) >= (family == 3 ? 32768u : 16384u) ||
+        unsigned(y) >= (family == 3 ? 4096u : 2048u))
+        return -1;
     if (family == 1) {
-        if (x >= 16384)
-            return 0;
-        unsigned l = (bg ? 0xA440 : 0xA400) + (y >> 8) * 128 + (x >> 8), chunk = r[l];
-        if (!chunk)
-            return 0;
-        unsigned a = ((chunk - 1) & 127) * 512 + (y & 240) * 2 + (x & 240) / 8;
-        block = be16(r, a);
-        bank = 0xB000;
-    } else {
-        unsigned cell;
-        if (family == 2) {
-            if (x >= 16384)
-                return 0;
-            cell = (bg ? 0x8080 : 0x8000) + (y >> 7) * 256 + (x >> 7);
-        } else {
-            unsigned row = 0x8008 + (y >> 7) * 4 + (bg ? 2 : 0);
-            cell = be16(r, row) + (x >> 7);
-            if (cell < 0x8088 || cell >= 0x9000)
-                return 0;
-        }
-        unsigned chunk = r[cell];
-        block = be16(r, chunk * 128 + (y & 112) + (x & 112) / 8);
-        bank = 0x9000;
+        int entry = r[(bg ? 0xA440 : 0xA400) + (y >> 8) * 128 + (x >> 8)];
+        return entry ? (entry - 1) & 127 : -1;
     }
+    if (family == 2)
+        return r[(bg ? 0x8080 : 0x8000) + (y >> 7) * 256 + (x >> 7)];
+    unsigned cell = be16(r, 0x8008 + (y >> 7) * 4 + (bg ? 2 : 0)) + (x >> 7);
+    return cell >= 0x8088 && cell < 0x9000 ? r[cell] : -1;
+}
+static uint16_t chunkAttribute(const uint8_t *r, int family, int chunk, int x, int y) {
+    unsigned address = family == 1 ? chunk * 512 + (y & 240) * 2 + (x & 240) / 8
+                                   : chunk * 128 + (y & 112) + (x & 112) / 8;
+    const uint16_t block = be16(r, address);
+    const unsigned bank = family == 1 ? 0xB000 : 0x9000;
     int tx = (x >> 3) & 1, ty = (y >> 3) & 1;
     unsigned flip = family == 1 ? (block & 0x1800) : ((block & 0xC00) << 1);
     if (flip & 0x800)
@@ -204,6 +189,12 @@ uint16_t World::attribute(const SCUSnapshot &s, int family, int x, int y, bool b
     if (family != 1 && a >= 0xA800)
         return 0;
     return be16(r, a) ^ flip;
+}
+uint16_t World::attribute(const SCUSnapshot &s, int family, int x, int y, bool bg) const {
+    if (family >= 4)
+        return atlas.sample(x, y) & 63;
+    const int chunk = layoutChunk(s.ram, family, x, y, bg);
+    return chunk < 0 ? 0 : chunkAttribute(s.ram, family, chunk, x, y);
 }
 uint8_t World::read(unsigned a) const {
     a &= 0xFFFFFF;
@@ -524,8 +515,11 @@ bool World::compose(const SCUSnapshot &s, const Game *g, const Settings &cfg, in
         // Cache the decoder's entire legal tile domain, including filter taps
         // just beyond a stage boundary. Pixel sampling itself is unchanged.
         terrainAttributes.prepare(geometry, v.family == 3 ? 32768 : 16384,
-                                  v.family == 3 ? 4096 : 2048,
-                                  [&](int x, int y) { return attribute(s, v.family, x, y); });
+                                  v.family == 3 ? 4096 : 2048, v.family == 1 ? 8 : 7,
+                                  [&](int x, int y) { return layoutChunk(s.ram, v.family, x, y, false); },
+                                  [&](int chunk, int x, int y) {
+                                      return chunkAttribute(s.ram, v.family, chunk, x, y);
+                                  });
         if (shape != shapeSignature) {
             terrainUsed.fill(false);
             // Enumerate tile references once per geometry/camera change, rather
@@ -914,26 +908,27 @@ static void blurImage(std::array<uint32_t, 320 * 224> &img, int r) {
     std::array<uint32_t, 320 * 224> tmp;
     for (int pass = 0; pass < 2; pass++)
         for (int vertical = 0; vertical < 2; vertical++) {
+            const auto &source = vertical ? tmp : img;
+            auto &destination = vertical ? img : tmp;
             int lines = vertical ? 320 : 224, len = vertical ? 224 : 320, step = vertical ? 320 : 1;
             for (int l = 0; l < lines; l++) {
                 int base = vertical ? l : l * 320, rs = 0, gs = 0, bs = 0, n = 2 * r + 1;
                 for (int k = -r; k <= r; k++) {
-                    auto c = img[base + clampi(k, 0, len - 1) * step];
+                    auto c = source[base + clampi(k, 0, len - 1) * step];
                     rs += (c >> 16) & 255;
                     gs += (c >> 8) & 255;
                     bs += c & 255;
                 }
                 for (int i = 0; i < len; i++) {
-                    tmp[base + i * step] =
+                    destination[base + i * step] =
                         0xFF000000u | ((rs / n) << 16) | ((gs / n) << 8) | (bs / n);
-                    auto a = img[base + clampi(i - r, 0, len - 1) * step],
-                         b = img[base + clampi(i + r + 1, 0, len - 1) * step];
+                    auto a = source[base + clampi(i - r, 0, len - 1) * step],
+                         b = source[base + clampi(i + r + 1, 0, len - 1) * step];
                     rs += ((b >> 16) & 255) - ((a >> 16) & 255);
                     gs += ((b >> 8) & 255) - ((a >> 8) & 255);
                     bs += (b & 255) - (a & 255);
                 }
             }
-            img.swap(tmp);
         }
 }
 void World::makeBackdrop(const SCUSnapshot &s, const Scene &v, const Settings &cfg) {
@@ -946,13 +941,18 @@ void World::makeBackdrop(const SCUSnapshot &s, const Scene &v, const Settings &c
     backdropFixed = fixed;
     bool sourceChanged = false;
     if (mode < 4 && v.ready &&
-        (!fixed || backdropFamily != v.family || backdropStage != v.stage)) {
+        (!fixed || !backdropHasDetail || backdropFamily != v.family || backdropStage != v.stage)) {
         // Ignore a blank or nearly black hardware plane while the cartridge
         // changes palettes, loads a stage, or runs a title card. The actual
         // cartridge viewport still shows its own transitions.
         int visibleSamples = 0;
-        for (size_t i = 0; i < backdrop.size() && visibleSamples < 12; i += 97)
-            visibleSamples += (s.background[i / 320][i % 320] & 0x00F0F0F0u) != 0;
+        bool detailed = false;
+        const uint32_t first = s.background[0][0] & 0x00F0F0F0u;
+        for (size_t i = 0; i < backdrop.size() && (visibleSamples < 12 || !detailed); i += 97) {
+            const auto color = s.background[i / 320][i % 320] & 0x00F0F0F0u;
+            visibleSamples += color != 0;
+            detailed |= color != first;
+        }
         if (visibleSamples >= 12) {
             const size_t bytes = backdrop.size() * sizeof(uint32_t);
             sourceChanged = backdropFamily < 0 ||
@@ -963,6 +963,9 @@ void World::makeBackdrop(const SCUSnapshot &s, const Scene &v, const Settings &c
             }
             backdropFamily = v.family;
             backdropStage = v.stage;
+            // A flat loading colour can be shown immediately. Keep looking
+            // for scenery before locking an overview for the rest of the act.
+            backdropHasDetail = detailed;
         }
     }
     if (!sourceChanged && style == backdropStyle)

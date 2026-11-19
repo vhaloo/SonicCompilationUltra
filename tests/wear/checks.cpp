@@ -69,6 +69,16 @@ int main() {
     check(wear::crownZoom(1000, 100, 2, true) == 0, "reverse crown lower bound");
     check(wear::crownZoom(100, std::numeric_limits<double>::quiet_NaN(), 1, false) == 100,
           "invalid crown input");
+    for (bool reverse : {false, true}) {
+        int zoom = 500;
+        double fraction = 0;
+        for (int i = 0; i < 20; ++i)
+            zoom = wear::accumulateCrownZoom(zoom, .01, 1, reverse, fraction);
+        check(zoom == (reverse ? 492 : 508), "fine crown events accumulate in both directions");
+        for (int i = 0; i < 20; ++i)
+            zoom = wear::accumulateCrownZoom(zoom, -.01, 1, reverse, fraction);
+        check(zoom == 500 && std::abs(fraction) < .00001, "reversing the bezel restores the same zoom");
+    }
     unsigned layouts = 0;
     for (int size : {160, 192, 240, 320, 438, 480})
         for (bool left : {false, true})

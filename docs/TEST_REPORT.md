@@ -1,5 +1,12 @@
 # Validation report
 
+## 0.14.0 rendering and controls
+
+- The Windows OpenGL replay covers 251 saved states across 11 games and variants. It compares pixels and cartridge RAM when reapplying the visual presets, including all four Spinball boards. The 1,475 comparisons passed. These are bounded replays with the owner's cartridges.
+- All 25 ordered pairs of desktop looks reproduce the reference image at 7680 × 1440, 3440 × 1440, 1920 × 1080, 1280 × 800, 540 × 960 and 320 × 240. Profile restoration, a renderer reset and a resize round trip run at each size. The close-up Sonic 1 voxel front also matches the native picture exactly with lighting at 100%, including after a renderer reset.
+- A generated layout with eight distinct 128-pixel chunks requires 2,048 decoded tile entries across a domain of 2,097,152 placements. Two chunk sizes are checked against direct addressing at 100,000 positions each. Other regressions exercise flat loading scenery, long active frame times, batched swipes, sub-step crown input and the high-detail Wear source grid.
+- Published release verification records the platform builds and additional checks. Windows gameplay replays and generated input sequences do not establish headset tracking, physical wrist comfort, sustained FPS or complete playthroughs. Quest, Wear OS and macOS remain experimental.
+
 ## 0.13.1 Jump repair — 12 November 2026
 
 - The 0.13.0 touch A mask was wrong: it selected libretro X, which the pinned core maps to the console's extra six-button Y. The old pure checks and UI routing check repeated that same internal mask, so they did not prove a console A press. The repair uses one shared A/B/C mapping. A new authored 68000 cartridge configures the native controller port and reads its TH-low and TH-high pins. Tests exercise phone/watch Jump, ABC, two-action and Pinball layouts, a full tap between sampling frames, independent/simultaneous A/B flippers and release. The old mask remains as an explicit negative control that must not press A. This test runs the actual emulator core without commercial game data.

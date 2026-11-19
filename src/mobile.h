@@ -37,7 +37,7 @@ class MobilePresentation {
     std::unique_ptr<ImDrawList> controlsDraw;
     uint64_t layoutKey = 0;
     bool utilityBank = false, zoomInitialised = false, crownDetected = false;
-    double smoothedZoom = 0;
+    double smoothedZoom = 0, crownFraction = 0;
     uint64_t zoomAt = 0, zoomHintUntil = 0;
     int scroll = 0;
     void clearInput();

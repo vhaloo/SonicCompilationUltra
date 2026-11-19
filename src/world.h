@@ -48,7 +48,7 @@ class World {
     std::vector<uint32_t> backdropSource;
     std::array<int, 3> backdropStyle{{-1, -1, -1}};
     int backdropFamily = -1, backdropStage = -1;
-    bool backdropFixed = false;
+    bool backdropFixed = false, backdropHasDetail = false;
     std::vector<uint8_t> priority;
     std::vector<Sprite> sprites, satSprites;
     std::vector<uint8_t> rom;
@@ -90,6 +90,7 @@ class World {
         volume.discard();
         volumeMesh.discard();
         backdropFamily = -1;
+        backdropHasDetail = false;
         backdropStyle = {{-1, -1, -1}};
         reset();
     }

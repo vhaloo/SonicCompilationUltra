@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.0 Rendering and controls
+
+- Decode each distinct terrain chunk once across a level. The same geometry cache serves flat and voxel views on all platforms. Fixed scenery can now recover from a solid loading frame, and a failed terrain texture update falls back to the cartridge picture while the upload retries.
+- Show the selected simple look on its button. Keyboard, mouse and mobile camera shortcuts now take effect in a player-follow voxel diorama. Front-facing voxel pixels on desktop, phone and watch keep the source palette while the exposed sides retain lighting.
+- Wear OS accumulates small crown movements in both directions. Pixel precise can hold a 320 × 240 close-view colour atlas on the watch. Android recognizes a swipe delivered in a batch and keeps controls captured by the correct finger as layouts change.
+- The adaptive renderer reacts to consecutive expensive frames even when rendering takes over 250 ms. Manual quality still displays smoothed timing measurements.
+- Meta Quest 3 uploads stationary CRT scenery only when it changes. The Efficient stereo shader computes voxel lighting per vertex. The Reference shader retains per-pixel lighting.
+
 ## 0.13.1 Jump and wrist gesture repair
 
 - Correct the shared console A mapping for touch Jump, Spinball's left flipper, 3D Blast / Mean Bean's first action and motion jumping. The previous mask sent an extra six-button action instead of console A.

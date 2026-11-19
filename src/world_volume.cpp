@@ -304,6 +304,8 @@ bool World::prepareVolume(const SCUSnapshot &s, const Game *game, const Settings
         int step = cells > 600000 || (cells > 180000 && reduceRelief && cfg.voxelMode == 3)
                        ? 4
                        : cells > 180000 && (cfg.voxelMode == 3 || reduceRelief) ? 2 : 1;
+        if (cfg.wearActive && cells > 16384)
+            step = std::max(step, reduceRelief ? 4 : 2);
         for (; step <= 64; step *= 2) {
             options.geometryStep = step;
             if (volumeMesh.update(volume, options))

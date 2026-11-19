@@ -186,6 +186,8 @@ int main() {
             "wide displays receive more pixels; adaptive quality still has room to reduce work");
     require(watch[0] == watch[1] && watch[0] <= 454,
             "a round-watch viewport stays square and within the drawable");
+    require(grid(320, 224, 320, 224, cellBudget(3, true, true, 0, true), 2048) ==
+                std::array<int, 2>{320, 224}, "Wear precise detail keeps every close-view source texel");
     const auto wideLow = grid(1536, 288, 1536, 288, cellBudget(0, false, false, 3, false));
     const auto wideSharp = grid(1536, 288, 1536, 288, cellBudget(3, false, false, 0, true), 8192);
     require(wideSharp[0] >= wideLow[0] * 3 && wideSharp[1] >= wideLow[1] * 3,

@@ -144,15 +144,17 @@ Layout arrange(Rect safe, const Options &o) {
         {{cx, controls.y + controls.h - centerH * 2 - pad * 2, centerW, centerH}, Action::Rewind});
     return l;
 }
+Action Layout::actionAt(Point p) const {
+    if (circularControls ? stick.containsCircle(p) : stick.contains(p))
+        return Action::Stick;
+    for (const auto &b : buttons)
+        if (b.contains(p))
+            return b.action;
+    return Action::None;
+}
 Action Input::down(int64_t id, Point p, const Layout &l, uint64_t now) {
     up(id);
-    Action a = (l.circularControls ? l.stick.containsCircle(p) : l.stick.contains(p)) ? Action::Stick : Action::None;
-    if (a == Action::None)
-        for (const auto &b : l.buttons)
-            if (b.contains(p)) {
-                a = b.action;
-                break;
-            }
+    const Action a = l.actionAt(p);
     if (a == Action::None)
         return a;
     // A second finger cannot take over the movement stick from the first one.
@@ -224,16 +226,31 @@ State Input::state(const Layout &l, float deadzone, uint64_t now) const {
         }
     return s;
 }
-void SwipeJump::down(int64_t id, Point p, uint64_t now, float threshold) {
-    up(id);distance=std::clamp(threshold,16.f,48.f);
-    for(auto &f:fingers)if(!f.active){f={id,p,now,true,false};return;}
+uint64_t touchTime(uint32_t stamp, uint64_t now) {
+    const uint32_t age = uint32_t(now) - stamp;
+    return !stamp || age > now || age > 0x7fffffffu ? now : now - age;
 }
-void SwipeJump::move(int64_t id, Point p, uint64_t now) {
-    for(auto &f:fingers)if(f.active&&f.id==id&&!f.fired){
-        if(now<f.started||now-f.started>650){f.fired=true;return;}
-        const float up=f.origin.y-p.y,side=std::abs(p.x-f.origin.x);
-        if(now-f.started>=20&&up>=distance&&side<=up*.8f){
-            pulseUntil=now+140;f.fired=true;
+void SwipeJump::down(int64_t id, Point p, uint64_t now, float threshold) {
+    up(id);
+    for (auto &f : fingers)
+        if (!f.active) {
+            f = {id, p, now, std::clamp(threshold, 16.f, 48.f), true, false};
+            return;
+        }
+}
+void SwipeJump::move(int64_t id, Point p, uint64_t eventTime, uint64_t delivered) {
+    for (auto &f : fingers) {
+        if (!f.active || f.id != id || f.fired)
+            continue;
+        if (eventTime < f.started || eventTime - f.started > 650) {
+            f.fired = true;
+            return;
+        }
+        const float rise = f.origin.y - p.y;
+        if (eventTime - f.started >= 20 && rise >= f.distance &&
+            std::abs(p.x - f.origin.x) <= rise * .8f) {
+            pulseUntil = delivered + 140;
+            f.fired = true;
         }
     }
 }

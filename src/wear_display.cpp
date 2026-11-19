@@ -36,6 +36,12 @@ double crownZoom(double current, double delta, int speed, bool reverse) {
     double step = std::array<double, 3>{22, 40, 65}[std::clamp(speed, 0, 2)];
     return std::clamp(current + std::clamp(reverse ? -delta : delta, -30., 30.) * step, 0., 1000.);
 }
+int accumulateCrownZoom(int current, double delta, int speed, bool reverse, double &fraction) {
+    const double target = crownZoom(current + fraction, delta, speed, reverse);
+    const int zoom = int(std::lround(target));
+    fraction = target - zoom;
+    return zoom;
+}
 LensMesh::LensMesh() {
     size_t at = 0;
     for (int y = 0; y < segments; ++y)

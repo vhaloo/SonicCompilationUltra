@@ -62,6 +62,7 @@ struct Layout {
     bool deck = false;
     bool circularControls = false;
     Profile profile = Profile::ABC;
+    Action actionAt(Point p) const;
 };
 Layout arrange(Rect safe, const Options &options);
 struct State {
@@ -87,14 +88,22 @@ class Input {
     void clear();
     State state(const Layout &layout, float deadzone, uint64_t now = 0) const;
 };
+// SDL timestamps are 32-bit ticks. Recover their age relative to the poll clock,
+// including across the wrap after 49 days.
+uint64_t touchTime(uint32_t stamp, uint64_t now);
 class SwipeJump {
-    struct Finger { int64_t id=0; Point origin{}; uint64_t started=0; bool active=false, fired=false; };
+    struct Finger {
+        int64_t id = 0;
+        Point origin{};
+        uint64_t started = 0;
+        float distance = 24;
+        bool active = false, fired = false;
+    };
     std::array<Finger, 8> fingers{};
-    uint64_t pulseUntil=0;
-    float distance=24;
+    uint64_t pulseUntil = 0;
   public:
     void down(int64_t id, Point p, uint64_t now, float threshold=24);
-    void move(int64_t id, Point p, uint64_t now);
+    void move(int64_t id, Point p, uint64_t eventTime, uint64_t delivered);
     void up(int64_t id);
     void clear();
     bool pressed(uint64_t now) const { return now && now < pulseUntil; }

@@ -68,6 +68,15 @@ int main() {
         world->makeBackdrop(*snapshot, scene, options);
         require(world->backdropVersion > artVersion && world->backdrop.front() == 0xff406080,
                 "overview accepts the next act once art becomes available");
+        for (int y = 80; y < 224; ++y)
+            std::fill_n(snapshot->background[y], 320, 0xff924820);
+        world->makeBackdrop(*snapshot, scene, options);
+        require(world->backdrop.back() == 0xff924820, "flat loading colour gives way to the stage artwork");
+        const auto detailedVersion = world->backdropVersion;
+        snapshot->background[223][319] = 0xffee0011;
+        world->makeBackdrop(*snapshot, scene, options);
+        require(world->backdropVersion == detailedVersion && world->backdrop.back() == 0xff924820,
+                "fixed panorama locks the first detailed stage backdrop");
         options.projectionTransparent = true;
         world->makeBackdrop(*snapshot, scene, options);
         require(world->backdrop.front() == 0, "passthrough alpha remains clear");

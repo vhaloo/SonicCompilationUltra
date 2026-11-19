@@ -410,7 +410,7 @@ size_t Mesher::bytes() const {
 size_t cellBudget(int detail, bool watch, bool mobile, int effects, bool adaptive) {
     size_t value = std::array<size_t, 3>{16384, 65536, 1048576}[std::clamp(detail, 0, 2)];
     if (watch)
-        value = std::min<size_t>(value, 8192);
+        value = std::array<size_t, 3>{8192, 16384, 320 * 240}[std::clamp(detail, 0, 2)];
     else if (mobile)
         value = std::min<size_t>(value, 163840);
     if (adaptive && detail < 2)
@@ -452,7 +452,7 @@ std::array<int, 2> pictureSize(int width, int height, int quality, int detail, i
     const double headroom = scale > 85 ? 1. : scale > 65 ? .75 : scale > 42 ? .5 : .35;
     const double w = std::max(1, width), h = std::max(1, height);
     const double limit = std::min({1., double(cap) / w, double(cap) / h});
-    const double floor = precise ? (mobile ? 1. : 2.) *
+    const double floor = detail >= 2 ? (watch || mobile ? 1. : 2.) *
                                       std::max(sourceWidth / w, sourceHeight / h)
                                  : 0.;
     const double fit = std::min(limit, std::max(floor, std::min(limit, std::sqrt(pixels / (w * h))) *

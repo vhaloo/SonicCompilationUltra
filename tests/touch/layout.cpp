@@ -135,16 +135,23 @@ int main() {
     quick.down(52,button(jumpLayout,Action::A),jumpLayout,1500);quick.clear();
     require(quick.state(jumpLayout,.25f,1501).buttons==0,"focus/menu clear retained a tap");
     SwipeJump swipe;
-    swipe.down(1,{100,100},1000,24);swipe.move(1,{102,70},1060);
+    swipe.down(1,{100,100},1000,24);swipe.move(1,{102,70},1060,1060);
     require(swipe.pressed(1090),"upward swipe failed");
-    swipe.move(1,{103,20},1200);require(!swipe.pressed(1210),"same finger retriggered swipe");
-    swipe.up(1);swipe.down(1,{100,100},1300);swipe.move(1,{100,70},1360);
+    swipe.move(1,{103,20},1200,1200);require(!swipe.pressed(1210),"same finger retriggered swipe");
+    swipe.up(1);swipe.down(1,{100,100},1300);swipe.move(1,{100,70},1360,1360);
     require(swipe.pressed(1370),"new swipe did not rearm");
-    swipe.clear();swipe.down(2,{100,100},2000);swipe.move(2,{140,101},2060);
+    swipe.clear();swipe.down(2,{100,100},2000);swipe.move(2,{140,101},2060,2060);
     require(!swipe.pressed(2061),"horizontal drag triggered Jump");
-    swipe.move(2,{100,130},2100);require(!swipe.pressed(2101),"downward drag triggered Jump");
-    swipe.clear();swipe.down(3,{100,100},3000);swipe.move(3,{100,50},3800);
+    swipe.move(2,{100,130},2100,2100);require(!swipe.pressed(2101),"downward drag triggered Jump");
+    swipe.clear();swipe.down(3,{100,100},3000);swipe.move(3,{100,50},3800,3800);
     require(!swipe.pressed(3801),"slow drift triggered Jump");
+    const uint64_t afterWrap = (uint64_t(1) << 32) + 220;
+    swipe.clear();
+    swipe.down(4, {100, 100}, touchTime(0xfffffff0u, afterWrap), 24);
+    swipe.down(5, {90, 90}, touchTime(5, afterWrap), 48);
+    swipe.move(4, {102, 72}, touchTime(42, afterWrap), afterWrap);
+    require(swipe.pressed(afterWrap + 100) && !swipe.pressed(afterWrap + 141),
+            "batched finger events across SDL tick wrap retain individual thresholds and a fresh pulse");
     std::printf("PASS %d adaptive layouts plus multitouch ownership, native A/B/C mapping, quick-tap retention, swipe Jump, simultaneous flippers, "
                 "rewind, release and scrolling. No game linked or executed.\n",
                 cases);

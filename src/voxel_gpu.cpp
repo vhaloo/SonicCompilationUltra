@@ -524,7 +524,7 @@ struct VoxelGpu::Impl {
         w = size[0];
         h = size[1];
         const int aspect = int(10000. * drawableW / std::max(1, drawableH));
-        const bool precise = s.voxelDetail >= 2 && !s.wearActive;
+        const bool precise = s.voxelDetail >= 2;
         std::array<int, 7> view{{s.voxelYaw, s.voxelPitch, s.voxelLight, w, h, aspect, int(precise)}};
         bool texelsChanged = atlasDirty(f, mesh);
         if (picture && !texelsChanged && lastMesh == mesh.revision && lastView == view)

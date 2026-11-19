@@ -37,11 +37,13 @@ Eye swapchains/depth storage stay allocated while viewport size changes. Opaque 
 | Work | Implementation |
 | --- | --- |
 | Palette animation | Retain the exact four palette-index taps, then recolor without terrain decoding/filter resampling; capped at 2.5 million samples |
-| Terrain and actors | Cached tile attributes, conservative damage restoration and merged texture uploads; dense changes use a complete update |
+| Terrain and actors | Each distinct cartridge chunk supplies one shared set of tile attributes. Repeated placements need only an offset. Actor damage rectangles limit restoration and texture uploads. |
 | Rewind | Reuse state buffers, XOR/compression scratch and zlib streams, with fast zero-run compression; track workspace memory and preserve the state format and reversed stereo pairs |
 | Mobile controls | Retain draw buffers; rebuild layout only when the window, safe area, device or settings change |
 | Round lens | One cached indexed mesh; no steady-frame geometry allocation |
 | Pacing | Fractional monotonic deadlines, display-aware desktop divisors and independent console timing |
+
+Version 0.14.0 also distinguishes a slow active render from a pause when sampling frame times. Fixed Quest CRT scenery follows the backdrop revision and Efficient stereo voxel lighting runs on the vertices. For a close view on Wear OS, Pixel precise allows up to 76,800 colour samples and can simplify the side geometry under pressure.
 
 Desktop vsync can use a compatible divisor, such as 72 on a 144 Hz panel. Mobile's explicit 30/90/120/maximum selections override the common target. The operating system and display remain authoritative.
 

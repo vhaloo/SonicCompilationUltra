@@ -1403,6 +1403,7 @@ struct QuestPresentation::Impl {
             content.nativeWidth = app.core.nativeW;
             content.nativeHeight = app.core.nativeH;
             content.version = app.core.imageVersion;
+            content.backdropVersion = app.core.world.backdropVersion;
             content.targetFrameMs =
                 frame.predictedDisplayPeriod > 0 ? frame.predictedDisplayPeriod * 1e-6 : 11.111;
             content.scene = app.core.world.inspect(app.core.snapshot, app.core.game);

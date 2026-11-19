@@ -821,6 +821,12 @@ void App::refreshControllers() {
     }
 #endif
     for (int i = 0; i < SDL_NumJoysticks(); i++) {
+#ifdef SCU_UI_TESTS
+        // Some Windows drivers expose a real pad with the same zero VID/PID
+        // as SDL's virtual devices. Isolate input to the fixture process.
+        if (!SDL_JoystickIsVirtual(i))
+            continue;
+#endif
         if (!SDL_IsGameController(i))
             continue;
         auto instance = SDL_JoystickGetDeviceInstanceID(i);
@@ -1247,7 +1253,7 @@ void App::event(const SDL_Event &e) {
             }
             if ((mod & KMOD_CTRL) && k >= SDLK_1 && k <= SDLK_5) {
                 int n = k - SDLK_1;
-                settings.view = n == 3 ? 1 : n == 4 ? 2 : 0;
+                selectView(n == 3 ? 1 : n == 4 ? 2 : 0);
                 settings.zoom = n < 3 ? n + 1 : settings.zoom;
                 if (n < 3)
                     settings.zoomOut = 0;
@@ -1255,9 +1261,10 @@ void App::event(const SDL_Event &e) {
             }
         }
     }
-    if (e.type == SDL_MOUSEWHEEL && !menu && (SDL_GetModState() & KMOD_CTRL)) {
-        settings.view = 0;
-        settings.stepZoom(e.wheel.y > 0 ? 1 : -1);
+    if (e.type == SDL_MOUSEWHEEL && !menu && e.wheel.y && (SDL_GetModState() & KMOD_CTRL)) {
+        selectView(0);
+        const bool up = (e.wheel.y > 0) != (e.wheel.direction == SDL_MOUSEWHEEL_FLIPPED);
+        settings.stepZoom(up ? 1 : -1);
         dirty = true;
     }
 }
@@ -1980,37 +1987,41 @@ void App::present(bool capture) {
                     worldTexture =
                         SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
                                           SDL_TEXTUREACCESS_STREAMING, c.width, c.height);
-                    if (!worldTexture)
-                        throw std::runtime_error(SDL_GetError());
                     textureW = c.width;
                     textureH = c.height;
                     worldTextureStale = true;
-                    SDL_SetTextureBlendMode(worldTexture, SDL_BLENDMODE_BLEND);
+                    if (worldTexture)
+                        SDL_SetTextureBlendMode(worldTexture, SDL_BLENDMODE_BLEND);
                 }
-                SDL_SetTextureScaleMode(worldTexture,
-                                        renderSettings.smoothMap && c.coverageW > c.width * 1.01
-                                            ? SDL_ScaleModeLinear
-                                            : SDL_ScaleModeNearest);
+                if (worldTexture)
+                    SDL_SetTextureScaleMode(worldTexture,
+                                            renderSettings.smoothMap && c.coverageW > c.width * 1.01
+                                                ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
                 if (worldTextureStale) {
-                    SDL_UpdateTexture(worldTexture, nullptr, c.pixels.data(), c.width * 4);
-                    uploadedBytes += size_t(c.width) * c.height * 4;
-                    worldTextureStale = false;
+                    if (worldTexture &&
+                        SDL_UpdateTexture(worldTexture, nullptr, c.pixels.data(), c.width * 4) == 0) {
+                        uploadedBytes += size_t(c.width) * c.height * 4;
+                        worldTextureStale = false;
+                    }
                 } else if (refresh) {
                     for (const auto &r : core.world.uploadRegions) {
                         SDL_Rect rect{r.x, r.y, r.w, r.h};
-                        SDL_UpdateTexture(worldTexture, &rect,
-                                          c.pixels.data() + size_t(r.y) * c.width + r.x,
-                                          c.width * 4);
+                        if (SDL_UpdateTexture(worldTexture, &rect,
+                                              c.pixels.data() + size_t(r.y) * c.width + r.x,
+                                              c.width * 4) != 0) {
+                            worldTextureStale = true;
+                            break;
+                        }
                         uploadedBytes += size_t(r.w) * r.h * 4;
                     }
                 }
             }
-            SDL_RenderCopy(renderer, volumeTexture ? volumeTexture : worldTexture, nullptr,
-                           nullptr);
-            if (!renderSettings.projectionCleanScene &&
-                ((renderSettings.view == 2 && renderSettings.playerInset) ||
-                 (scene.family == 4 && renderSettings.hud != 3)) &&
-                updateNativeTexture()) {
+            if (volumeTexture || !worldTextureStale)
+                SDL_RenderCopy(renderer, volumeTexture ? volumeTexture : worldTexture, nullptr, nullptr);
+            else
+                expanded = false;
+            if (expanded && !renderSettings.projectionCleanScene && renderSettings.view == 2 &&
+                renderSettings.playerInset && updateNativeTexture()) {
                 SDL_SetTextureScaleMode(nativeTexture, SDL_ScaleModeNearest);
                 int safeW = std::min(drawableW, int(drawableH * 16.0 / 9)),
                     w = int(std::min(safeW * 0.28, drawableH * 0.26 * core.nativeW / core.nativeH)),
@@ -2018,14 +2029,13 @@ void App::present(bool capture) {
                     y = drawableH - h - 16;
                 SDL_Rect d = avoidOverlays({x, y, w, h});
                 SDL_Rect border{d.x - 3, d.y - 3, w + 6, h + 6};
-                if (renderSettings.view == 2 && renderSettings.playerInset) {
-                    insetBounds = {float(d.x), float(d.y), float(d.x + d.w), float(d.y + d.h)};
-                    SDL_SetRenderDrawColor(renderer, 85, 206, 217, 255);
-                    SDL_RenderFillRect(renderer, &border);
-                    SDL_RenderCopy(renderer, nativeTexture, nullptr, &d);
-                }
+                insetBounds = {float(d.x), float(d.y), float(d.x + d.w), float(d.y + d.h)};
+                SDL_SetRenderDrawColor(renderer, 85, 206, 217, 255);
+                SDL_RenderFillRect(renderer, &border);
+                SDL_RenderCopy(renderer, nativeTexture, nullptr, &d);
             }
-        } else if (updateNativeTexture()) {
+        }
+        if (!expanded && updateNativeTexture()) {
             SDL_SetTextureScaleMode(nativeTexture, renderSettings.integerScale
                                                        ? SDL_ScaleModeNearest
                                                        : SDL_ScaleModeLinear);
@@ -2048,7 +2058,7 @@ void App::present(bool capture) {
                 d = {0, 0, drawableW, availableH};
             nativeBounds = {float(d.x), float(d.y), float(d.x + d.w), float(d.y + d.h)};
 #ifndef SCU_QUEST
-            if (cachedVolume)
+            if (cachedVolume && !cachedExpanded)
                 volumeTexture = volumeGpu.render(renderer, core.world.volume, core.world.volumeMesh,
                                                  renderSettings, d.w, d.h);
 #endif
@@ -3106,7 +3116,17 @@ void App::presetUi() {
             continue;
         settingBadge(looks[n]);
         ImGui::SameLine();
-        if (button(looks[n], {-1, ImGui::GetFrameHeight() * 1.15f}))
+        const bool selected = n == active;
+        if (selected)
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_FrameBgActive));
+        const bool pressed = button(looks[n], {-1, ImGui::GetFrameHeight() * 1.15f});
+        if (selected) {
+            ImGui::PopStyleColor();
+            const auto min = ImGui::GetItemRectMin(), max = ImGui::GetItemRectMax();
+            ImGui::GetWindowDrawList()->AddRectFilled({min.x + 2, min.y + 3},
+                {min.x + 5, max.y - 3}, ImGui::GetColorU32(ImGuiCol_Text), 1.f);
+        }
+        if (pressed)
             applyLook(n);
     }
 }

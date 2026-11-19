@@ -48,6 +48,10 @@ int main() {
     PerformanceGovernor g;
     PerformancePolicy p;
     g.configure(p);
+    for (int i = 0; i < 22; ++i)
+        g.observe({2, 310, -1, true, 0}, .32);
+    require(g.scale() < 100, "expensive active frames were mistaken for a suspended application");
+    g.reset();
     for (int i = 0; i < 180; ++i)
         g.observe({1, 20, -1, true, 0}, 1. / 60);
     require(g.scale() <= 60 && g.scale() >= 35, "CPU pressure did not lower sampling");
@@ -87,6 +91,9 @@ int main() {
     for (int i = 0; i < 180; ++i)
         g.observe({1, 40, 40, true, 6}, 1. / 60);
     require(g.scale() == 100, "manual full-resolution mode changed");
+    const double previousWork = g.cpuMs();
+    g.observe({1, 2, -1, true, 0}, 1. / 60);
+    require(g.cpuMs() < previousWork && g.cpuMs() > 3, "manual frame timings must still be smoothed");
     p = {};
     g.configure(p);
     g.reset();
@@ -170,23 +177,32 @@ int main() {
         require(optimized == base, "terrain invalidation did not restore every pixel");
     }
     TileAttributeCache cache;
-    int loads = 0;
-    auto loader = [&](int x, int y) {
-        ++loads;
-        return uint16_t(((x / 8) * 31 + (y / 8) * 73) & 65535);
-    };
-    require(cache.prepare(1, 16384, 2048, loader), "tile cache capacity");
-    int initial = loads;
-    require(cache.prepare(1, 16384, 2048, loader) && loads == initial,
-            "unchanged geometry rebuilt its lookup cache");
-    for (int i = 0; i < 100000; ++i) {
-        int x = random() % 16384, y = random() % 2048;
-        require(cache.sample(x, y) == loader(x & ~7, y & ~7), "cached terrain attribute mismatch");
+    for (int shift : {7, 8}) {
+        const int side = 1 << shift;
+        int loads = 0, variant = 0;
+        auto layout = [&](int x, int y) { return ((x >> shift) + (y >> shift)) % 9 - 1; };
+        auto value = [&](int chunk, int x, int y) {
+            return uint16_t(chunk * 811 + (x / 8) * 31 + (y / 8) * 73 + variant);
+        };
+        auto decode = [&](int chunk, int x, int y) { ++loads; return value(chunk, x, y); };
+        require(cache.prepare(1, 32768, 4096, shift, layout, decode), "full legal tile domain");
+        const int initial = loads;
+        require(initial == 8 * (side / 8) * (side / 8), "repeated chunks were decoded twice");
+        require(cache.prepare(1, 32768, 4096, shift, layout, decode) && loads == initial,
+                "unchanged geometry rebuilt its lookup cache");
+        for (int i = 0; i < 100000; ++i) {
+            int x = random() % 32768, y = random() % 4096, id = layout(x, y);
+            require(cache.sample(x, y) == (id < 0 ? 0 : value(id, x % side, y % side)),
+                    "cached terrain attribute differs from direct addressing");
+        }
+        require(cache.sample(-1, 0) == 0 && cache.sample(32768, 0) == 0, "tile domain bounds");
+        ++variant;
+        cache.prepare(2, 32768, 4096, shift, layout, decode);
+        require(loads == initial * 2 && cache.sample(side, 0) == 1, "geometry revision did not invalidate");
+        std::printf("Tile cache %dpx chunks: %d decoded tiles, %zu bytes, 2097152 tile placements\n",
+                    side, initial, cache.bytes());
+        require(!cache.prepare(3, 100000, 100000, shift, layout, decode), "unbounded cache allocation");
     }
-    require(cache.sample(-1, 0) == 0 && cache.sample(16384, 0) == 0, "tile domain bounds");
-    cache.prepare(2, 16384, 2048, loader);
-    require(loads > initial * 2, "layout revision did not invalidate");
-    require(!cache.prepare(3, 100000, 100000, loader), "unbounded cache allocation");
     std::array<uint8_t, 65536> geometry{};
     geometry[0xA400] = 1; // foreground uses chunk 0, which uses high block 1023.
     geometry[0] = 3;

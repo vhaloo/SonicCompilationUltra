@@ -229,11 +229,19 @@ layout(location=2) in vec2 uv;
 layout(location=3) in vec4 color;
 layout(location=4) in float finish;
 uniform mat4 vp,model;
+uniform highp int kind;
 out vec3 worldPosition,worldNormal;
 out vec2 texcoord;
 out vec4 tint;
 out float roughness;
-void main(){vec4 p=model*vec4(position,1);worldPosition=p.xyz;worldNormal=normalize(mat3(model)*normal);texcoord=uv;tint=color;roughness=finish;gl_Position=vp*p;}
+void main(){
+ vec4 p=model*vec4(position,1);
+ worldPosition=p.xyz;worldNormal=normalize(mat3(model)*normal);
+ texcoord=uv;tint=color;
+ // The efficient voxel program interpolates face lighting on curved panels.
+ roughness=(kind==7||kind==8)?max(dot(worldNormal,normalize(vec3(-.35,.7,.85))),0.0):finish;
+ gl_Position=vp*p;
+}
 )GLSL";
 static_assert(voxel::planeCount == 7, "Keep the shader's two-column/four-row atlas in sync");
 const char *fragmentSource = R"GLSL(#version 300 es
@@ -244,7 +252,8 @@ in vec4 tint;
 in float roughness;
 uniform sampler2D image;
 uniform vec3 eye;
-uniform int kind,crt,maskMode,effectDetail;
+uniform highp int kind;
+uniform int crt,maskMode,effectDetail;
 uniform vec2 raster;
 uniform vec4 nativeHole;
 uniform bool clipNative;
@@ -255,7 +264,7 @@ vec3 displayColor(vec2 uv){return texture(image,vec2(uv.x,flipImage?1.0-uv.y:uv.
 void main(){
 #ifdef SCU_FAST
  vec3 n=vec3(0,0,1),v=vec3(0,0,1);float facing=1.0;
- if(kind==0||kind==4||kind==7||kind==8||(kind==2&&crt>0)){n=normalize(worldNormal);v=normalize(eye-worldPosition);facing=max(dot(n,v),0.0);}
+ if(kind==0||kind==4||(kind==2&&crt>0)){n=normalize(worldNormal);v=normalize(eye-worldPosition);facing=max(dot(n,v),0.0);}
 #else
  vec3 n=normalize(worldNormal);vec3 v=normalize(eye-worldPosition);float facing=max(dot(n,v),0.0);
 #endif
@@ -294,7 +303,11 @@ void main(){
   vec2 localUv=fract(texcoord*vec2(2.0,4.0));
   if(clipNative&&all(greaterThanEqual(localUv,nativeHole.xy))&&all(lessThan(localUv,nativeHole.xy+nativeHole.zw)))discard;
   vec4 pixel=texture(image,texcoord).bgra;a=pixel.a;if(a<.002)discard;
+#ifdef SCU_FAST
+  float diffuse=roughness;
+#else
   float diffuse=max(dot(n,normalize(vec3(-.35,.7,.85))),0.0);
+#endif
   c=pixel.rgb*mix(1.0,.48+.52*diffuse,clamp(voxelLight,0.0,1.0));
  }else if(kind==6){
   vec2 uv=vec2(fract(texcoord.x*4.0),texcoord.y);
@@ -650,7 +663,7 @@ struct XrStageRenderer::Impl {
         if (!backdropTexture)
             glGenTextures(1, &backdropTexture);
         glBindTexture(GL_TEXTURE_2D, backdropTexture);
-        if (backdropVersion != c.version) {
+        if (backdropVersion != c.backdropVersion) {
             rgbaScratch.resize(c.backdrop->size());
             auto &rgba = rgbaScratch;
             for (size_t i = 0; i < rgba.size(); ++i) {
@@ -665,7 +678,7 @@ struct XrStageRenderer::Impl {
                 glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 320, 224, GL_RGBA, GL_UNSIGNED_BYTE,
                                 rgba.data());
             textureParameters();
-            backdropVersion = c.version;
+            backdropVersion = c.backdropVersion;
         }
         return backdropTexture;
     }

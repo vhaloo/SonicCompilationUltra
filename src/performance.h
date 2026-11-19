@@ -88,43 +88,68 @@ class DamageMap {
     std::vector<DamageRect> rectangles(size_t maximum = 32) const;
     size_t restore(std::vector<uint32_t> &destination, const std::vector<uint32_t> &source) const;
 };
-// Whole-stage tile attributes are geometry, independent of palette animation,
-// render sampling and camera position. The loader is called only on a revision.
+// The cartridges place the same 128- or 256-pixel chunk many times. Decode its
+// tile attributes once, keeping a small offset per placement for raster workers.
 class TileAttributeCache {
     uint64_t key = 0;
-    int columns = 0, rows = 0;
+    int width = 0, height = 0, shift = 0, columns = 0;
+    std::vector<uint32_t> offsets;
     std::vector<uint16_t> values;
 
   public:
-    template <class Loader> bool prepare(uint64_t revision, int w, int h, Loader load) {
-        const int cols = (w + 7) / 8, lines = (h + 7) / 8;
-        if (cols <= 0 || lines <= 0 || size_t(cols) * lines > 2097152) {
+    template <class Locate, class Decode>
+    bool prepare(uint64_t revision, int w, int h, int chunkShift, Locate locate, Decode decode) {
+        if (w <= 0 || h <= 0 || w > 32768 || h > 4096 || (chunkShift != 7 && chunkShift != 8)) {
             clear();
             return false;
         }
-        if (key == revision && columns == cols && rows == lines && !values.empty())
+        if (key == revision && width == w && height == h && shift == chunkShift && !values.empty())
             return true;
-        columns = cols;
-        rows = lines;
+        width = w;
+        height = h;
+        shift = chunkShift;
         key = revision;
-        values.resize(size_t(cols) * lines);
-        for (int y = 0; y < rows; ++y)
-            for (int x = 0; x < columns; ++x)
-                values[size_t(y) * columns + x] = load(x * 8, y * 8);
+        const int side = 1 << shift, tiles = side / 8;
+        columns = (w + side - 1) / side;
+        offsets.resize(size_t(columns) * ((h + side - 1) / side));
+        std::array<uint32_t, 256> decoded{};
+        values.assign(tiles * tiles, 0); // Offset zero is an absent layout entry.
+        size_t placement = 0;
+        for (int y = 0; y < h; y += side) {
+            for (int x = 0; x < w; x += side) {
+                int chunk = locate(x, y);
+                uint32_t offset = 0;
+                if (unsigned(chunk) < decoded.size()) {
+                    if (!decoded[chunk]) {
+                        decoded[chunk] = uint32_t(values.size());
+                        values.resize(values.size() + tiles * tiles);
+                        auto *dest = values.data() + decoded[chunk];
+                        for (int ty = 0; ty < side; ty += 8)
+                            for (int tx = 0; tx < side; tx += 8)
+                                *dest++ = decode(chunk, tx, ty);
+                    }
+                    offset = decoded[chunk];
+                }
+                offsets[placement++] = offset;
+            }
+        }
         return true;
     }
     uint16_t sample(int x, int y) const {
-        return x < 0 || y < 0 || (x >> 3) >= columns || (y >> 3) >= rows
-                   ? 0
-                   : values[size_t(y >> 3) * columns + (x >> 3)];
+        if (unsigned(x) >= unsigned(width) || unsigned(y) >= unsigned(height))
+            return 0;
+        const int mask = (1 << shift) - 1;
+        const auto offset = offsets[(y >> shift) * columns + (x >> shift)];
+        return values[offset + (((y & mask) >> 3) << (shift - 3)) + ((x & mask) >> 3)];
     }
     void clear() {
+        std::vector<uint32_t>().swap(offsets);
         std::vector<uint16_t>().swap(values);
         key = 0;
-        columns = rows = 0;
+        width = height = columns = 0;
     }
     size_t bytes() const {
-        return values.capacity() * sizeof(uint16_t);
+        return values.capacity() * sizeof(uint16_t) + offsets.capacity() * sizeof(uint32_t);
     }
 };
 } // namespace scu

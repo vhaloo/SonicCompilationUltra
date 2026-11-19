@@ -50,7 +50,8 @@ struct Harness {
         auto base = SDL_GetBasePath();
         app->initialise(base ? fs::u8path(base) : fs::current_path(), true);
         SDL_free(base);
-        require(app->pads[0] != nullptr, "SDL virtual controller is not recognised");
+        require(app->pads[0] && SDL_GameControllerGetJoystick(app->pads[0]) == joystick,
+                "fixture joystick must own player one");
         frame(6);
     }
     ~Harness() {
@@ -335,9 +336,6 @@ static void testCompactOverlays(Harness &h) {
 }
 int main() {
     try {
-        // Restrict this process to our generated controllers. A real Xbox pad
-        // connected to the development PC must not become test player 1.
-        SDL_SetHint(SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT,"0x0000/0x0000");
         SDL_SetMainReady();
         SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
         require(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER |
@@ -416,6 +414,26 @@ int main() {
             SDL_JoystickSetVirtualButton(secondary, SDL_CONTROLLER_BUTTON_RIGHTSTICK, SDL_PRESSED);
             h.frame(2, true);
             require(a.settings.voxelYaw == Settings{}.voxelYaw, "right-stick click recenters");
+            SDL_Event viewKey{};
+            viewKey.type = SDL_KEYDOWN;
+            viewKey.key.keysym.sym = SDLK_5;
+            viewKey.key.keysym.mod = KMOD_CTRL;
+            a.settings.voxelFraming = 0;
+            a.event(viewKey);
+            require(a.settings.view == 2 && a.settings.voxelFraming == 1,
+                    "Ctrl+5 switches from player-follow voxels to the whole stage");
+            SDL_Event wheel{};
+            wheel.type = SDL_MOUSEWHEEL;
+            wheel.wheel.x = 1;
+            SDL_SetModState(KMOD_CTRL);
+            a.event(wheel);
+            require(a.settings.view == 2, "horizontal scrolling unexpectedly changed framing");
+            wheel.wheel.y = 1;
+            wheel.wheel.direction = SDL_MOUSEWHEEL_FLIPPED;
+            a.event(wheel);
+            SDL_SetModState(KMOD_NONE);
+            require(a.settings.view == 0 && a.settings.voxelFraming == 1,
+                    "Ctrl+wheel selects manual pixel framing in voxel mode");
             SDL_JoystickClose(secondary);
             SDL_JoystickDetachVirtual(secondaryIndex);
             h.frame();

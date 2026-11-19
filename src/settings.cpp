@@ -283,7 +283,8 @@ int Settings::matchingLook(const Settings &defaults, bool spatial) const {
     for (int n = 0; n <= (spatial ? 5 : 4); ++n) {
         const auto picture = pictureForLook(n, defaults);
         if (appearance(*this) == appearance(picture) &&
-            (!spatial || spatialAppearance(*this) == spatialAppearance(picture)))
+            (!spatial || (spatialAppearance(*this) == spatialAppearance(picture) &&
+                          (n != 5 || questWallLocked))))
             return n;
     }
     return -1;

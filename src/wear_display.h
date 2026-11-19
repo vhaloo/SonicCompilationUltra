@@ -10,6 +10,7 @@ struct View {
 View camera(double zoom, int stageW, int stageH, int nativeW, int nativeH, int cameraX, int cameraY,
             double aspect);
 double crownZoom(double current, double delta, int speed, bool reverse);
+int accumulateCrownZoom(int current, double delta, int speed, bool reverse, double &fraction);
 struct Vertex {
     float x, y, u, v;
 };
