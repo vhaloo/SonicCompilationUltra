@@ -414,6 +414,7 @@ int main() {
             SDL_JoystickSetVirtualButton(secondary, SDL_CONTROLLER_BUTTON_RIGHTSTICK, SDL_PRESSED);
             h.frame(2, true);
             require(a.settings.voxelYaw == Settings{}.voxelYaw, "right-stick click recenters");
+            const Settings beforeCameraShortcuts = a.settings;
             SDL_Event viewKey{};
             viewKey.type = SDL_KEYDOWN;
             viewKey.key.keysym.sym = SDLK_5;
@@ -434,6 +435,7 @@ int main() {
             SDL_SetModState(KMOD_NONE);
             require(a.settings.view == 0 && a.settings.voxelFraming == 1,
                     "Ctrl+wheel selects manual pixel framing in voxel mode");
+            a.settings = beforeCameraShortcuts;
             SDL_JoystickClose(secondary);
             SDL_JoystickDetachVirtual(secondaryIndex);
             h.frame();
