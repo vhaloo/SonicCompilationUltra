@@ -15,7 +15,7 @@ The macOS app has an ad-hoc signature, not Apple notarization. If Gatekeeper ask
 
 ## Updating
 
-Starting with 0.16.0, the app checks GitHub in the background when you open it. If there is an update for your device, the library offers **Update now** and **Update later**. Choosing later keeps the current session open and asks again at the next launch. The computer, phone, tablet and Quest libraries also have a **Check for updates** button. On a watch, open the app again to check. Offline play is available.
+Starting with 0.16.0, the app checks GitHub in the background when you open it. If there is an update for your device, the library offers **Update now** and **Update later**. Choosing later keeps the current session open and asks again at the next launch. The computer, phone, tablet and Quest libraries also have a **Check for updates** button. In all editions, including Wear OS, you can also open **Advanced → Help & credits → Check for updates**. Offline play is available.
 
 On a computer, keep the extracted program in a folder you can write to. The app verifies the package, closes and reopens the library. Linux uses the system `curl` executable. On Android, Wear OS and Quest, approve the system installer when prompted. The first update may request permission to install apps from this source.
 

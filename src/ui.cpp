@@ -2701,6 +2701,12 @@ void App::commitAction() {
     }
     focusPage = true;
 }
+void App::checkUpdateButton() {
+    if (updates.configured && button("updatecheck")) {
+        updateManual = updateDialog = true;
+        updates.check();
+    }
+}
 void App::updateUi() {
     auto &io = ImGui::GetIO();
     const bool watch = settings.wearActive;
@@ -2710,6 +2716,7 @@ void App::updateUi() {
     ImGui::SetNextWindowSizeConstraints({width, 0}, {width, io.DisplaySize.y * (watch ? .76f : .94f)});
     ImGui::Begin("###scu-update", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
                                             ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove);
+    ImGui::SetWindowFontScale(watch ? .88f : 1.f);
     const auto &state = updates.state;
     const bool available = state == "available";
     ImGui::TextColored({.36f,.88f,.95f,1}, "%s", tr(available ? "updateavailable" : "updatetitle", language));
@@ -2720,7 +2727,7 @@ void App::updateUi() {
     const ImVec2 size{-1, std::max(ImGui::GetFrameHeight(), (watch ? 25.f : 36.f)*uiFactor)};
     if (available) {
         ImGui::TextWrapped("%s  %s", tr("updateversion", language), updates.version.c_str());
-        ImGui::TextWrapped("%s", tr("updatekeep", language));
+        if (!watch) ImGui::TextWrapped("%s", tr("updatekeep", language));
         if (button("updatenow", size)) {
             try {
                 core.persistProgress();
@@ -3072,10 +3079,7 @@ void App::libraryUi() {
             beginBrowser(true);
         if (ImGui::GetContentRegionAvail().x > 580 * uiFactor)
             ImGui::SameLine();
-        if (updates.configured && button("updatecheck")) {
-            updateManual = updateDialog = true;
-            updates.check();
-        }
+        checkUpdateButton();
         if (button("sourcehelp")) {
             tab = 8;
             focusPage = true;
@@ -3837,6 +3841,7 @@ void App::optionsUi(int section) {
 #endif
     case 8:
         ImGui::Text("Sonic Compilation Ultra %s", SCU_VERSION);
+        checkUpdateButton();
         if (button("sourcehelp"))
             notify(tr("romguide", language));
         ImGui::TextWrapped("%s", tr("romguide", language));

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.1 Compact update prompt
+
+- The round watch keeps the update title, version and both actions together. All editions now include **Check for updates** in **Help & credits**.
+
 ## 0.16.0 Startup updates
 
 - The library checks the public release channel in the background. Choose **Update now** to install the matching edition or **Update later** to keep playing until the next launch.

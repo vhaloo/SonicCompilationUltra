@@ -226,7 +226,7 @@ dependencies = [
 
 [[package]]
 name = "scu-update"
-version = "0.16.0"
+version = "0.16.1"
 dependencies = [
  "flate2",
  "fs2",

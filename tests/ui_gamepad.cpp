@@ -350,6 +350,25 @@ static void checkUpdateChoices(Harness &h) {
     }
     a.updates.state = "available"; h.frame(2); h.press(SDL_CONTROLLER_BUTTON_B);
     require(a.updates.state == "later" && a.menu, "controller back defers the update");
+    const auto savedWear = a.settings.wearActive;
+    const auto savedRound = a.settings.wearRound;
+    int oldW, oldH;
+    SDL_GetWindowSize(a.window, &oldW, &oldH);
+    a.settings.wearActive = a.settings.wearRound = true;
+    SDL_SetWindowSize(a.window, 454, 454);
+    for (int lang = 0; lang < 4; ++lang) {
+        a.language = lang;
+        a.updates.state = "available";
+        h.frame(4);
+        auto *card = ImGui::FindWindowByName("###scu-update");
+        require(card && card->ScrollMax.y < 1.f, "round watch update title must stay in view");
+        require(a.controlRects.at("updatelater").w <= card->InnerClipRect.Max.y + 1,
+                "round watch update action must fit");
+        h.press(SDL_CONTROLLER_BUTTON_B);
+    }
+    a.settings.wearActive = savedWear;
+    a.settings.wearRound = savedRound;
+    SDL_SetWindowSize(a.window, oldW, oldH);
     a.updates.state = "available";
     h.frame(3);
     h.activate("updatenow");

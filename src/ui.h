@@ -91,6 +91,7 @@ class App {
     char pathBuffer[4096]{};
     int tab = 0;
     bool updateDialog = false, updateManual = false, resumeAfterUpdate = false;
+    void checkUpdateButton();
     void updateUi();
     void ui();
     void libraryUi();
