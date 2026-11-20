@@ -2190,6 +2190,10 @@ void App::present(bool capture) {
     io.FontGlobalScale = (settings.wearActive ? .72f : .75f) * uiFactor;
     ImGui::NewFrame();
     updates.poll();
+    if (!menu && updates.state == "available" && !updateDialog) {
+        resumeAfterUpdate = core.loaded;
+        toggleMenu();
+    }
     if (menu && !browserOpen && !actionPopup && !pathEditor && !guideOpen &&
         !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel) &&
         (updates.state == "available" || updateManual || updates.detail == "restored"))
@@ -2717,7 +2721,16 @@ void App::updateUi() {
     if (available) {
         ImGui::TextWrapped("%s  %s", tr("updateversion", language), updates.version.c_str());
         ImGui::TextWrapped("%s", tr("updatekeep", language));
-        if (button("updatenow", size)) updates.install();
+        if (button("updatenow", size)) {
+            try {
+                core.persistProgress();
+                flushSettings();
+                updates.install();
+            } catch (const std::exception &) {
+                updates.state = "error";
+                updates.detail = "permission";
+            }
+        }
         if (button("updatelater", size)) close = true;
         if (ImGui::IsWindowAppearing()) ImGui::SetItemDefaultFocus();
     } else {
@@ -2736,6 +2749,8 @@ void App::updateUi() {
         if (available || state=="error") updates.later();
         updateDialog = updateManual = false;
         releaseNavigation = focusMenu = true;
+        if (resumeAfterUpdate && menu && core.loaded) toggleMenu();
+        resumeAfterUpdate = false;
     }
     ImGui::End();
 }

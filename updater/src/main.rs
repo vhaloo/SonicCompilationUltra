@@ -140,7 +140,6 @@ fn restart(root: &Path, data: &Path, cwd: &Path) -> io::Result<()> {
     let mut cmd = Command::new(exe);
     cmd.current_dir(cwd)
         .arg("--menu")
-        .arg("--no-autoresume")
         .arg("--data-dir")
         .arg(data)
         .stdin(Stdio::null())

@@ -90,7 +90,7 @@ class App {
     std::string browsePath;
     char pathBuffer[4096]{};
     int tab = 0;
-    bool updateDialog = false, updateManual = false;
+    bool updateDialog = false, updateManual = false, resumeAfterUpdate = false;
     void updateUi();
     void ui();
     void libraryUi();

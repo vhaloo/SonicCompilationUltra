@@ -53,6 +53,7 @@ class Core {
     explicit Core(Settings &s, Library &l) : settings(s), library(l) {}
     ~Core();
     bool load(const std::string &id);
+    void persistProgress();
     void unload(bool keepProgress = true);
     void reset();
     void tick();

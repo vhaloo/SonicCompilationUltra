@@ -344,13 +344,17 @@ void Core::loadSram() {
             std::copy(b.begin(), b.end(), p);
     }
 }
+void Core::persistProgress() {
+    if (!loaded) return;
+    saveSram();
+    if (settings.autosave && frame > 30)
+        writeBytesAtomic(library.dataDir / "saves" / (saveKey + "-auto.state"), state());
+}
 void Core::unload(bool keepProgress) {
     if (loaded) {
         if (keepProgress) {
             try {
-                saveSram();
-                if (settings.autosave && frame > 30)
-                    writeBytesAtomic(library.dataDir / "saves" / (saveKey + "-auto.state"), state());
+                persistProgress();
             } catch (const std::exception &e) {
                 status = e.what();
             }

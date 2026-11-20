@@ -334,7 +334,39 @@ static void testCompactOverlays(Harness &h) {
     std::cerr << "Compact overlays: 80 corner/language/size layouts, 16 crowded tiny layouts, "
                  "independent status, timers, shortcuts and native framing passed\n";
 }
-int main() {
+static void checkUpdateChoices(Harness &h) {
+    auto &a = *h.app;
+    // Opening the startup offer must not navigate the library underneath it.
+    a.menu = true;
+    a.updates.version = "1.0.0";
+    for (int lang = 0; lang < 4; ++lang) {
+        a.language = lang;
+        a.updates.state = "available";
+        h.frame(3);
+        require(a.controls.count("updatenow") && a.controls.count("updatelater"),
+                "both update choices are visible");
+        h.activate("updatelater");
+        require(a.updates.state == "later" && a.menu && a.running, "later returns to the library");
+    }
+    a.updates.state = "available"; h.frame(2); h.press(SDL_CONTROLLER_BUTTON_B);
+    require(a.updates.state == "later" && a.menu, "controller back defers the update");
+    a.updates.state = "available";
+    h.frame(3);
+    h.activate("updatenow");
+    require(a.updates.state == "error", "update now calls the installer even when this test has no helper");
+    h.press(SDL_CONTROLLER_BUTTON_B);
+    require(a.menu && a.running, "failed install leaves the library usable");
+    if (a.core.loaded) {
+        a.menu = false;
+        a.updates.state = "available";
+        h.frame(3);
+        require(a.menu && a.controls.count("updatelater"), "startup offer pauses resumed gameplay");
+        h.press(SDL_CONTROLLER_BUTTON_B);
+        require(!a.menu && a.core.loaded, "later resumes the same game");
+    }
+}
+
+int main(int argc, char **argv) {
     try {
         SDL_SetMainReady();
         SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
@@ -344,6 +376,11 @@ int main() {
         {
             Harness h;
             auto &a = *h.app;
+            if (argc == 2 && std::string(argv[1]) == "--updates-only") {
+                checkUpdateChoices(h);
+                std::cout << "PASS: four-language update choices and controller navigation\n";
+                return 0;
+            }
             require(!a.settings.advancedOptions && !a.controls.count("camera"),
                     "new players should start with the simple menu");
             h.tab(1);
@@ -754,20 +791,7 @@ int main() {
             h.press(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
             require(a.menuTab() == (before + 1) % App::sectionCount(),
                     "reconnected controller cannot navigate");
-            // Opening the startup offer must not navigate the library underneath it.
-            a.menu = true;
-            a.updates.version = "1.0.0";
-            for (int lang = 0; lang < 4; ++lang) {
-                a.language = lang;
-                a.updates.state = "available";
-                h.frame(3);
-                require(a.controls.count("updatenow") && a.controls.count("updatelater"),
-                        "both update choices are visible");
-                h.activate("updatelater");
-                require(a.updates.state == "later" && a.menu && a.running, "later returns to the library");
-            }
-            a.updates.state = "available"; h.frame(2); h.press(SDL_CONTROLLER_BUTTON_B);
-            require(a.updates.state == "later" && a.menu, "controller back defers the update");
+            checkUpdateChoices(h);
             std::cout << "PASS: SDL virtual gamepad import, path keyboard, all settings/pages, "
                          "sliders/choices, saves, confirmations, shortcuts, 5 sizes and reconnect; "
                       << h.visited.size() << " focused controls\n";
