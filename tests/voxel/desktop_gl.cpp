@@ -39,6 +39,7 @@ int main() {
     SDL_SetMainReady();
     SDL_Window *window = nullptr;
     SDL_Renderer *renderer = nullptr;
+    SDL_Texture *readback = nullptr;
     int result = 1;
     try {
         require(SDL_Init(SDL_INIT_VIDEO) == 0, "SDL video");
@@ -52,6 +53,11 @@ int main() {
         SDL_RendererInfo info{};
         SDL_GetRendererInfo(renderer, &info);
         require(std::string(info.name) == "opengl", "OpenGL backend");
+        // Hidden-window drawables on macOS can change backing storage. Read from a
+        // fixed-size SDL target so the comparison measures the voxel pipeline.
+        readback = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888,
+                                     SDL_TEXTUREACCESS_TARGET, 480, 240);
+        require(readback && SDL_SetRenderTarget(renderer, readback) == 0, "readback target");
         checkSamplerSwitch(renderer);
         voxel::Frame f;
         f.configure(48, 32, 0, 0, 48, 32);
@@ -75,7 +81,7 @@ int main() {
             settings.voxelMode = mode;
             settings.voxelDetail = 3;
             for (auto size : {std::array<int, 2>{320, 240}, {480, 120}, {160, 144}}) {
-                auto sample = [&](int yaw, int pitch) {
+                auto sample = [&](int yaw, int pitch, std::vector<uint32_t> *capture = nullptr) {
                     settings.voxelYaw = yaw;
                     settings.voxelPitch = pitch;
                     auto image = gpu.render(renderer, f, mesh, settings, size[0], size[1]);
@@ -95,15 +101,32 @@ int main() {
                         hash = (hash ^ (p & 0xffffff)) * 1099511628211ULL;
                     }
                     require(drawn > 70, "visible mesh");
+                    if (capture)
+                        capture->swap(pixels);
                     return hash;
                 };
-                auto front = sample(0, 0);
+                std::vector<uint32_t> original, restored;
+                auto front = sample(0, 0, &original);
                 std::set<uint64_t> views{
                     front,           sample(-30, 22), sample(90, 0),    sample(180, 0),
                     sample(-90, 35), sample(65, 85),  sample(-150, -85)};
                 require(views.size() >= 6, "distinct front, side, rear and elevated views");
                 gpu.release();
-                require(sample(0, 0) == front, "pixel-identical front after resource recreation");
+                auto after = sample(0, 0, &restored);
+                if (after != front) {
+                    size_t changed = 0, first = 0;
+                    for (size_t i = 0; i < original.size(); ++i) {
+                        if (((original[i] ^ restored[i]) & 0xffffff) == 0)
+                            continue;
+                        if (!changed)
+                            first = i;
+                        ++changed;
+                    }
+                    std::fprintf(stderr, "mode %d at %dx%d: %zu pixels changed, "
+                                 "first at (%zu,%zu) %08x -> %08x\n", mode, size[0], size[1],
+                                 changed, first % 480, first / 480, original[first], restored[first]);
+                }
+                require(after == front, "pixel-identical front after resource recreation");
             }
         }
         gpu.release();
@@ -112,6 +135,10 @@ int main() {
         result = 0;
     } catch (const std::exception &e) {
         std::fprintf(stderr, "FAIL: %s\n", e.what());
+    }
+    if (readback) {
+        SDL_SetRenderTarget(renderer, nullptr);
+        SDL_DestroyTexture(readback);
     }
     if (renderer)
         SDL_DestroyRenderer(renderer);

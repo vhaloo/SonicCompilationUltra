@@ -1,0 +1,32 @@
+name: Verify published Mac updates
+on:
+  workflow_dispatch:
+    inputs:
+      previous:
+        description: Installed release with update support
+        required: true
+        type: string
+      target:
+        description: Latest published release
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  upgrade:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Upgrade the previous public application and verify its replacement
+        env:
+          PREVIOUS: ${{ inputs.previous }}
+          TARGET: ${{ inputs.target }}
+        run: python tools/published_macos_update.py "$PREVIOUS" "$TARGET"
