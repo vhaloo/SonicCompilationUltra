@@ -9,7 +9,8 @@ for token in ['FEATURE_WATCH','SOURCE_ROTARY_ENCODER','AXIS_SCROLL','isScreenRou
 manifest=read('android/wear/src/main/AndroidManifest.xml');ET.fromstring(manifest)
 assert 'android.hardware.type.watch' in manifest and 'com.google.android.wearable.standalone' in manifest
 assert 'android:value="true"' in manifest and 'OpenXR' not in manifest and 'oculus' not in manifest
-assert 'INTERNET' not in manifest and 'EXTERNAL_STORAGE' not in manifest
+assert 'android.permission.INTERNET' in manifest and 'android.permission.REQUEST_INSTALL_PACKAGES' in manifest
+assert 'EXTERNAL_STORAGE' not in manifest
 gradle=read('android/mobile/build.gradle')
 assert "project.name == 'wear'" in gradle and 'SCU_WEAR_BUILD=' in gradle and 'scuWearPrivateAssets' in gradle
 assert "':wear'" in read('android/settings.gradle')

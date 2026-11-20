@@ -15,14 +15,16 @@ def run(args):
 build=a.sdk/'build-tools/36.0.0';suffix='.exe' if os.name=='nt' else ''
 edition='wear' if a.wear else 'mobile'
 package='com.vhaloo.soniccompilationultra.'+edition
-version='0.15.0-'+edition+'-preview'
+version='0.16.0-'+edition+'-preview'
 signature=run([build/('apksigner.bat' if os.name=='nt' else 'apksigner'),'verify','--verbose','--print-certs',a.apk])
 badging=run([build/('aapt2'+suffix),'dump','badging',a.apk])
-for expected in [f"name='{package}'","versionCode='1500'",f"versionName='{version}'",f"minSdkVersion:'{26 if a.wear else 24}'","targetSdkVersion:'36'",'MobileActivity']:
+for expected in [f"name='{package}'","versionCode='1600'",f"versionName='{version}'",f"minSdkVersion:'{26 if a.wear else 24}'","targetSdkVersion:'36'",'MobileActivity']:
     assert expected in badging,expected
 manifest=run([build/('aapt2'+suffix),'dump','xmltree','--file','AndroidManifest.xml',a.apk])
+assert 'android.permission.INTERNET' in manifest and 'android.permission.REQUEST_INSTALL_PACKAGES' in manifest
+assert 'UpdateActivity$Result' in manifest
 for banned in ['oculus','openxr','IMMERSIVE_HMD','android.permission.CAMERA','android.permission.RECORD_AUDIO',
-               'android.permission.INTERNET','android.permission.READ_EXTERNAL_STORAGE','android.permission.WRITE_EXTERNAL_STORAGE']:
+               'android.permission.READ_EXTERNAL_STORAGE','android.permission.WRITE_EXTERNAL_STORAGE']:
     assert banned not in manifest,banned
 assert re.search(r'resizeableActivity[^\n]*=(?:true|0xffffffff)',manifest)
 if a.wear:

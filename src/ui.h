@@ -1,5 +1,6 @@
 #pragma once
 #include "core.h"
+#include "updates.h"
 #include "localization.h"
 #include "setting_help.h"
 #include "desktop_frame.h"
@@ -89,6 +90,8 @@ class App {
     std::string browsePath;
     char pathBuffer[4096]{};
     int tab = 0;
+    bool updateDialog = false, updateManual = false;
+    void updateUi();
     void ui();
     void libraryUi();
     void presetUi();
@@ -175,6 +178,7 @@ class App {
     std::string notice, capturePath;
     fs::path basePath;
     explicit App(const fs::path &dir) : library(dir), core(settings, library) {}
+    Updates updates;
     ~App();
     void initialise(const fs::path &base, bool hidden = false);
     void refreshControllers();

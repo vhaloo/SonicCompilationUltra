@@ -1,6 +1,6 @@
 # Your first game
 
-Download the package for your computer from [Releases](https://github.com/vhaloo/SonicCompilationUltra/releases/latest). Extract the whole folder before opening the app. Keep the executable, libraries and `assets` folder together.
+Download the package for your computer from [Releases](https://github.com/vhaloo/SonicCompilationUltra/releases). Extract the whole folder before opening the app. Keep the executable, libraries and `assets` folder together.
 
 | Download | Designed for |
 |---|---|
@@ -12,6 +12,14 @@ Download the package for your computer from [Releases](https://github.com/vhaloo
 The macOS app has an ad-hoc signature, not Apple notarization. If Gatekeeper asks, follow Apple's [instructions for opening an app from an identified download](https://support.apple.com/en-us/102445) after checking you downloaded the package from this repository. The Windows app is unsigned; its publisher cannot be verified by a commercial signing certificate. These packages do not change your computer's security settings.
 
 **macOS is experimental.** The two Mac packages receive automated compilation, synthetic runtime/controller tests and portable UI checks. Physical Mac display, audio, Retina and controller behaviour remain untested. Linux packages are validated on Ubuntu 22.04, including execution through their bundled launcher; physical Linux display/audio hardware is a separate check.
+
+## Updating
+
+Starting with 0.16.0, the app checks GitHub in the background when you open it. If there is an update for your device, the library offers **Update now** and **Update later**. Choosing later keeps the current session open and asks again at the next launch. You can also open **Advanced → Help & credits → Check for updates**. Offline play is available.
+
+On a computer, keep the extracted program in a folder you can write to. The app verifies the package, closes and reopens the library. Linux uses the system `curl` executable. On Android, Wear OS and Quest, approve the system installer when prompted. The first update may request permission to install apps from this source.
+
+The update replaces program files. Your ROMs, library, saves and settings stay on the device. Versions through 0.15.0 require one manual upgrade to enable the startup check.
 
 The app starts in fullscreen. Choose **Choose ROM…** with a mouse or the bottom gamepad face button. Navigate to your own cartridge dump and select it. ZIP files can stay zipped. **Import folder…** adds recognised collection editions from a folder; other Mega Drive revisions can be chosen individually and played with original framing.
 

@@ -754,6 +754,20 @@ int main() {
             h.press(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
             require(a.menuTab() == (before + 1) % App::sectionCount(),
                     "reconnected controller cannot navigate");
+            // Opening the startup offer must not navigate the library underneath it.
+            a.menu = true;
+            a.updates.version = "1.0.0";
+            for (int lang = 0; lang < 4; ++lang) {
+                a.language = lang;
+                a.updates.state = "available";
+                h.frame(3);
+                require(a.controls.count("updatenow") && a.controls.count("updatelater"),
+                        "both update choices are visible");
+                h.activate("updatelater");
+                require(a.updates.state == "later" && a.menu && a.running, "later returns to the library");
+            }
+            a.updates.state = "available"; h.frame(2); h.press(SDL_CONTROLLER_BUTTON_B);
+            require(a.updates.state == "later" && a.menu, "controller back defers the update");
             std::cout << "PASS: SDL virtual gamepad import, path keyboard, all settings/pages, "
                          "sliders/choices, saves, confirmations, shortcuts, 5 sizes and reconnect; "
                       << h.visited.size() << " focused controls\n";

@@ -11,8 +11,8 @@ import android.provider.OpenableColumns;
 import android.widget.Toast;
 import java.io.*;
 
-/** Local-only storage and Android's document picker. No camera frames or network access. */
-public final class QuestActivity extends SDLActivity {
+/** Local game storage and Android's document picker. */
+public final class QuestActivity extends com.vhaloo.soniccompilationultra.updates.UpdateActivity {
     private File root;
     private String preparationError;
     private static final int IMPORT_ROM = 73;

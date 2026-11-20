@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.0 Startup updates
+
+- The library checks the public release channel in the background. Choose **Update now** to install the matching edition or **Update later** to keep playing until the next launch.
+- Desktop installations verify the download and its file manifest, preserve the local library and restart. Android phones, tablets, watches and Quest use Android’s installer and the existing signing identity.
+
 ## 0.15.0 Rewind scenery and a full voxel orbit
 
 - Fixed the first CRT surround frame after rewind or a filter change. The surrounding stage now uses the pixel scale of the glass, including ultrawide and mobile displays.

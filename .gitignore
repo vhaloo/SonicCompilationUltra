@@ -1,5 +1,6 @@
 /build*/
 /dist/
+/updater/target/
 /private/
 *.bin
 *.mdrom

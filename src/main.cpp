@@ -583,6 +583,10 @@ int main(int argc, char **argv) {
             std::stable_sort(actions.begin(), actions.end(),
                              [](auto &x, auto &y) { return x.step < y.step; });
         }
+        if (!a.headless && !a.menuVerificationOnly && !args.count("--frames") && !args.count("--script")) {
+            a.updates.configure(baseDir, dir);
+            if (a.updates.state != "error") a.updates.check();
+        }
         unsigned limit = args.count("--frames") ? std::stoul(args["--frames"]) : 0,
                  renderEvery = args.count("--render-every")
                                    ? std::max(1, std::stoi(args["--render-every"]))

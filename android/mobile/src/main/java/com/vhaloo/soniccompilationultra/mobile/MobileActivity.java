@@ -9,8 +9,8 @@ import android.provider.OpenableColumns;
 import android.widget.Toast;
 import java.io.*;
 
-/** Local-only storage and Android's document picker. No camera frames or network access. */
-public final class MobileActivity extends SDLActivity {
+/** Local game storage and Android's document picker. */
+public final class MobileActivity extends com.vhaloo.soniccompilationultra.updates.UpdateActivity {
     private volatile int[] display = {1000,0,0,0,0,0,0,60000,0,0};
     private volatile boolean nativeReady, rotarySeen;
     private final java.util.concurrent.atomic.AtomicBoolean importingInbox=new java.util.concurrent.atomic.AtomicBoolean();

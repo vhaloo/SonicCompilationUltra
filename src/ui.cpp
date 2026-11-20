@@ -2189,7 +2189,12 @@ void App::present(bool capture) {
     }
     io.FontGlobalScale = (settings.wearActive ? .72f : .75f) * uiFactor;
     ImGui::NewFrame();
-    menuInput(editing);
+    updates.poll();
+    if (menu && !browserOpen && !actionPopup && !pathEditor && !guideOpen &&
+        !ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel) &&
+        (updates.state == "available" || updateManual || updates.detail == "restored"))
+        updateDialog = true;
+    if (!updateDialog) menuInput(editing);
 #ifdef SCU_UI_TESTS
     controls.clear();
     controlRects.clear();
@@ -2203,8 +2208,10 @@ void App::present(bool capture) {
 #endif
                   ))
         gameOverlays();
-    if (menu)
+    if (menu && !updateDialog)
         ui();
+    if (updateDialog)
+        updateUi();
 #ifdef SCU_QUEST
     if (quest)
         quest->drawReticle();
@@ -2690,6 +2697,48 @@ void App::commitAction() {
     }
     focusPage = true;
 }
+void App::updateUi() {
+    auto &io = ImGui::GetIO();
+    const bool watch = settings.wearActive;
+    const float width = std::min(440.f * uiFactor, io.DisplaySize.x * (watch ? .76f : .93f));
+    ImGui::SetNextWindowPos({io.DisplaySize.x * .5f, io.DisplaySize.y * .5f}, ImGuiCond_Always, {.5f, .5f});
+    ImGui::SetNextWindowSize({width, 0});
+    ImGui::SetNextWindowSizeConstraints({width, 0}, {width, io.DisplaySize.y * (watch ? .76f : .94f)});
+    ImGui::Begin("###scu-update", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
+                                            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove);
+    const auto &state = updates.state;
+    const bool available = state == "available";
+    ImGui::TextColored({.36f,.88f,.95f,1}, "%s", tr(available ? "updateavailable" : "updatetitle", language));
+    ImGui::Separator();
+    const bool dismissible = available || state == "current" || state == "error" || state == "checking" || state == "system";
+    bool close = (backRequested || selectRequested) && dismissible;
+    backRequested = selectRequested = guideRequested = false;
+    const ImVec2 size{-1, std::max(ImGui::GetFrameHeight(), (watch ? 25.f : 36.f)*uiFactor)};
+    if (available) {
+        ImGui::TextWrapped("%s  %s", tr("updateversion", language), updates.version.c_str());
+        ImGui::TextWrapped("%s", tr("updatekeep", language));
+        if (button("updatenow", size)) updates.install();
+        if (button("updatelater", size)) close = true;
+        if (ImGui::IsWindowAppearing()) ImGui::SetItemDefaultFocus();
+    } else {
+        const char *message = state=="current" ? "updatecurrent" :
+            state=="error" ? (updates.detail=="check" ? "updateoffline" : updates.detail=="permission" ? "updatepermission" : "updatefailed") :
+            state=="checking" ? "updatechecking" : state=="downloading" ? "updatedownload" :
+            state=="verifying" ? "updateverify" : state=="system" ? "updatesystem" : "updaterestart";
+        if (state=="later") close = true;
+        else ImGui::TextWrapped("%s", tr(message,language));
+        if (state=="downloading") ImGui::ProgressBar(updates.progress/100.f, {-1,0});
+        if (state=="error" && ImGui::Button(tr("updateretry",language),size)) updates.check();
+        if (dismissible && ImGui::Button(tr("updateback",language),size)) close = true;
+        if (state=="ready") running=false;
+    }
+    if (close) {
+        if (available || state=="error") updates.later();
+        updateDialog = updateManual = false;
+        releaseNavigation = focusMenu = true;
+    }
+    ImGui::End();
+}
 void App::ui() {
     auto &io = ImGui::GetIO();
     const bool watch = settings.wearActive;
@@ -3008,6 +3057,10 @@ void App::libraryUi() {
             beginBrowser(true);
         if (ImGui::GetContentRegionAvail().x > 580 * uiFactor)
             ImGui::SameLine();
+        if (updates.configured && button("updatecheck")) {
+            updateManual = updateDialog = true;
+            updates.check();
+        }
         if (button("sourcehelp")) {
             tab = 8;
             focusPage = true;

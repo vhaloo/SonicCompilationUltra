@@ -1,5 +1,7 @@
 # Third-party notices
 
+The desktop release updater is a separately executable Rust component. Its pinned dependencies and versions appear in `updater/Cargo.lock`. Most use the MIT or Apache 2.0 license. The ZIP reader uses MIT, the tar reader uses MIT or Apache 2.0, and the DEFLATE implementations include the zlib license. Third-party license texts for the updater are included in `licenses/updater`.
+
 ## Standalone Quest additions
 
 The Android edition uses the Khronos OpenXR Android loader 1.1.65 from Maven Central

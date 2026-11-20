@@ -10,7 +10,8 @@ assert "'arm64-v8a', 'armeabi-v7a', 'x86_64'" in gradle
 assert 'SCU_QUEST_BUILD=OFF' in gradle and 'scuMobilePrivateAssets' in gradle and 'scuPrivateAssets' not in gradle
 assert 'OpenXR' not in java and 'openxr' not in gradle and 'oculus' not in manifest
 assert 'android:resizeableActivity="true"' in manifest
-assert 'INTERNET' not in manifest and 'EXTERNAL_STORAGE' not in manifest
+assert 'android.permission.INTERNET' in manifest and 'android.permission.REQUEST_INSTALL_PACKAGES' in manifest
+assert 'EXTERNAL_STORAGE' not in manifest
 ET.fromstring(manifest);ET.parse(r/'docs/illustrations/mobile-layouts.svg')
 assert 'registerOnBackInvokedCallback' in java
 assert 'Context.RECEIVER_NOT_EXPORTED' in gradle and 'mobileJavaPatchRevision' in gradle

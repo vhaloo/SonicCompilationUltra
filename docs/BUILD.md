@@ -6,6 +6,8 @@ For the **0.11 development preview**, platform CI configures `-DBUILD_TESTING=OF
 
 Android has three modules: `:mobile` (phone/tablet), `:wear` (standalone watch) and `:app` (Quest). Use `./gradlew :wear:assembleRelease :wear:lintRelease` for the watch APK; the shared mobile script selects its own package, API floor, label and native version. [Wear setup](WEAR.md) · [Android build](ANDROID.md). Regenerate the renamed OFL font subset using `tools/subset_font.py` and its pinned source. Neither fontTools nor Pillow is a runtime dependency.
 
+Install Rust 1.90 or newer with Cargo when building the desktop editions. CMake builds the update helper from the checked-in lockfile. Android uses its system package installer and requires no Rust toolchain.
+
 ## Windows
 
 Install Visual Studio 2022 Build Tools with the C++ desktop workload and Windows SDK. In a developer terminal:

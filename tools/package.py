@@ -44,10 +44,13 @@ def main():
     binary=build/'Release/SonicCompilationUltra.exe' if args.platform=='windows' else build/'SonicCompilationUltra'
     if not binary.exists():
         raise RuntimeError(f'Build output missing: {binary}')
+    cargo_dir=build/'release-updater'
+    helper=cargo_dir/'release'/('scu-update.exe' if args.platform=='windows' else 'scu-update')
     payload=stage
     if args.platform=='macos':
         payload=stage/'Sonic Compilation Ultra.app/Contents'
         copy_file(binary,payload/'MacOS/SonicCompilationUltra')
+        copy_file(helper,payload/'MacOS'/helper.name)
         resources=payload/'Resources'
         resources.mkdir(parents=True,exist_ok=True)
         shutil.copytree(ROOT/'assets',resources/'assets')
@@ -67,10 +70,16 @@ def main():
             copy_file(actual.resolve(),target)
             subprocess.run(['install_name_tool','-change',sdl,'@executable_path/../Frameworks/'+target.name,str(payload/'MacOS/SonicCompilationUltra')],check=True)
             subprocess.run(['install_name_tool','-id','@executable_path/../Frameworks/'+target.name,str(target)],check=True)
+        app=payload.parent
+        inventory=resources/'SCUUpdateFiles.txt'
+        names={p.relative_to(app).as_posix() for p in app.rglob('*') if p.is_file()}
+        names.update({'Contents/Resources/SCUUpdateFiles.txt','Contents/_CodeSignature/CodeResources'})
+        inventory.write_text('\n'.join(sorted(names))+'\n',encoding='utf-8')
         subprocess.run(['codesign','--force','--deep','--sign','-',str(stage/'Sonic Compilation Ultra.app')],check=True)
         (stage/'MACOS_EXPERIMENTAL.txt').write_text('macOS builds are experimental.\nCompilation and packaging do not establish runtime compatibility.\nPhysical Mac display, Retina, audio and controller behaviour have not been tested.\nThis app is ad-hoc signed, not notarized.\nSee docs/QUICK_START.md and docs/TEST_REPORT.md for the checks applicable to this release.\n',encoding='utf-8')
     else:
         copy_file(binary,stage/binary.name)
+        copy_file(helper,stage/helper.name)
         shutil.copytree(ROOT/'assets',stage/'assets')
         if args.platform=='windows':
             for name in ['SDL2.dll','vcomp140.dll','msvcp140.dll','vcruntime140.dll','vcruntime140_1.dll']:
@@ -91,7 +100,7 @@ def main():
             (stage/'LINUX_REQUIREMENTS.txt').write_text(
                 'Run SonicCompilationUltra.sh on Ubuntu 22.04 or a compatible desktop.\n'
                 'Minimal installations need their distribution OpenMP runtime (libgomp1 on Ubuntu/Debian)\n'
-                'and the usual graphics and audio libraries for SDL2.\n', encoding='utf-8')
+                'the system curl client for release checks, and the usual graphics and audio libraries for SDL2.\n', encoding='utf-8')
     for name in ['README.md','LICENSE','THIRD_PARTY_NOTICES.md','CHANGELOG.md']:
         copy_file(ROOT/name,stage/name)
     shutil.copytree(ROOT/'licenses',stage/'licenses')
